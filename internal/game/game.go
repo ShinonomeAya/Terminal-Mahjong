@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -16,6 +15,7 @@ type Game struct {
 	Current int
 	Winner  int
 	Reason  string
+	WinType WinType
 	Over    bool
 	rng     *rand.Rand
 }
@@ -47,7 +47,7 @@ func NewGame(seed int64) *Game {
 func (g *Game) Play(in io.Reader, out io.Writer) {
 	reader := bufio.NewReader(in)
 	fmt.Fprintln(out, "Terminal Mahjong - simplified pushdown rules")
-	fmt.Fprintln(out, "Commands: <number> or d <number> to discard, h to win, k <tile> for concealed kong, q to quit.")
+	fmt.Fprintln(out, "Commands: <number> or d <number> to discard, h to win, k <tile> for concealed kong, q to quit. Answer y to claim win, pong, or chow prompts.")
 	for !g.Over {
 		if len(g.Wall) == 0 {
 			g.Over = true
@@ -60,11 +60,11 @@ func (g *Game) Play(in io.Reader, out io.Writer) {
 		if CanWin(player.Hand) {
 			if player.Human {
 				if askYes(reader, out, "You can win by self-draw. Win? [y/N] ") {
-					g.finish(g.Current, "self-draw")
+					g.finish(g.Current, "self-draw", WinSelfDraw)
 					break
 				}
 			} else {
-				g.finish(g.Current, "self-draw")
+				g.finish(g.Current, "self-draw", WinSelfDraw)
 				fmt.Fprintf(out, "%s wins by self-draw with %s.\n", player.Name, drawn)
 				break
 			}
@@ -116,33 +116,35 @@ func (g *Game) humanDiscard(reader *bufio.Reader, out io.Writer) (Tile, bool) {
 			g.Reason = "input closed"
 			return 0, false
 		}
-		line = strings.TrimSpace(line)
-		if strings.EqualFold(line, "q") {
+		action, err := ParseAction(line)
+		if err != nil {
+			fmt.Fprintln(out, "Use a hand number, d <number>, h, k <tile>, or q.")
+			continue
+		}
+		if action.Kind == ActionQuit {
 			g.Over = true
 			g.Reason = "quit"
 			return 0, false
 		}
-		if strings.EqualFold(line, "h") {
+		if action.Kind == ActionWin {
 			if CanWin(g.Players[0].Hand) {
-				g.finish(0, "self-draw")
+				g.finish(0, "self-draw", WinSelfDraw)
 				return 0, false
 			}
 			fmt.Fprintln(out, "You cannot win with this hand yet.")
 			continue
 		}
-		if strings.HasPrefix(strings.ToLower(line), "k ") {
-			if g.tryHumanKong(line[2:], out) {
+		if action.Kind == ActionKong {
+			if g.tryHumanKong(action.Tiles[0].String(), out) {
 				continue
 			}
 			continue
 		}
-		indexText := strings.TrimPrefix(strings.ToLower(line), "d ")
-		index, err := strconv.Atoi(strings.TrimSpace(indexText))
-		if err != nil {
+		if action.Kind != ActionDiscard {
 			fmt.Fprintln(out, "Use a hand number, d <number>, h, k <tile>, or q.")
 			continue
 		}
-		discard, err := g.Players[0].RemoveAt(index - 1)
+		discard, err := g.Players[0].RemoveAt(action.Index)
 		if err != nil {
 			fmt.Fprintln(out, err)
 			continue
@@ -197,7 +199,7 @@ func (g *Game) resolveAIKongs(out io.Writer, playerIndex int) {
 		replacement := g.draw(playerIndex)
 		fmt.Fprintf(out, "%s draws a replacement tile.\n", g.Players[playerIndex].Name)
 		if CanWin(g.Players[playerIndex].Hand) {
-			g.finish(playerIndex, fmt.Sprintf("self-draw after kong with %s", replacement))
+			g.finish(playerIndex, fmt.Sprintf("self-draw after kong with %s", replacement), WinSelfDraw)
 			return
 		}
 	}
@@ -213,6 +215,38 @@ func concealedKongTile(player Player) (Tile, bool) {
 	return 0, false
 }
 
+func ChowOptions(player Player, discard Tile) [][]Tile {
+	if !discard.IsSuit() {
+		return nil
+	}
+	options := make([][]Tile, 0, 3)
+	discardIndex := int(discard)
+	for start := discardIndex - 2; start <= discardIndex; start++ {
+		if start < 0 || start+2 >= 27 {
+			continue
+		}
+		first := Tile(start)
+		second := Tile(start + 1)
+		third := Tile(start + 2)
+		if first.Rank() > third.Rank() {
+			continue
+		}
+		if first != discard && player.Count(first) == 0 {
+			continue
+		}
+		if second != discard && player.Count(second) == 0 {
+			continue
+		}
+		if third != discard && player.Count(third) == 0 {
+			continue
+		}
+		option := []Tile{first, second, third}
+		SortTiles(option)
+		options = append(options, option)
+	}
+	return options
+}
+
 func (g *Game) resolveDiscardClaims(reader *bufio.Reader, out io.Writer, discarder int, discard Tile) bool {
 	for offset := 1; offset < len(g.Players); offset++ {
 		claimer := (discarder + offset) % len(g.Players)
@@ -222,11 +256,11 @@ func (g *Game) resolveDiscardClaims(reader *bufio.Reader, out io.Writer, discard
 		if CanWin(claimHand) {
 			if g.Players[claimer].Human {
 				if askYes(reader, out, fmt.Sprintf("You can win on %s. Win? [y/N] ", discard)) {
-					g.finish(claimer, fmt.Sprintf("discard-win on %s from %s", discard, g.Players[discarder].Name))
+					g.finish(claimer, fmt.Sprintf("discard-win on %s from %s", discard, g.Players[discarder].Name), WinDiscard)
 					return true
 				}
 			} else {
-				g.finish(claimer, fmt.Sprintf("discard-win on %s from %s", discard, g.Players[discarder].Name))
+				g.finish(claimer, fmt.Sprintf("discard-win on %s from %s", discard, g.Players[discarder].Name), WinDiscard)
 				fmt.Fprintf(out, "%s wins on %s.\n", g.Players[claimer].Name, discard)
 				return true
 			}
@@ -257,7 +291,86 @@ func (g *Game) resolveDiscardClaims(reader *bufio.Reader, out io.Writer, discard
 		g.Current = (claimer + 1) % len(g.Players)
 		return true
 	}
-	return false
+	nextPlayer := (discarder + 1) % len(g.Players)
+	chowOptions := ChowOptions(g.Players[nextPlayer], discard)
+	if len(chowOptions) == 0 {
+		return false
+	}
+	chowIndex := -1
+	if g.Players[nextPlayer].Human {
+		for i, option := range chowOptions {
+			handTiles := chowHandTiles(option, discard)
+			if askYes(reader, out, fmt.Sprintf("Chow %s with %s? [y/N] ", discard, FormatTiles(handTiles))) {
+				chowIndex = i
+				break
+			}
+		}
+	} else if index, ok := shouldAIChow(g.Players[nextPlayer], discard, chowOptions); ok {
+		chowIndex = index
+	}
+	if chowIndex < 0 {
+		return false
+	}
+	g.claimChow(nextPlayer, discard, chowOptions[chowIndex])
+	fmt.Fprintf(out, "%s chows %s.\n", g.Players[nextPlayer].Name, discard)
+	claimedDiscard, ok := g.takeDiscardTurn(reader, out, nextPlayer)
+	if !ok {
+		return true
+	}
+	g.Current = nextPlayer
+	if g.resolveDiscardClaims(reader, out, nextPlayer, claimedDiscard) {
+		return true
+	}
+	g.Current = (nextPlayer + 1) % len(g.Players)
+	return true
+}
+
+func shouldAIChow(player Player, discard Tile, options [][]Tile) (int, bool) {
+	if len(options) == 0 {
+		return 0, false
+	}
+	counts := TileCounts(player.Hand)
+	bestIndex := -1
+	bestScore := 999
+	for i, option := range options {
+		score := 0
+		for _, tile := range chowHandTiles(option, discard) {
+			score += tileUsefulness(tile, counts)
+		}
+		if score < bestScore {
+			bestScore = score
+			bestIndex = i
+		}
+	}
+	return bestIndex, bestIndex >= 0 && bestScore <= 12
+}
+
+func chowHandTiles(option []Tile, discard Tile) []Tile {
+	handTiles := make([]Tile, 0, 2)
+	removedDiscard := false
+	for _, tile := range option {
+		if tile == discard && !removedDiscard {
+			removedDiscard = true
+			continue
+		}
+		handTiles = append(handTiles, tile)
+	}
+	return handTiles
+}
+
+func (g *Game) claimChow(playerIndex int, discard Tile, option []Tile) {
+	player := &g.Players[playerIndex]
+	for _, tile := range chowHandTiles(option, discard) {
+		player.RemoveTile(tile)
+	}
+	player.AddMeld(MeldChow, option)
+}
+
+func (g *Game) claimPong(playerIndex int, tile Tile) {
+	player := &g.Players[playerIndex]
+	player.RemoveTile(tile)
+	player.RemoveTile(tile)
+	player.AddMeld(MeldPong, []Tile{tile, tile, tile})
 }
 
 func shouldAIPong(player Player, tile Tile) bool {
@@ -268,16 +381,10 @@ func shouldAIPong(player Player, tile Tile) bool {
 	return tileUsefulness(tile, counts) >= 6
 }
 
-func (g *Game) claimPong(playerIndex int, tile Tile) {
-	player := &g.Players[playerIndex]
-	player.RemoveTile(tile)
-	player.RemoveTile(tile)
-	player.AddMeld(MeldPong, []Tile{tile, tile, tile})
-}
-
-func (g *Game) finish(winner int, reason string) {
+func (g *Game) finish(winner int, reason string, winType WinType) {
 	g.Winner = winner
 	g.Reason = reason
+	g.WinType = winType
 	g.Over = true
 }
 
@@ -303,7 +410,13 @@ func (g *Game) printTable(out io.Writer) {
 func (g *Game) printResult(out io.Writer) {
 	fmt.Fprintln(out, "\nGame over.")
 	if g.Winner >= 0 {
-		fmt.Fprintf(out, "Winner: %s (%s)\n", g.Players[g.Winner].Name, g.Reason)
+		score := ScoreRound(WinContext{
+			WinType: g.WinType,
+			Melds:   g.Players[g.Winner].Melds,
+		})
+		fmt.Fprintf(out, "Winner: %s\n", g.Players[g.Winner].Name)
+		fmt.Fprintf(out, "Win: %s\n", g.Reason)
+		fmt.Fprintf(out, "Score: %s\n", score.Label)
 		return
 	}
 	fmt.Fprintf(out, "Result: %s\n", g.Reason)

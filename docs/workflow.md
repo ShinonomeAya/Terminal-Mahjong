@@ -79,3 +79,14 @@ Stage review:
 - Remaining risk:
 ```
 
+## Phase 2 Review Checklist
+
+- Step review is written after each completed implementation task.
+- Stage review compares chow, scoring, and terminal play against the total goal.
+- Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.
+
+Stage review:
+- Total goal: build a small but complete terminal Mahjong game in Go.
+- Stage completed: Phase 2 adds chow, deterministic claim priority, and basic settlement.
+- Evidence: run `go test ./...`, `go build ./cmd/mahjong`, and a scripted terminal smoke run before closing the phase.
+- Remaining risk: scoring remains intentionally simplified and not a full regional rule set.

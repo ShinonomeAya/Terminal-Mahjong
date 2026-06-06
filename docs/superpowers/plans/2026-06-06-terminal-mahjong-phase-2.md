@@ -238,7 +238,7 @@ Decision rule:
 
 - Return `false` when no options exist.
 - Score each option by summing `tileUsefulness` for the two consumed hand tiles before removal.
-- Choose the lowest-scoring option only if the total is `<= 6`.
+- Choose the lowest-scoring option only if the total is `<= 12`.
 - This keeps AI chow conservative and avoids turning every sequence into a forced open meld.
 
 Add a test:
@@ -428,7 +428,7 @@ Run:
 ```powershell
 go test ./...
 go build ./cmd/mahjong
-cmd /c "(echo 1& echo q) | mahjong.exe"
+cmd /c "(echo 1& echo.& echo.& echo q) | mahjong.exe"
 if (Test-Path 'mahjong.exe') { Remove-Item -LiteralPath 'mahjong.exe' }
 ```
 

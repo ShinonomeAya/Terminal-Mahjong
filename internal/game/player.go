@@ -5,6 +5,7 @@ import "fmt"
 type MeldKind string
 
 const (
+	MeldChow MeldKind = "chow"
 	MeldPong MeldKind = "pong"
 	MeldKong MeldKind = "kong"
 )
