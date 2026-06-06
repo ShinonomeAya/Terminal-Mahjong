@@ -30,6 +30,10 @@ A small, complete terminal Mahjong game written in Go.
 
 The game remains terminal-first. Phase 3 adds typed event logs and deterministic scripted runs so later shanten, AI, replay, and terminal UI upgrades can use game state directly instead of scraping printed text.
 
+## Phase 4 Direction
+
+The game remains terminal-first. Phase 4 adds standard-hand shanten, tenpai waits, and compact table tips so the terminal game becomes easier to understand without becoming a GUI.
+
 ## Run
 
 ```powershell

@@ -96,3 +96,9 @@ Stage review:
 - Step reviews confirm event logging, deterministic scripts, claim split, and render split.
 - Stage review compares event history and code boundaries against the total terminal Mahjong goal.
 - Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.
+
+## Phase 4 Review Checklist
+
+- Step reviews confirm shanten, waits, terminal tips, and AI discard behavior.
+- Stage review compares player assistance against the total terminal Mahjong goal.
+- Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.

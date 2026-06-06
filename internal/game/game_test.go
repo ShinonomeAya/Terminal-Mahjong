@@ -319,6 +319,22 @@ func TestPrintResultIncludesEventCount(t *testing.T) {
 	}
 }
 
+func TestPrintTableIncludesHumanTips(t *testing.T) {
+	game := NewGame(1)
+	game.Players[0].Hand = mustTiles(t,
+		"1m", "2m", "3m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E",
+	)
+	var out strings.Builder
+	game.printTable(&out)
+	if !strings.Contains(out.String(), "Tips: tenpai") {
+		t.Fatalf("table output:\n%s", out.String())
+	}
+}
+
 func TestSeededScriptProducesStableEventSummary(t *testing.T) {
 	first := runScriptedSummary(t, 7, "1\n\n\nq\n")
 	second := runScriptedSummary(t, 7, "1\n\n\nq\n")

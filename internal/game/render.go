@@ -22,6 +22,7 @@ func (g *Game) printTable(out io.Writer) {
 		fmt.Fprintf(out, "%2d:%s ", i+1, tile)
 	}
 	fmt.Fprintln(out)
+	fmt.Fprintf(out, "Tips: %s\n", HandTips(g.Players[0].Hand))
 }
 
 func (g *Game) printResult(out io.Writer) {

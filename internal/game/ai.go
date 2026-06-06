@@ -1,6 +1,13 @@
 package game
 
 func ChooseAIDiscard(hand []Tile) int {
+	if len(hand) >= 2 {
+		return BestDiscardIndex(hand)
+	}
+	return chooseAIDiscardByUsefulness(hand)
+}
+
+func chooseAIDiscardByUsefulness(hand []Tile) int {
 	if len(hand) == 0 {
 		return -1
 	}
