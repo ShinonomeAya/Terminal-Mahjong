@@ -6,23 +6,23 @@ import (
 )
 
 func (g *Game) printTable(out io.Writer) {
-	fmt.Fprintf(out, "\nWall: %d\n", len(g.Wall))
-	for i, player := range g.Players {
-		if player.Human {
-			fmt.Fprintf(out, "%s melds: %s | discards: %s\n", player.Name, player.MeldSummary(), FormatTiles(player.Discards))
-			continue
-		}
-		fmt.Fprintf(out, "%s hand: %d tiles | melds: %s | discards: %s\n", player.Name, len(player.Hand), player.MeldSummary(), FormatTiles(player.Discards))
-		if i == len(g.Players)-1 {
-			fmt.Fprint(out, "")
+	fmt.Fprintf(out, "\n%s\n", sectionTitle("Terminal Mahjong"))
+	fmt.Fprintf(out, "Wall: %d | Events: %d\n", len(g.Wall), len(g.Events))
+	fmt.Fprintln(out, sectionTitle("Opponents"))
+	for _, player := range g.Players {
+		if !player.Human {
+			fmt.Fprintln(out, formatOpponentLine(player))
 		}
 	}
-	fmt.Fprintln(out, "Your hand:")
+	fmt.Fprintln(out, sectionTitle("Your Hand"))
+	fmt.Fprintf(out, "Melds: %s | Discards: %s\n", g.Players[0].MeldSummary(), FormatTiles(g.Players[0].Discards))
 	for i, tile := range g.Players[0].Hand {
 		fmt.Fprintf(out, "%2d:%s ", i+1, tile)
 	}
 	fmt.Fprintln(out)
 	fmt.Fprintf(out, "Tips: %s\n", HandTips(g.Players[0].Hand))
+	fmt.Fprintln(out, sectionTitle("Commands"))
+	fmt.Fprintln(out, commandHelp())
 }
 
 func (g *Game) printResult(out io.Writer) {
@@ -47,4 +47,16 @@ func drawVerb(player *Player) string {
 		return "draw"
 	}
 	return "draws"
+}
+
+func sectionTitle(title string) string {
+	return "== " + title + " =="
+}
+
+func commandHelp() string {
+	return "<number>/d <number>: discard | h: win | k <tile>: kong | q: quit | y/Enter: claim/decline"
+}
+
+func formatOpponentLine(player Player) string {
+	return fmt.Sprintf("%s hand: %d tiles | melds: %s | discards: %s", player.Name, len(player.Hand), player.MeldSummary(), FormatTiles(player.Discards))
 }

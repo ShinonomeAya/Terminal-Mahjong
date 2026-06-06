@@ -335,6 +335,18 @@ func TestPrintTableIncludesHumanTips(t *testing.T) {
 	}
 }
 
+func TestPrintTableUsesTerminalSections(t *testing.T) {
+	game := NewGame(1)
+	var out strings.Builder
+	game.printTable(&out)
+	text := out.String()
+	for _, want := range []string{"Terminal Mahjong", "Opponents", "Your Hand", "Commands"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("table output missing %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestSeededScriptProducesStableEventSummary(t *testing.T) {
 	first := runScriptedSummary(t, 7, "1\n\n\nq\n")
 	second := runScriptedSummary(t, 7, "1\n\n\nq\n")
