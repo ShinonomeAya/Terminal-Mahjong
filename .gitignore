@@ -1,0 +1,11 @@
+# Go
+bin/
+dist/
+*.exe
+*.test
+coverage.out
+
+# Local editor files
+.vscode/
+.idea/
+
