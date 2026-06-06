@@ -77,6 +77,46 @@ func TestParseActionChow(t *testing.T) {
 	}
 }
 
+func TestRecordEventStoresRoundTransition(t *testing.T) {
+	game := NewGame(1)
+	game.RecordEvent(EventDiscard, 0, mustTile(t, "3m"), "discarded from hand")
+	if len(game.Events) != 1 {
+		t.Fatalf("events = %d, want 1", len(game.Events))
+	}
+	event := game.Events[0]
+	if event.Kind != EventDiscard || event.Player != 0 || event.Tile != mustTile(t, "3m") {
+		t.Fatalf("event = %#v", event)
+	}
+}
+
+func TestEventSummaryFormatsCompactHistory(t *testing.T) {
+	game := NewGame(1)
+	game.RecordEvent(EventDraw, 0, mustTile(t, "3m"), "")
+	game.RecordEvent(EventDiscard, 0, mustTile(t, "3m"), "")
+	summary := EventSummary(game.Events)
+	if !strings.Contains(summary, "You draw 3m") || !strings.Contains(summary, "You discard 3m") {
+		t.Fatalf("summary:\n%s", summary)
+	}
+}
+
+func TestPlayRecordsQuitEvent(t *testing.T) {
+	game := NewGame(1)
+	var out strings.Builder
+	game.Play(strings.NewReader("q\n"), &out)
+	if !hasEvent(game.Events, EventQuit) {
+		t.Fatalf("events = %#v", game.Events)
+	}
+}
+
+func TestPlayRecordsDrawAndDiscardEvents(t *testing.T) {
+	game := NewGame(1)
+	var out strings.Builder
+	game.Play(strings.NewReader("1\nq\n"), &out)
+	if !hasEvent(game.Events, EventDraw) || !hasEvent(game.Events, EventDiscard) {
+		t.Fatalf("events = %#v", game.Events)
+	}
+}
+
 func TestHumanCanWinOnDiscard(t *testing.T) {
 	game := NewGame(1)
 	game.Players = NewPlayers()
@@ -95,6 +135,9 @@ func TestHumanCanWinOnDiscard(t *testing.T) {
 	if !game.Over || game.Winner != 0 {
 		t.Fatalf("expected human discard-win, winner=%d over=%v\nOutput:\n%s", game.Winner, game.Over, out.String())
 	}
+	if !hasEvent(game.Events, EventWin) {
+		t.Fatalf("expected win event, got %#v", game.Events)
+	}
 }
 
 func TestHumanCanPongAndDiscard(t *testing.T) {
@@ -109,6 +152,9 @@ func TestHumanCanPongAndDiscard(t *testing.T) {
 	}
 	if len(game.Players[0].Melds) != 1 || game.Players[0].Melds[0].Kind != MeldPong {
 		t.Fatalf("expected one pong meld, got %#v", game.Players[0].Melds)
+	}
+	if !hasEvent(game.Events, EventPong) {
+		t.Fatalf("expected pong event, got %#v", game.Events)
 	}
 	if len(game.Players[0].Discards) != 1 {
 		t.Fatalf("expected human to discard after pong, got %d discards\nOutput:\n%s", len(game.Players[0].Discards), out.String())
@@ -144,6 +190,9 @@ func TestHumanCanChowPreviousDiscardAndDiscard(t *testing.T) {
 	}
 	if len(game.Players[0].Melds) != 1 || game.Players[0].Melds[0].Kind != MeldChow {
 		t.Fatalf("expected one chow meld, got %#v", game.Players[0].Melds)
+	}
+	if !hasEvent(game.Events, EventChow) {
+		t.Fatalf("expected chow event, got %#v", game.Events)
 	}
 	if len(game.Players[0].Discards) != 1 {
 		t.Fatalf("expected human to discard after chow, got %d discards\nOutput:\n%s", len(game.Players[0].Discards), out.String())
@@ -223,6 +272,9 @@ func TestHumanConcealedKongCommandDrawsReplacement(t *testing.T) {
 	if len(game.Players[0].Melds) != 1 || game.Players[0].Melds[0].Kind != MeldKong {
 		t.Fatalf("expected one kong meld, got %#v", game.Players[0].Melds)
 	}
+	if !hasEvent(game.Events, EventKong) {
+		t.Fatalf("expected kong event, got %#v", game.Events)
+	}
 	if game.Players[0].Count(mustTile(t, "9s")) != 1 {
 		t.Fatalf("expected replacement draw in hand\nOutput:\n%s", out.String())
 	}
@@ -256,6 +308,39 @@ func TestPrintResultIncludesScore(t *testing.T) {
 	}
 }
 
+func TestPrintResultIncludesEventCount(t *testing.T) {
+	game := NewGame(1)
+	game.RecordEvent(EventDraw, 0, mustTile(t, "1m"), "")
+	game.finish(0, "self-draw", WinSelfDraw)
+	var out strings.Builder
+	game.printResult(&out)
+	if !strings.Contains(out.String(), "Events: 2") {
+		t.Fatalf("result output:\n%s", out.String())
+	}
+}
+
+func TestSeededScriptProducesStableEventSummary(t *testing.T) {
+	first := runScriptedSummary(t, 7, "1\n\n\nq\n")
+	second := runScriptedSummary(t, 7, "1\n\n\nq\n")
+	if first != second {
+		t.Fatalf("event summaries differ:\nfirst:\n%s\nsecond:\n%s", first, second)
+	}
+	if !strings.Contains(first, "You draw") || !strings.Contains(first, "You discard") {
+		t.Fatalf("summary missing draw/discard shape:\n%s", first)
+	}
+	if !strings.Contains(first, "quit") && !strings.Contains(first, "win") {
+		t.Fatalf("summary missing terminal event:\n%s", first)
+	}
+}
+
+func runScriptedSummary(t *testing.T, seed int64, input string) string {
+	t.Helper()
+	game := NewGame(seed)
+	var out strings.Builder
+	game.Play(strings.NewReader(input), &out)
+	return EventSummary(game.Events)
+}
+
 func mustTile(t *testing.T, text string) Tile {
 	t.Helper()
 	tile, ok := ParseTile(text)
@@ -267,4 +352,13 @@ func mustTile(t *testing.T, text string) Tile {
 
 func bufioReader(text string) *bufio.Reader {
 	return bufio.NewReader(strings.NewReader(text))
+}
+
+func hasEvent(events []GameEvent, kind EventKind) bool {
+	for _, event := range events {
+		if event.Kind == kind {
+			return true
+		}
+	}
+	return false
 }

@@ -90,3 +90,9 @@ Stage review:
 - Stage completed: Phase 2 adds chow, deterministic claim priority, and basic settlement.
 - Evidence: run `go test ./...`, `go build ./cmd/mahjong`, and a scripted terminal smoke run before closing the phase.
 - Remaining risk: scoring remains intentionally simplified and not a full regional rule set.
+
+## Phase 3 Review Checklist
+
+- Step reviews confirm event logging, deterministic scripts, claim split, and render split.
+- Stage review compares event history and code boundaries against the total terminal Mahjong goal.
+- Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.

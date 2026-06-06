@@ -26,6 +26,10 @@ A small, complete terminal Mahjong game written in Go.
 - Chow has no point bonus.
 - Full regional scoring, flowers, riichi, and round wind scoring remain outside Phase 2.
 
+## Phase 3 Direction
+
+The game remains terminal-first. Phase 3 adds typed event logs and deterministic scripted runs so later shanten, AI, replay, and terminal UI upgrades can use game state directly instead of scraping printed text.
+
 ## Run
 
 ```powershell
