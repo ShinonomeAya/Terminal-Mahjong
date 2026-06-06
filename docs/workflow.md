@@ -102,3 +102,9 @@ Stage review:
 - Step reviews confirm shanten, waits, terminal tips, and AI discard behavior.
 - Stage review compares player assistance against the total terminal Mahjong goal.
 - Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.
+
+## Phase 5 Review Checklist
+
+- Step reviews confirm table sections, command help, recent events, and result summary layout.
+- Stage review compares terminal readability against the total terminal Mahjong goal.
+- Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.

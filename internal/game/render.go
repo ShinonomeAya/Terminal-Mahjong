@@ -21,12 +21,14 @@ func (g *Game) printTable(out io.Writer) {
 	}
 	fmt.Fprintln(out)
 	fmt.Fprintf(out, "Tips: %s\n", HandTips(g.Players[0].Hand))
+	printRecentEvents(out, g.Events)
 	fmt.Fprintln(out, sectionTitle("Commands"))
 	fmt.Fprintln(out, commandHelp())
 }
 
 func (g *Game) printResult(out io.Writer) {
-	fmt.Fprintln(out, "\nGame over.")
+	fmt.Fprintf(out, "\n%s\n", sectionTitle("Game Over"))
+	fmt.Fprintln(out, sectionTitle("Summary"))
 	if g.Winner >= 0 {
 		score := ScoreRound(WinContext{
 			WinType: g.WinType,
@@ -36,10 +38,12 @@ func (g *Game) printResult(out io.Writer) {
 		fmt.Fprintf(out, "Win: %s\n", g.Reason)
 		fmt.Fprintf(out, "Score: %s\n", score.Label)
 		fmt.Fprintf(out, "Events: %d\n", len(g.Events))
+		printRecentEvents(out, g.Events)
 		return
 	}
 	fmt.Fprintf(out, "Result: %s\n", g.Reason)
 	fmt.Fprintf(out, "Events: %d\n", len(g.Events))
+	printRecentEvents(out, g.Events)
 }
 
 func drawVerb(player *Player) string {
@@ -59,4 +63,16 @@ func commandHelp() string {
 
 func formatOpponentLine(player Player) string {
 	return fmt.Sprintf("%s hand: %d tiles | melds: %s | discards: %s", player.Name, len(player.Hand), player.MeldSummary(), FormatTiles(player.Discards))
+}
+
+func printRecentEvents(out io.Writer, events []GameEvent) {
+	fmt.Fprintln(out, sectionTitle("Recent Events"))
+	recent := RecentEvents(events, 5)
+	if len(recent) == 0 {
+		fmt.Fprintln(out, "-")
+		return
+	}
+	for _, event := range recent {
+		fmt.Fprintln(out, event.String())
+	}
 }

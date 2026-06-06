@@ -34,6 +34,10 @@ The game remains terminal-first. Phase 3 adds typed event logs and deterministic
 
 The game remains terminal-first. Phase 4 adds standard-hand shanten, tenpai waits, and compact table tips so the terminal game becomes easier to understand without becoming a GUI.
 
+## Phase 5 Direction
+
+The game remains terminal-first. Phase 5 improves the text table with stable sections, command help, and recent event summaries. It is still a terminal game, not a GUI.
+
 ## Run
 
 ```powershell

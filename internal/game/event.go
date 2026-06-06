@@ -44,6 +44,16 @@ func EventSummary(events []GameEvent) string {
 	return strings.Join(lines, "\n")
 }
 
+func RecentEvents(events []GameEvent, limit int) []GameEvent {
+	if limit <= 0 {
+		return nil
+	}
+	if len(events) <= limit {
+		return append([]GameEvent(nil), events...)
+	}
+	return append([]GameEvent(nil), events[len(events)-limit:]...)
+}
+
 func (e GameEvent) String() string {
 	player := playerEventName(e.Player)
 	tileText := ""

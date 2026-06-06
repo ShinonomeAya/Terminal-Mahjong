@@ -319,6 +319,19 @@ func TestPrintResultIncludesEventCount(t *testing.T) {
 	}
 }
 
+func TestPrintResultUsesSummarySections(t *testing.T) {
+	game := NewGame(1)
+	game.finish(0, "self-draw", WinSelfDraw)
+	var out strings.Builder
+	game.printResult(&out)
+	text := out.String()
+	for _, want := range []string{"Game Over", "Summary", "Events"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("result output missing %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestPrintTableIncludesHumanTips(t *testing.T) {
 	game := NewGame(1)
 	game.Players[0].Hand = mustTiles(t,
@@ -344,6 +357,27 @@ func TestPrintTableUsesTerminalSections(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf("table output missing %q:\n%s", want, text)
 		}
+	}
+}
+
+func TestRecentEventsReturnsTail(t *testing.T) {
+	game := NewGame(1)
+	game.RecordEvent(EventDraw, 0, mustTile(t, "1m"), "")
+	game.RecordEvent(EventDiscard, 0, mustTile(t, "1m"), "")
+	game.RecordEvent(EventDraw, 1, mustTile(t, "2m"), "")
+	recent := RecentEvents(game.Events, 2)
+	if len(recent) != 2 || recent[0].Kind != EventDiscard || recent[1].Kind != EventDraw {
+		t.Fatalf("recent = %#v", recent)
+	}
+}
+
+func TestPrintTableIncludesRecentEvents(t *testing.T) {
+	game := NewGame(1)
+	game.RecordEvent(EventDiscard, 0, mustTile(t, "1m"), "")
+	var out strings.Builder
+	game.printTable(&out)
+	if !strings.Contains(out.String(), "Recent Events") || !strings.Contains(out.String(), "You discard 1m") {
+		t.Fatalf("table output:\n%s", out.String())
 	}
 }
 
