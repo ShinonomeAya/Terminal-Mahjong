@@ -108,3 +108,9 @@ Stage review:
 - Step reviews confirm table sections, command help, recent events, and result summary layout.
 - Stage review compares terminal readability against the total terminal Mahjong goal.
 - Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.
+
+## Phase 6 Review Checklist
+
+- Step reviews confirm seven-pairs detection, waits, tips, and scoring labels.
+- Stage review compares the bounded rule extension against the total terminal Mahjong goal.
+- Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.

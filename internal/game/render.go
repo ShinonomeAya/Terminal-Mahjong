@@ -33,6 +33,7 @@ func (g *Game) printResult(out io.Writer) {
 		score := ScoreRound(WinContext{
 			WinType: g.WinType,
 			Melds:   g.Players[g.Winner].Melds,
+			Pattern: WinPatternOf(g.Players[g.Winner].Hand),
 		})
 		fmt.Fprintf(out, "Winner: %s\n", g.Players[g.Winner].Name)
 		fmt.Fprintf(out, "Win: %s\n", g.Reason)

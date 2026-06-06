@@ -1,6 +1,46 @@
 package game
 
+type WinPattern int
+
+const (
+	WinPatternNone WinPattern = iota
+	WinPatternStandard
+	WinPatternSevenPairs
+)
+
 func CanWin(tiles []Tile) bool {
+	return WinPatternOf(tiles) != WinPatternNone
+}
+
+func WinPatternOf(tiles []Tile) WinPattern {
+	if CanWinSevenPairs(tiles) {
+		return WinPatternSevenPairs
+	}
+	if CanWinStandard(tiles) {
+		return WinPatternStandard
+	}
+	return WinPatternNone
+}
+
+func CanWinSevenPairs(tiles []Tile) bool {
+	if len(tiles) != 14 {
+		return false
+	}
+	counts := TileCounts(tiles)
+	pairs := 0
+	for _, count := range counts {
+		if count == 0 {
+			continue
+		}
+		if count != 2 {
+			return false
+		}
+		pairs++
+	}
+	return pairs == 7
+}
+
+func CanWinStandard(tiles []Tile) bool {
 	if len(tiles)%3 != 2 {
 		return false
 	}

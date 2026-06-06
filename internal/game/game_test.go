@@ -297,6 +297,13 @@ func TestScoreKongBonus(t *testing.T) {
 	}
 }
 
+func TestScoreSevenPairsBonus(t *testing.T) {
+	result := ScoreRound(WinContext{WinType: WinDiscard, Pattern: WinPatternSevenPairs})
+	if result.Points != 3 || !strings.Contains(result.Label, "seven pairs +2") {
+		t.Fatalf("result = %#v", result)
+	}
+}
+
 func TestPrintResultIncludesScore(t *testing.T) {
 	game := NewGame(1)
 	game.finish(0, "discard-win on 5s from AI-1", WinDiscard)

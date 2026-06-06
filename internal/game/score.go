@@ -13,6 +13,7 @@ const (
 type WinContext struct {
 	WinType WinType
 	Melds   []Meld
+	Pattern WinPattern
 }
 
 type ScoreResult struct {
@@ -37,9 +38,26 @@ func ScoreRound(context WinContext) ScoreResult {
 			bonus++
 		}
 	}
+	patternLabel := ""
+	if context.Pattern == WinPatternSevenPairs {
+		bonus += 2
+		patternLabel = "seven pairs +2"
+	}
 	points := base + bonus
 	if bonus == 0 {
 		return ScoreResult{Points: points, Label: baseLabel}
+	}
+	if patternLabel != "" && bonus == 2 {
+		return ScoreResult{
+			Points: points,
+			Label:  fmt.Sprintf("%s, %s = %d", baseLabel, patternLabel, points),
+		}
+	}
+	if patternLabel != "" {
+		return ScoreResult{
+			Points: points,
+			Label:  fmt.Sprintf("%s, meld/pattern bonus +%d (%s) = %d", baseLabel, bonus, patternLabel, points),
+		}
 	}
 	return ScoreResult{
 		Points: points,

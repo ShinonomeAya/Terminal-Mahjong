@@ -58,6 +58,21 @@ func TestHandTipsShowsTenpaiWaits(t *testing.T) {
 	}
 }
 
+func TestWinningTilesIncludesSevenPairsWait(t *testing.T) {
+	hand := mustTiles(t, "1m", "1m", "2m", "2m", "3m", "3m", "4p", "4p", "5p", "5p", "E", "E", "B")
+	waits := WinningTiles(hand)
+	if FormatTiles(waits) != "B" {
+		t.Fatalf("waits = %s, want B", FormatTiles(waits))
+	}
+}
+
+func TestHandTipsShowsSevenPairsWait(t *testing.T) {
+	tips := HandTips(mustTiles(t, "1m", "1m", "2m", "2m", "3m", "3m", "4p", "4p", "5p", "5p", "E", "E", "B"))
+	if !strings.Contains(tips, "tenpai") || !strings.Contains(tips, "B") {
+		t.Fatalf("tips = %q", tips)
+	}
+}
+
 func TestBestDiscardIndexKeepsCompleteMelds(t *testing.T) {
 	hand := mustTiles(t,
 		"1m", "2m", "3m",

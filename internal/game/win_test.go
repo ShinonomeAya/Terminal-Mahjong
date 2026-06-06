@@ -41,6 +41,20 @@ func TestCanWinWithAllTriplets(t *testing.T) {
 	}
 }
 
+func TestCanWinWithSevenPairs(t *testing.T) {
+	hand := mustTiles(t, "1m", "1m", "2m", "2m", "3m", "3m", "4p", "4p", "5p", "5p", "E", "E", "B", "B")
+	if !CanWin(hand) {
+		t.Fatal("expected seven-pairs hand to win")
+	}
+}
+
+func TestWinPatternSevenPairs(t *testing.T) {
+	hand := mustTiles(t, "1m", "1m", "2m", "2m", "3m", "3m", "4p", "4p", "5p", "5p", "E", "E", "B", "B")
+	if got := WinPatternOf(hand); got != WinPatternSevenPairs {
+		t.Fatalf("pattern = %v, want seven pairs", got)
+	}
+}
+
 func TestCanWinRejectsIncompleteShape(t *testing.T) {
 	hand := mustTiles(t,
 		"1m", "2m", "3m",
