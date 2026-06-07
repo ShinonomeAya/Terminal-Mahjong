@@ -96,17 +96,37 @@ func renderHand(hand []game.Tile, selected int, unicode bool) string {
 		if i > 0 && i%handCols == 0 {
 			tiles.WriteString("\n      ")
 		}
-		label := game.TileLabel(tile, unicode)
 		if i == selected {
-			tiles.WriteString(fmt.Sprintf("▶ [%02d] %s ◀ ", i+1, label))
-			selectedText = fmt.Sprintf("[%02d] %s (%s)", i+1, label, tile.String())
-		} else {
-			tiles.WriteString(fmt.Sprintf("  [%02d] %s   ", i+1, label))
+			selectedText = selectedTileText(i, tile, unicode)
 		}
+		tiles.WriteString(renderTileCell(i, tile, i == selected, unicode))
 	}
 	tiles.WriteString("\n")
 	tiles.WriteString("Selected: " + selectedText + "\n")
 	return tiles.String()
+}
+
+func renderTileCell(index int, tile game.Tile, selected bool, unicode bool) string {
+	label := game.TileLabel(tile, unicode)
+	if selected {
+		return padRightRunes(fmt.Sprintf("▶ [%02d] %s ◀", index+1, label), handCellW)
+	}
+	return padRightRunes(fmt.Sprintf("  [%02d] %s", index+1, label), handCellW)
+}
+
+func selectedTileText(index int, tile game.Tile, unicode bool) string {
+	return fmt.Sprintf("[%02d] %s (%s)", index+1, game.TileLabel(tile, unicode), tile.String())
+}
+
+func runeWidth(text string) int {
+	return len([]rune(text))
+}
+
+func padRightRunes(text string, width int) string {
+	if runeWidth(text) >= width {
+		return text
+	}
+	return text + strings.Repeat(" ", width-runeWidth(text))
 }
 
 var gameOverItems = []string{"Restart", "Main Menu", "Quit"}

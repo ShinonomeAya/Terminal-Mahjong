@@ -5,6 +5,46 @@ import (
 	"testing"
 )
 
+func TestTileCellRendersUnselectedUnicodeTile(t *testing.T) {
+	tile := mustUITiles(t, "2m")[0]
+
+	cell := renderTileCell(1, tile, false, true)
+
+	if !strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") {
+		t.Fatalf("cell = %q, want index and unicode glyph", cell)
+	}
+}
+
+func TestTileCellRendersSelectedUnicodeTile(t *testing.T) {
+	tile := mustUITiles(t, "2m")[0]
+
+	cell := renderTileCell(1, tile, true, true)
+
+	if !strings.Contains(cell, "▶ [02]") || !strings.Contains(cell, "◀") {
+		t.Fatalf("selected cell = %q, want selected markers", cell)
+	}
+}
+
+func TestTileCellRendersFallbackNotation(t *testing.T) {
+	tile := mustUITiles(t, "2m")[0]
+
+	cell := renderTileCell(1, tile, false, false)
+
+	if !strings.Contains(cell, "2m") {
+		t.Fatalf("fallback cell = %q, want 2m", cell)
+	}
+}
+
+func TestTileCellStaysWithinWidthBudget(t *testing.T) {
+	tile := mustUITiles(t, "2m")[0]
+
+	cell := renderTileCell(1, tile, true, true)
+
+	if got := runeWidth(cell); got > handCellW {
+		t.Fatalf("cell width = %d, want <= %d: %q", got, handCellW, cell)
+	}
+}
+
 func TestRenderTableIncludesUnicodeTiles(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
