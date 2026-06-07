@@ -84,10 +84,48 @@ func tableControls(m Model) string {
 }
 
 func renderActionBar(m Model) string {
+	winReady := canHumanWin(m)
+	kongReady := canHumanKong(m)
+	winAction := actionState("[H] Win", winReady)
+	kongAction := actionState("[K] Kong", kongReady)
 	if m.Width > 0 && m.Width < 80 {
-		return styleMuted("Actions: [Enter] Discard  [Click] Tile  [H] Win  [K] Kong  [Q] Quit") + "\n"
+		return styleMuted(fmt.Sprintf("Actions: [Enter] Discard [Click] Tile %s %s [Q] Quit", compactActionState("[H]Win", winReady), compactActionState("[K]Kong", kongReady))) + "\n"
 	}
-	return styleMuted("Actions: [←/→] Select  [Enter/Space] Discard  [Click] Tile  [H] Win  [K] Kong  [Q] Quit") + "\n"
+	return styleMuted(fmt.Sprintf("Actions: [←/→] Select [Enter/Space] Discard [Click] Tile %s %s [Q] Quit", winAction, kongAction)) + "\n"
+}
+
+func actionState(label string, ready bool) string {
+	if ready {
+		return label + ":READY"
+	}
+	return label + ":off"
+}
+
+func compactActionState(label string, ready bool) string {
+	if ready {
+		return label + ":READY"
+	}
+	return label + ":off"
+}
+
+func canHumanWin(m Model) bool {
+	if m.Game == nil || len(m.Game.Players) == 0 {
+		return false
+	}
+	return game.CanWin(m.Game.Players[0].Hand)
+}
+
+func canHumanKong(m Model) bool {
+	if m.Game == nil || len(m.Game.Players) == 0 {
+		return false
+	}
+	counts := game.TileCounts(m.Game.Players[0].Hand)
+	for _, count := range counts {
+		if count >= 4 {
+			return true
+		}
+	}
+	return false
 }
 
 func renderStatus(m Model) string {

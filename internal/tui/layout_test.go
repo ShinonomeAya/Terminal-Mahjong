@@ -211,13 +211,45 @@ func TestRenderTableShowsActionBarNearHandTray(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Actions:", "[Enter/Space] Discard", "[Click] Tile", "[H] Win", "[K] Kong", "[Q] Quit"} {
+	for _, text := range []string{"Actions:", "[Enter/Space] Discard", "[Click] Tile", "[H] Win:off", "[K] Kong:off", "[Q] Quit"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing action bar text %q:\n%s", text, view)
 		}
 	}
 	if lineIndexContaining(view, "Actions:") <= lineIndexContaining(view, "Hand:") {
 		t.Fatalf("action bar should sit below the hand tray:\n%s", view)
+	}
+}
+
+func TestRenderTableHighlightsReadyWinAction(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Game.Players[0].Hand = mustUITiles(t,
+		"1m", "2m", "3m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "[H] Win:READY") {
+		t.Fatalf("view missing ready win action:\n%s", view)
+	}
+}
+
+func TestRenderTableHighlightsReadyKongAction(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Game.Players[0].Hand = mustUITiles(t, "1m", "1m", "1m", "1m", "2m", "3m")
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "[K] Kong:READY") {
+		t.Fatalf("view missing ready kong action:\n%s", view)
 	}
 }
 
