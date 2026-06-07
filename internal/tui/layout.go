@@ -101,9 +101,20 @@ func renderOpponent(player game.Player, unicode bool) string {
 
 func renderCenter(g *game.Game, unicode bool) string {
 	var out strings.Builder
+	out.WriteString(renderRoundStatus(g))
+	out.WriteString("\n")
 	out.WriteString(renderEventLog(g.Events, unicode, 4))
 	out.WriteString(fmt.Sprintf("Tips: %s\n", game.HandTips(g.Players[0].Hand)))
 	return out.String()
+}
+
+func renderRoundStatus(g *game.Game) string {
+	return fmt.Sprintf("%s\nWall: %02d | Turn: %s | Events: %d\n",
+		styleMuted("Round Status"),
+		len(g.Wall),
+		g.Players[g.Current].Name,
+		len(g.Events),
+	)
 }
 
 func renderEventLog(events []game.GameEvent, unicode bool, limit int) string {

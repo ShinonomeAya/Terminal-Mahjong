@@ -113,6 +113,42 @@ func TestRenderTableUsesUnicodeInRecentEvents(t *testing.T) {
 	}
 }
 
+func TestRenderTableIncludesRoundStatusPanel(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Game.Events = nil
+	model.Game.RecordEvent(game.EventDraw, 0, mustUITiles(t, "1m")[0], "")
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	for _, text := range []string{"Round Status", "Wall:", "Turn: You", "Events: 1"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing round status text %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestRenderTableLimitsRecentEventsPanel(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Game.Events = nil
+	for _, tile := range mustUITiles(t, "1m", "2m", "3m", "4m", "5m") {
+		model.Game.RecordEvent(game.EventDiscard, 0, tile, "")
+	}
+	model.Screen = ScreenTable
+	model.UnicodeTiles = false
+
+	view := renderTable(model)
+
+	if strings.Contains(view, "01. You discard 1m") {
+		t.Fatalf("view should trim oldest event from compact event panel:\n%s", view)
+	}
+	if !strings.Contains(view, "02. You discard 2m") || !strings.Contains(view, "05. You discard 5m") {
+		t.Fatalf("view missing recent tail events:\n%s", view)
+	}
+}
+
 func TestRenderTableMarksSelectedTile(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
