@@ -1,11 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
-	"mahjong/internal/game"
+	"mahjong/internal/tui"
 )
 
 func main() {
-	game.NewGame(0).Play(os.Stdin, os.Stdout)
+	if err := tui.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
