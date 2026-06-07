@@ -58,25 +58,30 @@ func renderTable(m Model) string {
 	g := m.Game
 	var out strings.Builder
 	out.WriteString("TERMINAL MAHJONG\n")
-	out.WriteString(fmt.Sprintf("Wall:%d  Events:%d  Turn:%s  Replay:ready\n", len(g.Wall), len(g.Events), g.Players[g.Current].Name))
-	out.WriteString(renderOpponent(g.Players[2], m.UnicodeTiles))
-	out.WriteString(renderSidePlayers(g, m.UnicodeTiles))
+	out.WriteString(fmt.Sprintf("Wall:%d  Events:%d  Turn:%s  Replay:ready\n\n", len(g.Wall), len(g.Events), g.Players[g.Current].Name))
+	out.WriteString("Opponents\n")
+	out.WriteString(renderOpponents(g, m.UnicodeTiles))
+	out.WriteString("\nTable\n")
 	out.WriteString(renderCenter(g))
+	out.WriteString("\nYou\n")
 	out.WriteString(fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary()))
 	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles)))
 	out.WriteString(renderHand(g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles))
-	out.WriteString("Keys: Left/Right select | Enter/Space discard | click select | second click discard | Q quit\n")
+	out.WriteString("\nControls\n")
+	out.WriteString("Left/Right select | Enter/Space discard | click select | second click discard | Q quit\n")
+	return out.String()
+}
+
+func renderOpponents(g *game.Game, unicode bool) string {
+	var out strings.Builder
+	out.WriteString(renderOpponent(g.Players[2], unicode))
+	out.WriteString(renderOpponent(g.Players[1], unicode))
+	out.WriteString(renderOpponent(g.Players[3], unicode))
 	return out.String()
 }
 
 func renderOpponent(player game.Player, unicode bool) string {
 	return fmt.Sprintf("%s  hand:%02d  melds:%s  discards:%s\n", player.Name, len(player.Hand), player.MeldSummary(), game.FormatTileLabels(player.Discards, unicode))
-}
-
-func renderSidePlayers(g *game.Game, unicode bool) string {
-	left := g.Players[1]
-	right := g.Players[3]
-	return fmt.Sprintf("%s discards:%s    %s discards:%s\n", left.Name, game.FormatTileLabels(left.Discards, unicode), right.Name, game.FormatTileLabels(right.Discards, unicode))
 }
 
 func renderCenter(g *game.Game) string {

@@ -114,6 +114,46 @@ func TestRenderTableKeepsReadableLineWidth(t *testing.T) {
 	}
 }
 
+func TestRenderTableUsesClientSections(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	for _, text := range []string{"TERMINAL MAHJONG", "Opponents", "Table", "You", "Controls"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing section %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestRenderTableShowsAllOpponentsByName(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	for _, text := range []string{"AI-1", "AI-2", "AI-3"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing opponent %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestRenderTableSplitsFullHandIntoTwoRows(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	if strings.Count(view, "Hand:") != 1 || !strings.Contains(view, "\n      ") {
+		t.Fatalf("view does not split hand into stable rows:\n%s", view)
+	}
+}
+
 func TestHandHitBoxesFindTileIndex(t *testing.T) {
 	boxes := handHitBoxes(3, 2, 4)
 	index, ok := tileIndexAt(boxes, boxes[1].X1, boxes[1].Y)
