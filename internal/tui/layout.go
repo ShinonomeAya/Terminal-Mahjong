@@ -16,7 +16,8 @@ type TileHitBox struct {
 
 const (
 	handStartX = 6
-	handRowY   = 8
+	handRowY   = 24
+	handRowGap = 2
 	handCellW  = 10
 	handCols   = 7
 )
@@ -27,7 +28,7 @@ func handHitBoxes(count int, startX int, y int) []TileHitBox {
 		col := i % handCols
 		row := i / handCols
 		x := startX + col*handCellW
-		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: y + row}
+		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: y + row*handRowGap}
 	}
 	return boxes
 }
@@ -82,7 +83,7 @@ func tableControls(m Model) string {
 
 func renderStatus(m Model) string {
 	if m.StatusLine == "" {
-		return ""
+		return styleStatus("Status: Ready") + "\n"
 	}
 	return styleStatus("Status: "+m.StatusLine) + "\n"
 }
@@ -142,12 +143,16 @@ func renderEventLog(events []game.GameEvent, unicode bool, limit int) string {
 	var out strings.Builder
 	out.WriteString(styleMuted("Recent Events") + "\n")
 	recent := game.RecentEvents(events, limit)
-	if len(recent) == 0 {
-		out.WriteString("-\n")
-		return out.String()
-	}
-	for _, event := range recent {
-		out.WriteString(formatEventLine(event, unicode) + "\n")
+	for i := 0; i < limit; i++ {
+		if i < len(recent) {
+			out.WriteString(formatEventLine(recent[i], unicode) + "\n")
+			continue
+		}
+		if i == 0 {
+			out.WriteString("-\n")
+			continue
+		}
+		out.WriteString(" \n")
 	}
 	return out.String()
 }
@@ -180,21 +185,45 @@ func eventPlayerName(player int) string {
 }
 
 func renderHand(hand []game.Tile, selected int, unicode bool) string {
-	var tiles strings.Builder
-	tiles.WriteString("Hand: ")
-	selectedText := "-"
-	for i, tile := range hand {
-		if i > 0 && i%handCols == 0 {
-			tiles.WriteString("\n      ")
+	var out strings.Builder
+	out.WriteString(styleMuted("Hand Tray") + "\n")
+	out.WriteString("Focus: " + selectedHandText(hand, selected, unicode) + "\n")
+	for rowStart := 0; rowStart < len(hand); rowStart += handCols {
+		rowEnd := min(rowStart+handCols, len(hand))
+		if rowStart == 0 {
+			out.WriteString("Hand: ")
+		} else {
+			out.WriteString("      ")
 		}
-		if i == selected {
-			selectedText = selectedTileText(i, tile, unicode)
+		for i := rowStart; i < rowEnd; i++ {
+			tile := hand[i]
+			out.WriteString(renderTileCell(i, tile, i == selected, unicode))
 		}
-		tiles.WriteString(renderTileCell(i, tile, i == selected, unicode))
+		out.WriteString("\n")
+		out.WriteString(renderHandFocusMarker(rowStart, rowEnd, selected))
+		out.WriteString("\n")
 	}
-	tiles.WriteString("\n")
-	tiles.WriteString("Selected: " + selectedText + "\n")
-	return tiles.String()
+	return out.String()
+}
+
+func selectedHandText(hand []game.Tile, selected int, unicode bool) string {
+	if selected < 0 || selected >= len(hand) {
+		return "-"
+	}
+	return selectedTileText(selected, hand[selected], unicode)
+}
+
+func renderHandFocusMarker(rowStart int, rowEnd int, selected int) string {
+	var out strings.Builder
+	out.WriteString("      ")
+	for i := rowStart; i < rowEnd; i++ {
+		if i == selected {
+			out.WriteString(padRightRunes("    ▲", handCellW))
+			continue
+		}
+		out.WriteString(strings.Repeat(" ", handCellW))
+	}
+	return out.String()
 }
 
 func renderTileCell(index int, tile game.Tile, selected bool, unicode bool) string {

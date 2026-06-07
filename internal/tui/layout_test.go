@@ -157,8 +157,8 @@ func TestRenderTableMarksSelectedTile(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "Selected:") {
-		t.Fatalf("view missing selected marker:\n%s", view)
+	if !strings.Contains(view, "Focus:") {
+		t.Fatalf("view missing focus marker:\n%s", view)
 	}
 }
 
@@ -171,8 +171,24 @@ func TestRenderTableShowsSelectedTileInHandRow(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "▶ [02]") || !strings.Contains(view, "Selected: [02]") {
+	if !strings.Contains(view, "▶ [02]") || !strings.Contains(view, "Focus: [02]") {
 		t.Fatalf("view does not clearly show selected tile:\n%s", view)
+	}
+}
+
+func TestRenderTableShowsHandTrayFocus(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Game.Players[0].Hand = mustUITiles(t, "1m", "2m", "3m")
+	model.Screen = ScreenTable
+	model.SelectedIndex = 1
+
+	view := renderTable(model)
+
+	for _, text := range []string{"Hand Tray", "Focus: [02]", "▲"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing hand tray focus text %q:\n%s", text, view)
+		}
 	}
 }
 
@@ -300,7 +316,28 @@ func TestDefaultHandHitBoxesMatchRenderedHandRows(t *testing.T) {
 	if boxes[0].Y != handRowY {
 		t.Fatalf("first row y = %d, want %d", boxes[0].Y, handRowY)
 	}
-	if boxes[7].Y != handRowY+1 {
-		t.Fatalf("second row y = %d, want %d", boxes[7].Y, handRowY+1)
+	if boxes[7].Y != handRowY+handRowGap {
+		t.Fatalf("second row y = %d, want %d", boxes[7].Y, handRowY+handRowGap)
 	}
+}
+
+func TestDefaultHandHitBoxesMatchRenderedHandStartLine(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	if got := lineIndexContaining(view, "Hand:"); got != handRowY {
+		t.Fatalf("rendered hand row = %d, want hitbox row %d:\n%s", got, handRowY, view)
+	}
+}
+
+func lineIndexContaining(text string, part string) int {
+	for index, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
+		if strings.Contains(line, part) {
+			return index
+		}
+	}
+	return -1
 }
