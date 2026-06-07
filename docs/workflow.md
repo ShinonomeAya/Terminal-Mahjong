@@ -132,3 +132,9 @@ Stage review:
 - Step reviews confirm rendering helpers, table composition, selection feedback, mouse feedback, and screen polish.
 - Stage reviews compare each visual/interaction improvement against the total goal of a readable terminal-first Mahjong client.
 - Verification commands: `go test ./...`, `go test ./... -cover`, `go build ./cmd/mahjong`, and one manual TUI smoke run.
+
+## Phase 10 Review Checklist
+
+- Step reviews confirm style helpers, ANSI-safe visible-width checks, styled table sections, styled selected tiles, and styled menu/game-over screens.
+- Stage reviews compare the visual skin against the total goal of an attractive but readable terminal-first Mahjong client.
+- Verification commands: `go test ./...`, `go test ./... -cover`, `go build ./cmd/mahjong`, and one manual TUI smoke run.

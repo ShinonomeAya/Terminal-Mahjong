@@ -65,6 +65,10 @@ The game remains terminal-first. Phase 8 adds a Bubble Tea TUI client with a sta
 
 The game remains terminal-first. Phase 9 polishes the TUI into clearer client sections, stronger tile selection feedback, consistent menu/game-over screens, and safer line-width rendering for Windows Terminal.
 
+## Phase 10 Direction
+
+The game remains terminal-first. Phase 10 adds a restrained Lip Gloss visual skin with colored section headings, selected-tile emphasis, status highlighting, and ANSI-safe visible-width tests.
+
 ## Run
 
 ```powershell
