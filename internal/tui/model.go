@@ -24,6 +24,8 @@ type Model struct {
 	Game          *game.Game
 	HandHitBoxes  []TileHitBox
 	StatusLine    string
+	Width         int
+	Height        int
 }
 
 func NewModel() Model {
@@ -53,6 +55,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Screen == ScreenTable {
 			return updateTableMouse(m, msg)
 		}
+		return m, nil
+	case tea.WindowSizeMsg:
+		m.Width = msg.Width
+		m.Height = msg.Height
 		return m, nil
 	default:
 		return m, nil

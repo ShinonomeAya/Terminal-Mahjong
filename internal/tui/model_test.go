@@ -69,6 +69,17 @@ func TestHelpViewContainsKeyboardAndMouseControls(t *testing.T) {
 	}
 }
 
+func TestWindowSizeMessageUpdatesModelDimensions(t *testing.T) {
+	model := NewModel()
+
+	next, _ := model.Update(tea.WindowSizeMsg{Width: 72, Height: 24})
+	updated := next.(Model)
+
+	if updated.Width != 72 || updated.Height != 24 {
+		t.Fatalf("size = %dx%d, want 72x24", updated.Width, updated.Height)
+	}
+}
+
 func TestTableRightMovesSelectedTile(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()

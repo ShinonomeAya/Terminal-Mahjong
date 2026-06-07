@@ -114,6 +114,24 @@ func TestRenderTableKeepsReadableLineWidth(t *testing.T) {
 	}
 }
 
+func TestRenderTableUsesCompactControlsForNarrowWidth(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.Width = 64
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "Arrows select | Enter discard | Click tile | Q quit") {
+		t.Fatalf("view missing compact controls:\n%s", view)
+	}
+	for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
+		if visibleWidth(line) > 80 {
+			t.Fatalf("compact line too wide (%d cells):\n%s", visibleWidth(line), line)
+		}
+	}
+}
+
 func TestRenderTableUsesClientSections(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
