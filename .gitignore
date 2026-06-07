@@ -9,3 +9,5 @@ coverage.out
 .vscode/
 .idea/
 
+# Local brainstorming/mockup sessions
+.superpowers/
