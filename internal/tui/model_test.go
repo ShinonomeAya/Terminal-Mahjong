@@ -111,6 +111,9 @@ func TestMouseClickSelectsTile(t *testing.T) {
 	if updated.SelectedIndex != 2 {
 		t.Fatalf("selected index = %d, want 2", updated.SelectedIndex)
 	}
+	if !strings.Contains(updated.StatusLine, "Mouse selected [03]") {
+		t.Fatalf("status line = %q, want mouse selection feedback", updated.StatusLine)
+	}
 }
 
 func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
@@ -130,6 +133,35 @@ func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
 
 	if len(updated.Game.Players[0].Discards) != 1 {
 		t.Fatalf("discards = %d, want 1", len(updated.Game.Players[0].Discards))
+	}
+	if !strings.Contains(updated.StatusLine, "Discarded [03]") {
+		t.Fatalf("status line = %q, want discard feedback", updated.StatusLine)
+	}
+}
+
+func TestKeyboardSelectionUpdatesStatusLine(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyRight})
+	updated := next.(Model)
+
+	if !strings.Contains(updated.StatusLine, "Selected [02]") {
+		t.Fatalf("status line = %q, want keyboard selection feedback", updated.StatusLine)
+	}
+}
+
+func TestTableViewIncludesStatusLine(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.StatusLine = "Mouse selected [04] 🀊 (4m)"
+
+	view := model.View()
+
+	if !strings.Contains(view, "Status: Mouse selected [04]") {
+		t.Fatalf("view missing status line:\n%s", view)
 	}
 }
 

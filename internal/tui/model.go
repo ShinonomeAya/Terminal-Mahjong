@@ -23,6 +23,7 @@ type Model struct {
 	UnicodeTiles  bool
 	Game          *game.Game
 	HandHitBoxes  []TileHitBox
+	StatusLine    string
 }
 
 func NewModel() Model {

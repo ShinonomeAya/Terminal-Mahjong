@@ -64,12 +64,20 @@ func renderTable(m Model) string {
 	out.WriteString("\nTable\n")
 	out.WriteString(renderCenter(g))
 	out.WriteString("\nYou\n")
+	out.WriteString(renderStatus(m))
 	out.WriteString(fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary()))
 	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles)))
 	out.WriteString(renderHand(g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles))
 	out.WriteString("\nControls\n")
 	out.WriteString("Left/Right select | Enter/Space discard | click select | second click discard | Q quit\n")
 	return out.String()
+}
+
+func renderStatus(m Model) string {
+	if m.StatusLine == "" {
+		return ""
+	}
+	return "Status: " + m.StatusLine + "\n"
 }
 
 func renderOpponents(g *game.Game, unicode bool) string {

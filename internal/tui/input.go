@@ -1,6 +1,12 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"fmt"
+
+	"mahjong/internal/game"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.Game == nil {
@@ -11,10 +17,12 @@ func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyLeft:
 		if m.SelectedIndex > 0 {
 			m.SelectedIndex--
+			m.StatusLine = selectionStatus("Selected", m.SelectedIndex, m.Game.Players[0].Hand[m.SelectedIndex], m.UnicodeTiles)
 		}
 	case tea.KeyRight:
 		if handLen > 0 && m.SelectedIndex < handLen-1 {
 			m.SelectedIndex++
+			m.StatusLine = selectionStatus("Selected", m.SelectedIndex, m.Game.Players[0].Hand[m.SelectedIndex], m.UnicodeTiles)
 		}
 	case tea.KeyEnter:
 		return discardSelected(m)
@@ -36,9 +44,12 @@ func discardSelected(m Model) (tea.Model, tea.Cmd) {
 	if m.SelectedIndex >= len(m.Game.Players[0].Hand) {
 		m.SelectedIndex = len(m.Game.Players[0].Hand) - 1
 	}
+	discardIndex := m.SelectedIndex
+	discardTile := m.Game.Players[0].Hand[discardIndex]
 	if _, err := m.Game.HumanDiscardSelected(m.SelectedIndex); err != nil {
 		return m, nil
 	}
+	m.StatusLine = selectionStatus("Discarded", discardIndex, discardTile, m.UnicodeTiles)
 	m.Game.AdvanceAIUntilHumanTurn()
 	if len(m.Game.Players[0].Hand) == 0 {
 		m.SelectedIndex = 0
@@ -64,7 +75,12 @@ func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return discardSelected(m)
 	}
 	m.SelectedIndex = index
+	m.StatusLine = selectionStatus("Mouse selected", index, m.Game.Players[0].Hand[index], m.UnicodeTiles)
 	return m, nil
+}
+
+func selectionStatus(action string, index int, tile game.Tile, unicode bool) string {
+	return fmt.Sprintf("%s [%02d] %s (%s)", action, index+1, game.TileLabel(tile, unicode), tile.String())
 }
 
 func updateGameOver(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
