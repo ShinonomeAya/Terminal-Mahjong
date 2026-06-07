@@ -13,6 +13,7 @@ type Game struct {
 	Players []Player
 	Wall    []Tile
 	Current int
+	Seed    int64
 	Winner  int
 	Reason  string
 	WinType WinType
@@ -40,6 +41,7 @@ func NewGame(seed int64) *Game {
 	return &Game{
 		Players: players,
 		Wall:    wall,
+		Seed:    seed,
 		Winner:  -1,
 		rng:     rng,
 	}

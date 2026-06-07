@@ -114,3 +114,9 @@ Stage review:
 - Step reviews confirm seven-pairs detection, waits, tips, and scoring labels.
 - Stage review compares the bounded rule extension against the total terminal Mahjong goal.
 - Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.
+
+## Phase 7 Review Checklist
+
+- Step reviews confirm replay metadata, JSON export, replay summaries, and result hints.
+- Stage review compares replay support against the total terminal Mahjong goal.
+- Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.

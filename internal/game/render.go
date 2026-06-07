@@ -39,11 +39,13 @@ func (g *Game) printResult(out io.Writer) {
 		fmt.Fprintf(out, "Win: %s\n", g.Reason)
 		fmt.Fprintf(out, "Score: %s\n", score.Label)
 		fmt.Fprintf(out, "Events: %d\n", len(g.Events))
+		fmt.Fprintln(out, "Replay-ready event log: yes")
 		printRecentEvents(out, g.Events)
 		return
 	}
 	fmt.Fprintf(out, "Result: %s\n", g.Reason)
 	fmt.Fprintf(out, "Events: %d\n", len(g.Events))
+	fmt.Fprintln(out, "Replay-ready event log: yes")
 	printRecentEvents(out, g.Events)
 }
 

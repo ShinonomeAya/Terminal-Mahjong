@@ -42,6 +42,10 @@ The game remains terminal-first. Phase 5 improves the text table with stable sec
 
 The game remains simplified and terminal-first. Phase 6 adds seven-pairs win support and a small seven-pairs scoring bonus, but still avoids full regional scoring tables.
 
+## Phase 7 Direction
+
+The game remains terminal-first. Phase 7 adds replay-ready event log export and summaries using standard-library JSON, without adding networking or a replay GUI.
+
 ## Run
 
 ```powershell
