@@ -14,6 +14,35 @@ type TileHitBox struct {
 	Y     int
 }
 
+func handHitBoxes(count int, startX int, y int) []TileHitBox {
+	boxes := make([]TileHitBox, count)
+	x := startX
+	for i := 0; i < count; i++ {
+		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + 5, Y: y}
+		x += 6
+	}
+	return boxes
+}
+
+func tileIndexAt(boxes []TileHitBox, x int, y int) (int, bool) {
+	for _, box := range boxes {
+		if y == box.Y && x >= box.X1 && x <= box.X2 {
+			return box.Index, true
+		}
+	}
+	return 0, false
+}
+
+func currentHandHitBoxes(m Model) []TileHitBox {
+	if len(m.HandHitBoxes) > 0 {
+		return m.HandHitBoxes
+	}
+	if m.Game == nil {
+		return nil
+	}
+	return handHitBoxes(len(m.Game.Players[0].Hand), 2, 10)
+}
+
 func renderTable(m Model) string {
 	if m.Game == nil {
 		return "No game\n"

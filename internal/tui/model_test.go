@@ -93,3 +93,42 @@ func TestTableEnterDiscardsSelectedTile(t *testing.T) {
 		t.Fatalf("current = %d, want human turn after AI advance", updated.Game.Current)
 	}
 }
+
+func TestMouseClickSelectsTile(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.HandHitBoxes = handHitBoxes(len(model.Game.Players[0].Hand), 2, 10)
+
+	next, _ := model.Update(tea.MouseMsg{
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+		X:      model.HandHitBoxes[2].X1,
+		Y:      model.HandHitBoxes[2].Y,
+	})
+	updated := next.(Model)
+
+	if updated.SelectedIndex != 2 {
+		t.Fatalf("selected index = %d, want 2", updated.SelectedIndex)
+	}
+}
+
+func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.SelectedIndex = 2
+	model.HandHitBoxes = handHitBoxes(len(model.Game.Players[0].Hand), 2, 10)
+
+	next, _ := model.Update(tea.MouseMsg{
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+		X:      model.HandHitBoxes[2].X1,
+		Y:      model.HandHitBoxes[2].Y,
+	})
+	updated := next.(Model)
+
+	if len(updated.Game.Players[0].Discards) != 1 {
+		t.Fatalf("discards = %d, want 1", len(updated.Game.Players[0].Discards))
+	}
+}

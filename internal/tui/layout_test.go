@@ -45,3 +45,14 @@ func TestRenderTableMarksSelectedTile(t *testing.T) {
 		t.Fatalf("view missing selected marker:\n%s", view)
 	}
 }
+
+func TestHandHitBoxesFindTileIndex(t *testing.T) {
+	boxes := handHitBoxes(3, 2, 4)
+	index, ok := tileIndexAt(boxes, boxes[1].X1, boxes[1].Y)
+	if !ok {
+		t.Fatal("expected hit")
+	}
+	if index != 1 {
+		t.Fatalf("index = %d, want 1", index)
+	}
+}

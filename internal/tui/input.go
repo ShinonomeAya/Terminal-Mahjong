@@ -50,3 +50,19 @@ func discardSelected(m Model) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
+
+func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft || m.Game == nil {
+		return m, nil
+	}
+	boxes := currentHandHitBoxes(m)
+	index, ok := tileIndexAt(boxes, msg.X, msg.Y)
+	if !ok {
+		return m, nil
+	}
+	if index == m.SelectedIndex {
+		return discardSelected(m)
+	}
+	m.SelectedIndex = index
+	return m, nil
+}
