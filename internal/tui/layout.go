@@ -69,6 +69,7 @@ func renderTable(m Model) string {
 	out.WriteString(fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary()))
 	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles)))
 	out.WriteString(renderHand(g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles))
+	out.WriteString(renderActionBar(m))
 	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
 	out.WriteString(styleMuted(tableControls(m)) + "\n")
 	return out.String()
@@ -79,6 +80,13 @@ func tableControls(m Model) string {
 		return "Arrows select | Enter discard | Click tile | Q quit"
 	}
 	return "Left/Right select | Enter/Space discard | click select | second click discard | Q quit"
+}
+
+func renderActionBar(m Model) string {
+	if m.Width > 0 && m.Width < 80 {
+		return styleMuted("Actions: [Enter] Discard  [Click] Tile  [H] Win  [K] Kong  [Q] Quit") + "\n"
+	}
+	return styleMuted("Actions: [←/→] Select  [Enter/Space] Discard  [Click] Tile  [H] Win  [K] Kong  [Q] Quit") + "\n"
 }
 
 func renderStatus(m Model) string {

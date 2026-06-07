@@ -192,6 +192,41 @@ func TestRenderTableShowsHandTrayFocus(t *testing.T) {
 	}
 }
 
+func TestRenderTableShowsActionBarNearHandTray(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	for _, text := range []string{"Actions:", "[Enter/Space] Discard", "[Click] Tile", "[H] Win", "[K] Kong", "[Q] Quit"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing action bar text %q:\n%s", text, view)
+		}
+	}
+	if lineIndexContaining(view, "Actions:") <= lineIndexContaining(view, "Hand:") {
+		t.Fatalf("action bar should sit below the hand tray:\n%s", view)
+	}
+}
+
+func TestRenderTableUsesCompactActionBarForNarrowWidth(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.Width = 64
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "[Enter] Discard") || strings.Contains(view, "[Enter/Space] Discard") {
+		t.Fatalf("view should use compact action bar:\n%s", view)
+	}
+	for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
+		if strings.Contains(line, "Actions:") && visibleWidth(line) > 80 {
+			t.Fatalf("compact action bar too wide (%d cells):\n%s", visibleWidth(line), line)
+		}
+	}
+}
+
 func TestRenderTableKeepsReadableLineWidth(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
