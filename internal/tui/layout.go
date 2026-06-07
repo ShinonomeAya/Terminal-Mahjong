@@ -89,14 +89,35 @@ func renderStatus(m Model) string {
 
 func renderOpponents(g *game.Game, unicode bool) string {
 	var out strings.Builder
-	out.WriteString(renderOpponent(g.Players[2], unicode))
-	out.WriteString(renderOpponent(g.Players[1], unicode))
-	out.WriteString(renderOpponent(g.Players[3], unicode))
+	out.WriteString("                 " + renderOpponentSeat("Opposite", g.Players[2], unicode) + "\n")
+	out.WriteString(padRightVisible(renderOpponentSeat("Left", g.Players[1], unicode), 44))
+	out.WriteString(renderOpponentSeat("Right", g.Players[3], unicode) + "\n")
 	return out.String()
 }
 
-func renderOpponent(player game.Player, unicode bool) string {
-	return fmt.Sprintf("%s  hand:%02d  melds:%s  discards:%s\n", player.Name, len(player.Hand), player.MeldSummary(), game.FormatTileLabels(player.Discards, unicode))
+func renderOpponentSeat(seat string, player game.Player, unicode bool) string {
+	discards := game.FormatTileLabels(recentTiles(player.Discards, 4), unicode)
+	if discards == "" {
+		discards = "-"
+	}
+	return fmt.Sprintf("%s: %s hand:%02d melds:%s last:%s", seat, player.Name, len(player.Hand), player.MeldSummary(), discards)
+}
+
+func recentTiles(tiles []game.Tile, limit int) []game.Tile {
+	if limit <= 0 || len(tiles) == 0 {
+		return nil
+	}
+	if len(tiles) <= limit {
+		return tiles
+	}
+	return tiles[len(tiles)-limit:]
+}
+
+func padRightVisible(text string, width int) string {
+	if visibleWidth(text) >= width {
+		return text + "  "
+	}
+	return text + strings.Repeat(" ", width-visibleWidth(text))
 }
 
 func renderCenter(g *game.Game, unicode bool) string {

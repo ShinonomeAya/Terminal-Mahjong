@@ -236,6 +236,23 @@ func TestRenderTableShowsAllOpponentsByName(t *testing.T) {
 	}
 }
 
+func TestRenderTableArrangesOpponentsAsSeats(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	for _, text := range []string{"Opposite: AI-2", "Left: AI-1", "Right: AI-3"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing seat label %q:\n%s", text, view)
+		}
+	}
+	if !lineContainsAll(view, "Left: AI-1", "Right: AI-3") {
+		t.Fatalf("left and right seats should share a table row:\n%s", view)
+	}
+}
+
 func TestRenderTableSplitsFullHandIntoTwoRows(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
@@ -246,6 +263,22 @@ func TestRenderTableSplitsFullHandIntoTwoRows(t *testing.T) {
 	if strings.Count(view, "Hand:") != 1 || !strings.Contains(view, "\n      ") {
 		t.Fatalf("view does not split hand into stable rows:\n%s", view)
 	}
+}
+
+func lineContainsAll(text string, parts ...string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		matches := true
+		for _, part := range parts {
+			if !strings.Contains(line, part) {
+				matches = false
+				break
+			}
+		}
+		if matches {
+			return true
+		}
+	}
+	return false
 }
 
 func TestHandHitBoxesFindTileIndex(t *testing.T) {
