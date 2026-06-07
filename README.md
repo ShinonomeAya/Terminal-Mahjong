@@ -10,13 +10,17 @@ A small, complete terminal Mahjong game written in Go.
 - Win check: standard `4 melds + 1 pair` hand shape.
 - No scoring, flowers, seat wind rounds, riichi rules, or network play in the first version.
 
-## Commands
+## Controls
 
-- `<number>` or `d <number>`: discard the numbered tile in your hand.
-- `h`: claim self-draw when your hand can win.
-- `k <tile>`: declare a concealed kong, for example `k 1m`.
-- `q`: quit the current game.
-- When the game offers win, pong, or chow claims, answer `y` to take the claim or press Enter to decline.
+- `Up` / `Down`: move in menus.
+- `Enter`: confirm a menu item or discard the selected tile.
+- `Left` / `Right`: select a hand tile.
+- Mouse click: select a hand tile when the terminal supports mouse events.
+- Second click on the selected hand tile: discard it.
+- `Space`: discard the selected tile.
+- `Q`: quit the current game.
+
+The client renders Mahjong tiles with Unicode glyphs by default and keeps text labels available for fallback rendering in tests and future configuration.
 
 ## Simplified Scoring
 
@@ -45,6 +49,10 @@ The game remains simplified and terminal-first. Phase 6 adds seven-pairs win sup
 ## Phase 7 Direction
 
 The game remains terminal-first. Phase 7 adds replay-ready event log export and summaries using standard-library JSON, without adding networking or a replay GUI.
+
+## Phase 8 Direction
+
+The game remains terminal-first. Phase 8 adds a Bubble Tea TUI client with a start menu, Unicode Mahjong tiles, keyboard tile selection, mouse tile selection, and a table-like layout.
 
 ## Run
 

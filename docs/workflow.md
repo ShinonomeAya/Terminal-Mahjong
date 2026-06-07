@@ -120,3 +120,9 @@ Stage review:
 - Step reviews confirm replay metadata, JSON export, replay summaries, and result hints.
 - Stage review compares replay support against the total terminal Mahjong goal.
 - Verification commands: `go test ./...`, `go build ./cmd/mahjong`, one scripted smoke run.
+
+## Phase 8 Review Checklist
+
+- Step reviews confirm Unicode tile rendering, non-blocking game helpers, start menu, keyboard selection, table layout, mouse selection, and CLI wiring.
+- Stage reviews compare each TUI addition against the total goal of a polished terminal-first Mahjong client.
+- Verification commands: `go test ./...`, `go test ./... -cover`, `go build ./cmd/mahjong`, and one manual TUI smoke run.

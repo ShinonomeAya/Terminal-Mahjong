@@ -6,7 +6,7 @@
 
 **Architecture:** Keep `internal/game` as the rules source of truth. Add small game-facing APIs only where the TUI needs non-blocking actions. Put Bubble Tea state, rendering, keyboard handling, mouse hit testing, and screen routing in `internal/tui`.
 
-**Tech Stack:** Go 1.23, standard library, `github.com/charmbracelet/bubbletea` v1.3.10, Unicode Mahjong tile glyphs.
+**Tech Stack:** Go 1.23, standard library, `github.com/charmbracelet/bubbletea` v0.27.1, Unicode Mahjong tile glyphs.
 
 ---
 
@@ -463,10 +463,10 @@ Stage review question: can the app start in a navigable terminal menu?
 Run:
 
 ```powershell
-go get github.com/charmbracelet/bubbletea@v1.3.10
+go get github.com/charmbracelet/bubbletea@v0.27.1
 ```
 
-Expected: `go.mod` and `go.sum` include Bubble Tea v1.3.10 dependencies.
+Expected: `go.mod` and `go.sum` include Bubble Tea v0.27.1 dependencies. This version preserves Go 1.23 compatibility for this project.
 
 - [ ] **Step 2: Write menu tests**
 
