@@ -57,19 +57,19 @@ func renderTable(m Model) string {
 	}
 	g := m.Game
 	var out strings.Builder
-	out.WriteString("TERMINAL MAHJONG\n")
-	out.WriteString(fmt.Sprintf("Wall:%d  Events:%d  Turn:%s  Replay:ready\n\n", len(g.Wall), len(g.Events), g.Players[g.Current].Name))
-	out.WriteString("Opponents\n")
+	out.WriteString(styleTitle("TERMINAL MAHJONG") + "\n")
+	out.WriteString(styleMuted(fmt.Sprintf("Wall:%d  Events:%d  Turn:%s  Replay:ready", len(g.Wall), len(g.Events), g.Players[g.Current].Name)) + "\n\n")
+	out.WriteString(styleSectionTitle("Opponents") + "\n")
 	out.WriteString(renderOpponents(g, m.UnicodeTiles))
-	out.WriteString("\nTable\n")
+	out.WriteString("\n" + styleSectionTitle("Table") + "\n")
 	out.WriteString(renderCenter(g))
-	out.WriteString("\nYou\n")
+	out.WriteString("\n" + styleSectionTitle("You") + "\n")
 	out.WriteString(renderStatus(m))
 	out.WriteString(fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary()))
 	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles)))
 	out.WriteString(renderHand(g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles))
-	out.WriteString("\nControls\n")
-	out.WriteString("Left/Right select | Enter/Space discard | click select | second click discard | Q quit\n")
+	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
+	out.WriteString(styleMuted("Left/Right select | Enter/Space discard | click select | second click discard | Q quit") + "\n")
 	return out.String()
 }
 
@@ -77,7 +77,7 @@ func renderStatus(m Model) string {
 	if m.StatusLine == "" {
 		return ""
 	}
-	return "Status: " + m.StatusLine + "\n"
+	return styleStatus("Status: "+m.StatusLine) + "\n"
 }
 
 func renderOpponents(g *game.Game, unicode bool) string {
@@ -122,7 +122,7 @@ func renderHand(hand []game.Tile, selected int, unicode bool) string {
 func renderTileCell(index int, tile game.Tile, selected bool, unicode bool) string {
 	label := game.TileLabel(tile, unicode)
 	if selected {
-		return padRightRunes(fmt.Sprintf("▶ [%02d] %s ◀", index+1, label), handCellW)
+		return padRightRunes(styleSelectedTile(fmt.Sprintf("▶ [%02d] %s ◀", index+1, label)), handCellW)
 	}
 	return padRightRunes(fmt.Sprintf("  [%02d] %s", index+1, label), handCellW)
 }
@@ -149,7 +149,7 @@ func renderGameOver(m Model) string {
 		return "GAME OVER\n"
 	}
 	var out strings.Builder
-	out.WriteString("GAME OVER\n")
+	out.WriteString(styleTitle("GAME OVER") + "\n")
 	out.WriteString(fmt.Sprintf("Result: %s\n", m.Game.Reason))
 	out.WriteString(fmt.Sprintf("Events: %d\n", len(m.Game.Events)))
 	out.WriteString("Replay-ready event log: yes\n\n")
@@ -157,10 +157,12 @@ func renderGameOver(m Model) string {
 		prefix := "  "
 		if i == m.GameOverIndex {
 			prefix = "> "
+			out.WriteString(styleSelectedTile(prefix+item) + "\n")
+			continue
 		}
 		out.WriteString(prefix + item + "\n")
 	}
-	out.WriteString("\nControls\n")
-	out.WriteString("Up/Down choose | Enter confirm | R restart | M menu | Q quit\n")
+	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
+	out.WriteString(styleMuted("Up/Down choose | Enter confirm | R restart | M menu | Q quit") + "\n")
 	return out.String()
 }

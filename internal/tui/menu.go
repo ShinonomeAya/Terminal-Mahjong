@@ -38,35 +38,37 @@ func updateHelp(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func renderMenu(m Model) string {
 	var out strings.Builder
-	out.WriteString("TERMINAL MAHJONG\n\n")
-	out.WriteString("Menu\n")
+	out.WriteString(styleTitle("TERMINAL MAHJONG") + "\n\n")
+	out.WriteString(styleSectionTitle("Menu") + "\n")
 	for i, item := range menuItems {
 		prefix := "  "
 		if i == m.MenuIndex {
 			prefix = "> "
+			out.WriteString(styleSelectedTile(prefix+item) + "\n")
+			continue
 		}
 		out.WriteString(fmt.Sprintf("%s%s\n", prefix, item))
 	}
-	out.WriteString("\nControls\n")
-	out.WriteString("Up/Down choose | Enter confirm | Q quit\n")
+	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
+	out.WriteString(styleMuted("Up/Down choose | Enter confirm | Q quit") + "\n")
 	return out.String()
 }
 
 func renderHelp() string {
 	return strings.Join([]string{
-		"TERMINAL MAHJONG HELP",
+		styleTitle("TERMINAL MAHJONG HELP"),
 		"",
-		"Keyboard",
+		styleSectionTitle("Keyboard"),
 		"Left/Right select tile",
 		"Enter/Space discard selected tile",
 		"Q quit current game",
 		"",
-		"Mouse",
+		styleSectionTitle("Mouse"),
 		"Click selects a hand tile",
 		"Second click discards the selected tile",
 		"",
-		"Controls",
-		"Esc returns to menu",
+		styleSectionTitle("Controls"),
+		styleMuted("Esc returns to menu"),
 		"",
 	}, "\n")
 }

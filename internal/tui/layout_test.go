@@ -108,8 +108,8 @@ func TestRenderTableKeepsReadableLineWidth(t *testing.T) {
 	view := renderTable(model)
 
 	for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
-		if len([]rune(line)) > 96 {
-			t.Fatalf("line too wide (%d runes):\n%s", len([]rune(line)), line)
+		if visibleWidth(line) > 96 {
+			t.Fatalf("line too wide (%d cells):\n%s", visibleWidth(line), line)
 		}
 	}
 }
