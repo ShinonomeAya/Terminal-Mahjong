@@ -47,6 +47,28 @@ func TestMenuViewContainsOptions(t *testing.T) {
 	}
 }
 
+func TestMenuViewUsesReadableSections(t *testing.T) {
+	view := NewModel().View()
+	for _, text := range []string{"Menu", "Controls", "Up/Down choose"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("menu missing %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestHelpViewContainsKeyboardAndMouseControls(t *testing.T) {
+	model := NewModel()
+	model.Screen = ScreenHelp
+
+	view := model.View()
+
+	for _, text := range []string{"Keyboard", "Mouse", "Enter/Space", "Second click"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("help missing %q:\n%s", text, view)
+		}
+	}
+}
+
 func TestTableRightMovesSelectedTile(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
@@ -193,5 +215,19 @@ func TestGameOverEnterRestartStartsNewGame(t *testing.T) {
 	}
 	if updated.Game == nil || len(updated.Game.Events) == 0 {
 		t.Fatal("expected restarted game with initial draw event")
+	}
+}
+
+func TestGameOverViewContainsChoicesAndControls(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenGameOver
+
+	view := model.View()
+
+	for _, text := range []string{"GAME OVER", "Restart", "Main Menu", "Quit", "Controls"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("game over missing %q:\n%s", text, view)
+		}
 	}
 }

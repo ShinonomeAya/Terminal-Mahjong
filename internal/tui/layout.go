@@ -160,6 +160,7 @@ func renderGameOver(m Model) string {
 		}
 		out.WriteString(prefix + item + "\n")
 	}
-	out.WriteString("\nUp/Down choose | Enter confirm | R restart | M menu | Q quit\n")
+	out.WriteString("\nControls\n")
+	out.WriteString("Up/Down choose | Enter confirm | R restart | M menu | Q quit\n")
 	return out.String()
 }

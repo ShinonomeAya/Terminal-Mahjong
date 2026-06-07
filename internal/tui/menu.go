@@ -38,22 +38,35 @@ func updateHelp(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func renderMenu(m Model) string {
 	var out strings.Builder
-	out.WriteString("╔════════════════ TERMINAL MAHJONG ════════════════╗\n")
-	out.WriteString("║                                                  ║\n")
+	out.WriteString("TERMINAL MAHJONG\n\n")
+	out.WriteString("Menu\n")
 	for i, item := range menuItems {
 		prefix := "  "
 		if i == m.MenuIndex {
 			prefix = "> "
 		}
-		line := fmt.Sprintf("║              %-34s║\n", prefix+item)
-		out.WriteString(line)
+		out.WriteString(fmt.Sprintf("%s%s\n", prefix, item))
 	}
-	out.WriteString("║                                                  ║\n")
-	out.WriteString("║        ↑/↓ choose   Enter confirm   Q quit       ║\n")
-	out.WriteString("╚══════════════════════════════════════════════════╝\n")
+	out.WriteString("\nControls\n")
+	out.WriteString("Up/Down choose | Enter confirm | Q quit\n")
 	return out.String()
 }
 
 func renderHelp() string {
-	return "TERMINAL MAHJONG HELP\n\n←/→ select tile\nEnter/Space discard\nMouse click selects a tile\nSecond click discards selected tile\nEsc returns\n"
+	return strings.Join([]string{
+		"TERMINAL MAHJONG HELP",
+		"",
+		"Keyboard",
+		"Left/Right select tile",
+		"Enter/Space discard selected tile",
+		"Q quit current game",
+		"",
+		"Mouse",
+		"Click selects a hand tile",
+		"Second click discards the selected tile",
+		"",
+		"Controls",
+		"Esc returns to menu",
+		"",
+	}, "\n")
 }
