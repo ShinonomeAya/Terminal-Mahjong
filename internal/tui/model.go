@@ -18,6 +18,7 @@ const (
 type Model struct {
 	Screen        Screen
 	MenuIndex     int
+	GameOverIndex int
 	SelectedIndex int
 	UnicodeTiles  bool
 	Game          *game.Game
@@ -42,6 +43,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return updateHelp(m, msg)
 		case ScreenTable:
 			return updateTable(m, msg)
+		case ScreenGameOver:
+			return updateGameOver(m, msg)
 		default:
 			return m, nil
 		}

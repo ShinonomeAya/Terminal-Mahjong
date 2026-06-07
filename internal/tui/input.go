@@ -9,12 +9,12 @@ func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	handLen := len(m.Game.Players[0].Hand)
 	switch key.Type {
 	case tea.KeyLeft:
-		if handLen > 0 {
-			m.SelectedIndex = (m.SelectedIndex + handLen - 1) % handLen
+		if m.SelectedIndex > 0 {
+			m.SelectedIndex--
 		}
 	case tea.KeyRight:
-		if handLen > 0 {
-			m.SelectedIndex = (m.SelectedIndex + 1) % handLen
+		if handLen > 0 && m.SelectedIndex < handLen-1 {
+			m.SelectedIndex++
 		}
 	case tea.KeyEnter:
 		return discardSelected(m)
@@ -64,5 +64,48 @@ func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return discardSelected(m)
 	}
 	m.SelectedIndex = index
+	return m, nil
+}
+
+func updateGameOver(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch key.Type {
+	case tea.KeyDown:
+		if m.GameOverIndex < len(gameOverItems)-1 {
+			m.GameOverIndex++
+		}
+	case tea.KeyUp:
+		if m.GameOverIndex > 0 {
+			m.GameOverIndex--
+		}
+	case tea.KeyEnter:
+		switch m.GameOverIndex {
+		case 0:
+			m.Game = newStartedGame()
+			m.Screen = ScreenTable
+			m.SelectedIndex = 0
+			m.GameOverIndex = 0
+		case 1:
+			m.Game = nil
+			m.Screen = ScreenMenu
+			m.SelectedIndex = 0
+			m.GameOverIndex = 0
+		case 2:
+			return m, tea.Quit
+		}
+	}
+	switch key.String() {
+	case "r":
+		m.Game = newStartedGame()
+		m.Screen = ScreenTable
+		m.SelectedIndex = 0
+		m.GameOverIndex = 0
+	case "m":
+		m.Game = nil
+		m.Screen = ScreenMenu
+		m.SelectedIndex = 0
+		m.GameOverIndex = 0
+	case "q":
+		return m, tea.Quit
+	}
 	return m, nil
 }

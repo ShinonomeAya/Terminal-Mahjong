@@ -41,8 +41,36 @@ func TestRenderTableMarksSelectedTile(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "selected") && !strings.Contains(view, "▲") {
+	if !strings.Contains(view, "Selected:") {
 		t.Fatalf("view missing selected marker:\n%s", view)
+	}
+}
+
+func TestRenderTableShowsSelectedTileInHandRow(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Game.Players[0].Hand = mustUITiles(t, "1m", "2m", "3m")
+	model.Screen = ScreenTable
+	model.SelectedIndex = 1
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "▶ [02]") || !strings.Contains(view, "Selected: [02]") {
+		t.Fatalf("view does not clearly show selected tile:\n%s", view)
+	}
+}
+
+func TestRenderTableKeepsReadableLineWidth(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
+		if len([]rune(line)) > 96 {
+			t.Fatalf("line too wide (%d runes):\n%s", len([]rune(line)), line)
+		}
 	}
 }
 
@@ -54,5 +82,18 @@ func TestHandHitBoxesFindTileIndex(t *testing.T) {
 	}
 	if index != 1 {
 		t.Fatalf("index = %d, want 1", index)
+	}
+}
+
+func TestDefaultHandHitBoxesMatchRenderedHandRows(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	boxes := currentHandHitBoxes(model)
+
+	if boxes[0].Y != handRowY {
+		t.Fatalf("first row y = %d, want %d", boxes[0].Y, handRowY)
+	}
+	if boxes[7].Y != handRowY+1 {
+		t.Fatalf("second row y = %d, want %d", boxes[7].Y, handRowY+1)
 	}
 }

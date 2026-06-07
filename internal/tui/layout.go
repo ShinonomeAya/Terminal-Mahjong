@@ -14,12 +14,20 @@ type TileHitBox struct {
 	Y     int
 }
 
+const (
+	handStartX = 6
+	handRowY   = 8
+	handCellW  = 10
+	handCols   = 7
+)
+
 func handHitBoxes(count int, startX int, y int) []TileHitBox {
 	boxes := make([]TileHitBox, count)
-	x := startX
 	for i := 0; i < count; i++ {
-		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + 5, Y: y}
-		x += 6
+		col := i % handCols
+		row := i / handCols
+		x := startX + col*handCellW
+		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: y + row}
 	}
 	return boxes
 }
@@ -40,7 +48,7 @@ func currentHandHitBoxes(m Model) []TileHitBox {
 	if m.Game == nil {
 		return nil
 	}
-	return handHitBoxes(len(m.Game.Players[0].Hand), 2, 10)
+	return handHitBoxes(len(m.Game.Players[0].Hand), handStartX, handRowY)
 }
 
 func renderTable(m Model) string {
@@ -49,58 +57,76 @@ func renderTable(m Model) string {
 	}
 	g := m.Game
 	var out strings.Builder
-	out.WriteString("╔════════════════════════ TERMINAL MAHJONG ════════════════════════╗\n")
-	out.WriteString(fmt.Sprintf("║ Wall %-3d  Events %-3d  Turn %-10s  Replay ready                 ║\n", len(g.Wall), len(g.Events), g.Players[g.Current].Name))
-	out.WriteString("╠════════════════════════════ AI-2 ═════════════════════════════════╣\n")
+	out.WriteString("TERMINAL MAHJONG\n")
+	out.WriteString(fmt.Sprintf("Wall:%d  Events:%d  Turn:%s  Replay:ready\n", len(g.Wall), len(g.Events), g.Players[g.Current].Name))
 	out.WriteString(renderOpponent(g.Players[2], m.UnicodeTiles))
-	out.WriteString("╠══════════════ AI-1 ═══════════╦════════ CENTER ════════╦════════ AI-3 ════════╣\n")
 	out.WriteString(renderSidePlayers(g, m.UnicodeTiles))
-	out.WriteString("╠══════════════════════════════ YOU ════════════════════════════════╣\n")
-	out.WriteString(fmt.Sprintf("║ Melds: %-24s Discards: %-24s ║\n", g.Players[0].MeldSummary(), game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles)))
+	out.WriteString(renderCenter(g))
+	out.WriteString(fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary()))
+	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles)))
 	out.WriteString(renderHand(g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles))
-	out.WriteString("╚══ ←/→ select  Enter/Space discard  mouse click tile  H win  K kong  Q quit ═╝\n")
+	out.WriteString("Keys: Left/Right select | Enter/Space discard | click select | second click discard | Q quit\n")
 	return out.String()
 }
 
 func renderOpponent(player game.Player, unicode bool) string {
-	return fmt.Sprintf("║ %-8s hand:%2d  melds:%-12s discards:%-24s ║\n", player.Name, len(player.Hand), player.MeldSummary(), game.FormatTileLabels(player.Discards, unicode))
+	return fmt.Sprintf("%s  hand:%02d  melds:%s  discards:%s\n", player.Name, len(player.Hand), player.MeldSummary(), game.FormatTileLabels(player.Discards, unicode))
 }
 
 func renderSidePlayers(g *game.Game, unicode bool) string {
 	left := g.Players[1]
 	right := g.Players[3]
+	return fmt.Sprintf("%s discards:%s    %s discards:%s\n", left.Name, game.FormatTileLabels(left.Discards, unicode), right.Name, game.FormatTileLabels(right.Discards, unicode))
+}
+
+func renderCenter(g *game.Game) string {
 	recent := game.RecentEvents(g.Events, 3)
 	center := "No events yet"
 	if len(recent) > 0 {
 		center = recent[len(recent)-1].String()
 	}
-	return fmt.Sprintf("║ %-25s ║ %-20s ║ %-20s ║\n", left.Name+" discards "+game.FormatTileLabels(left.Discards, unicode), center, right.Name+" discards "+game.FormatTileLabels(right.Discards, unicode))
+	return fmt.Sprintf("Last: %s\nTips: %s\n", center, game.HandTips(g.Players[0].Hand))
 }
 
 func renderHand(hand []game.Tile, selected int, unicode bool) string {
 	var tiles strings.Builder
-	var markers strings.Builder
-	tiles.WriteString("║ ")
-	markers.WriteString("║ ")
+	tiles.WriteString("Hand: ")
+	selectedText := "-"
 	for i, tile := range hand {
+		if i > 0 && i%handCols == 0 {
+			tiles.WriteString("\n      ")
+		}
 		label := game.TileLabel(tile, unicode)
-		cell := fmt.Sprintf("[%2d]%s ", i+1, label)
-		tiles.WriteString(cell)
 		if i == selected {
-			markers.WriteString(strings.Repeat(" ", len(cell)/2))
-			markers.WriteString("▲ selected ")
+			tiles.WriteString(fmt.Sprintf("▶ [%02d] %s ◀ ", i+1, label))
+			selectedText = fmt.Sprintf("[%02d] %s (%s)", i+1, label, tile.String())
 		} else {
-			markers.WriteString(strings.Repeat(" ", len(cell)))
+			tiles.WriteString(fmt.Sprintf("  [%02d] %s   ", i+1, label))
 		}
 	}
 	tiles.WriteString("\n")
-	markers.WriteString("\n")
-	return tiles.String() + markers.String()
+	tiles.WriteString("Selected: " + selectedText + "\n")
+	return tiles.String()
 }
+
+var gameOverItems = []string{"Restart", "Main Menu", "Quit"}
 
 func renderGameOver(m Model) string {
 	if m.Game == nil {
 		return "GAME OVER\n"
 	}
-	return fmt.Sprintf("GAME OVER\nResult: %s\nEvents: %d\nReplay-ready event log: yes\n", m.Game.Reason, len(m.Game.Events))
+	var out strings.Builder
+	out.WriteString("GAME OVER\n")
+	out.WriteString(fmt.Sprintf("Result: %s\n", m.Game.Reason))
+	out.WriteString(fmt.Sprintf("Events: %d\n", len(m.Game.Events)))
+	out.WriteString("Replay-ready event log: yes\n\n")
+	for i, item := range gameOverItems {
+		prefix := "  "
+		if i == m.GameOverIndex {
+			prefix = "> "
+		}
+		out.WriteString(prefix + item + "\n")
+	}
+	out.WriteString("\nUp/Down choose | Enter confirm | R restart | M menu | Q quit\n")
+	return out.String()
 }

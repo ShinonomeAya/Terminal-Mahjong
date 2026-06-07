@@ -60,7 +60,7 @@ func TestTableRightMovesSelectedTile(t *testing.T) {
 	}
 }
 
-func TestTableLeftWrapsSelectedTile(t *testing.T) {
+func TestTableLeftAtFirstTileStaysAtFirstTile(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
 	model.Screen = ScreenTable
@@ -68,8 +68,8 @@ func TestTableLeftWrapsSelectedTile(t *testing.T) {
 	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyLeft})
 	updated := next.(Model)
 
-	if updated.SelectedIndex != len(updated.Game.Players[0].Hand)-1 {
-		t.Fatalf("selected index = %d, want last hand index", updated.SelectedIndex)
+	if updated.SelectedIndex != 0 {
+		t.Fatalf("selected index = %d, want 0", updated.SelectedIndex)
 	}
 }
 
@@ -130,5 +130,36 @@ func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
 
 	if len(updated.Game.Players[0].Discards) != 1 {
 		t.Fatalf("discards = %d, want 1", len(updated.Game.Players[0].Discards))
+	}
+}
+
+func TestGameOverEnterMainMenuReturnsToMenu(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenGameOver
+	model.GameOverIndex = 1
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if updated.Screen != ScreenMenu {
+		t.Fatalf("screen = %v, want menu", updated.Screen)
+	}
+}
+
+func TestGameOverEnterRestartStartsNewGame(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenGameOver
+	model.GameOverIndex = 0
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if updated.Screen != ScreenTable {
+		t.Fatalf("screen = %v, want table", updated.Screen)
+	}
+	if updated.Game == nil || len(updated.Game.Events) == 0 {
+		t.Fatal("expected restarted game with initial draw event")
 	}
 }
