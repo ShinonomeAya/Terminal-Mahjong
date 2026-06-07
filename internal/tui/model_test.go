@@ -46,3 +46,50 @@ func TestMenuViewContainsOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestTableRightMovesSelectedTile(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyRight})
+	updated := next.(Model)
+
+	if updated.SelectedIndex != 1 {
+		t.Fatalf("selected index = %d, want 1", updated.SelectedIndex)
+	}
+}
+
+func TestTableLeftWrapsSelectedTile(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	updated := next.(Model)
+
+	if updated.SelectedIndex != len(updated.Game.Players[0].Hand)-1 {
+		t.Fatalf("selected index = %d, want last hand index", updated.SelectedIndex)
+	}
+}
+
+func TestTableEnterDiscardsSelectedTile(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.SelectedIndex = 0
+	startEvents := len(model.Game.Events)
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if len(updated.Game.Players[0].Discards) != 1 {
+		t.Fatalf("discards = %d, want 1", len(updated.Game.Players[0].Discards))
+	}
+	if len(updated.Game.Events) <= startEvents+1 {
+		t.Fatalf("events = %d, want AI turns after human discard", len(updated.Game.Events))
+	}
+	if !updated.Game.Over && updated.Game.Current != 0 {
+		t.Fatalf("current = %d, want human turn after AI advance", updated.Game.Current)
+	}
+}

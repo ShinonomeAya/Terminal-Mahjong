@@ -41,6 +41,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return updateMenu(m, key)
 	case ScreenHelp:
 		return updateHelp(m, key)
+	case ScreenTable:
+		return updateTable(m, key)
 	default:
 		return m, nil
 	}
