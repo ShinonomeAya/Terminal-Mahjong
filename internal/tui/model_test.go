@@ -127,6 +127,22 @@ func TestTableEnterDiscardsSelectedTile(t *testing.T) {
 	}
 }
 
+func TestKeyboardDiscardShowsLastActionFeedback(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.SelectedIndex = 0
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	view := updated.View()
+
+	if !strings.Contains(view, "Last Action: Discarded [01]") {
+		t.Fatalf("view missing discard feedback:\n%s", view)
+	}
+}
+
 func TestMouseClickSelectsTile(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
@@ -169,6 +185,28 @@ func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
 	}
 	if !strings.Contains(updated.StatusLine, "Discarded [03]") {
 		t.Fatalf("status line = %q, want discard feedback", updated.StatusLine)
+	}
+}
+
+func TestSecondMouseClickShowsLastActionFeedback(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.SelectedIndex = 2
+	model.HandHitBoxes = handHitBoxes(len(model.Game.Players[0].Hand), 2, 10)
+
+	next, _ := model.Update(tea.MouseMsg{
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+		X:      model.HandHitBoxes[2].X1,
+		Y:      model.HandHitBoxes[2].Y,
+	})
+	updated := next.(Model)
+
+	view := updated.View()
+
+	if !strings.Contains(view, "Last Action: Discarded [03]") {
+		t.Fatalf("view missing mouse discard feedback:\n%s", view)
 	}
 }
 

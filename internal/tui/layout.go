@@ -16,7 +16,7 @@ type TileHitBox struct {
 
 const (
 	handStartX = 6
-	handRowY   = 24
+	handRowY   = 25
 	handRowGap = 2
 	handCellW  = 10
 	handCols   = 7
@@ -66,6 +66,7 @@ func renderTable(m Model) string {
 	out.WriteString(renderCenter(g, m.UnicodeTiles))
 	out.WriteString("\n" + styleSectionTitle("You") + "\n")
 	out.WriteString(renderStatus(m))
+	out.WriteString(renderLastAction(m))
 	out.WriteString(fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary()))
 	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles)))
 	out.WriteString(renderHand(g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles))
@@ -94,6 +95,13 @@ func renderStatus(m Model) string {
 		return styleStatus("Status: Ready") + "\n"
 	}
 	return styleStatus("Status: "+m.StatusLine) + "\n"
+}
+
+func renderLastAction(m Model) string {
+	if m.StatusLine == "" {
+		return styleStatus("Last Action: Waiting for input") + "\n"
+	}
+	return styleStatus("Last Action: "+m.StatusLine) + "\n"
 }
 
 func renderOpponents(g *game.Game, unicode bool) string {

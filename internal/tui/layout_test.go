@@ -192,6 +192,18 @@ func TestRenderTableShowsHandTrayFocus(t *testing.T) {
 	}
 }
 
+func TestRenderTableShowsWaitingActionFeedback(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "Last Action: Waiting for input") {
+		t.Fatalf("view missing waiting action feedback:\n%s", view)
+	}
+}
+
 func TestRenderTableShowsActionBarNearHandTray(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
