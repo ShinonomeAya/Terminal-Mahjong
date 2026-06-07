@@ -22,6 +22,13 @@ A small, complete terminal Mahjong game written in Go.
 
 The client renders Mahjong tiles with Unicode glyphs by default and keeps text labels available for fallback rendering in tests and future configuration.
 
+The table view is split into readable terminal sections:
+
+- `Opponents`: AI hands, melds, and discards.
+- `Table`: latest action and hand tips.
+- `You`: melds, discards, hand tiles, selected tile, and status feedback.
+- `Controls`: available keyboard and mouse actions.
+
 ## Simplified Scoring
 
 - Self-draw: 2 points.
@@ -53,6 +60,10 @@ The game remains terminal-first. Phase 7 adds replay-ready event log export and 
 ## Phase 8 Direction
 
 The game remains terminal-first. Phase 8 adds a Bubble Tea TUI client with a start menu, Unicode Mahjong tiles, keyboard tile selection, mouse tile selection, and a table-like layout.
+
+## Phase 9 Direction
+
+The game remains terminal-first. Phase 9 polishes the TUI into clearer client sections, stronger tile selection feedback, consistent menu/game-over screens, and safer line-width rendering for Windows Terminal.
 
 ## Run
 

@@ -126,3 +126,9 @@ Stage review:
 - Step reviews confirm Unicode tile rendering, non-blocking game helpers, start menu, keyboard selection, table layout, mouse selection, and CLI wiring.
 - Stage reviews compare each TUI addition against the total goal of a polished terminal-first Mahjong client.
 - Verification commands: `go test ./...`, `go test ./... -cover`, `go build ./cmd/mahjong`, and one manual TUI smoke run.
+
+## Phase 9 Review Checklist
+
+- Step reviews confirm rendering helpers, table composition, selection feedback, mouse feedback, and screen polish.
+- Stage reviews compare each visual/interaction improvement against the total goal of a readable terminal-first Mahjong client.
+- Verification commands: `go test ./...`, `go test ./... -cover`, `go build ./cmd/mahjong`, and one manual TUI smoke run.
