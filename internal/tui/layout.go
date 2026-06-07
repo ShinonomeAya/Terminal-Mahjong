@@ -62,7 +62,7 @@ func renderTable(m Model) string {
 	out.WriteString(styleSectionTitle("Opponents") + "\n")
 	out.WriteString(renderOpponents(g, m.UnicodeTiles))
 	out.WriteString("\n" + styleSectionTitle("Table") + "\n")
-	out.WriteString(renderCenter(g))
+	out.WriteString(renderCenter(g, m.UnicodeTiles))
 	out.WriteString("\n" + styleSectionTitle("You") + "\n")
 	out.WriteString(renderStatus(m))
 	out.WriteString(fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary()))
@@ -99,13 +99,52 @@ func renderOpponent(player game.Player, unicode bool) string {
 	return fmt.Sprintf("%s  hand:%02d  melds:%s  discards:%s\n", player.Name, len(player.Hand), player.MeldSummary(), game.FormatTileLabels(player.Discards, unicode))
 }
 
-func renderCenter(g *game.Game) string {
-	recent := game.RecentEvents(g.Events, 3)
-	center := "No events yet"
-	if len(recent) > 0 {
-		center = recent[len(recent)-1].String()
+func renderCenter(g *game.Game, unicode bool) string {
+	var out strings.Builder
+	out.WriteString(renderEventLog(g.Events, unicode, 4))
+	out.WriteString(fmt.Sprintf("Tips: %s\n", game.HandTips(g.Players[0].Hand)))
+	return out.String()
+}
+
+func renderEventLog(events []game.GameEvent, unicode bool, limit int) string {
+	var out strings.Builder
+	out.WriteString(styleMuted("Recent Events") + "\n")
+	recent := game.RecentEvents(events, limit)
+	if len(recent) == 0 {
+		out.WriteString("-\n")
+		return out.String()
 	}
-	return fmt.Sprintf("Last: %s\nTips: %s\n", center, game.HandTips(g.Players[0].Hand))
+	for _, event := range recent {
+		out.WriteString(formatEventLine(event, unicode) + "\n")
+	}
+	return out.String()
+}
+
+func formatEventLine(event game.GameEvent, unicode bool) string {
+	tileText := ""
+	if event.Tile >= 0 && int(event.Tile) < game.TileTypeCount {
+		tileText = " " + game.TileLabel(event.Tile, unicode)
+	}
+	note := ""
+	if event.Note != "" {
+		note = " - " + event.Note
+	}
+	return fmt.Sprintf("%02d. %s %s%s%s", event.Turn, eventPlayerName(event.Player), event.Kind, tileText, note)
+}
+
+func eventPlayerName(player int) string {
+	switch player {
+	case 0:
+		return "You"
+	case 1:
+		return "AI-1"
+	case 2:
+		return "AI-2"
+	case 3:
+		return "AI-3"
+	default:
+		return fmt.Sprintf("Player-%d", player)
+	}
 }
 
 func renderHand(hand []game.Tile, selected int, unicode bool) string {

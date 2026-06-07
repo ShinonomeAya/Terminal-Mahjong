@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"mahjong/internal/game"
 )
 
 func TestTileCellRendersUnselectedUnicodeTile(t *testing.T) {
@@ -70,6 +72,44 @@ func TestRenderTableIncludesFallbackLabels(t *testing.T) {
 
 	if !strings.Contains(view, "1m") || !strings.Contains(view, "2m") || !strings.Contains(view, "E") {
 		t.Fatalf("view missing fallback labels:\n%s", view)
+	}
+}
+
+func TestRenderTableIncludesRecentEventsPanel(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Game.Events = nil
+	model.Game.RecordEvent(game.EventDraw, 0, mustUITiles(t, "1m")[0], "")
+	model.Game.RecordEvent(game.EventDiscard, 0, mustUITiles(t, "1m")[0], "")
+	model.Game.RecordEvent(game.EventDraw, 1, mustUITiles(t, "2m")[0], "")
+	model.Game.RecordEvent(game.EventDiscard, 1, mustUITiles(t, "2m")[0], "")
+	model.Screen = ScreenTable
+	model.UnicodeTiles = false
+
+	view := renderTable(model)
+
+	for _, text := range []string{"Recent Events", "01. You draw 1m", "04. AI-1 discard 2m"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing recent event text %q:\n%s", text, view)
+		}
+	}
+	if strings.Contains(view, "Last:") {
+		t.Fatalf("view still uses one-line Last summary:\n%s", view)
+	}
+}
+
+func TestRenderTableUsesUnicodeInRecentEvents(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Game.Events = nil
+	model.Game.RecordEvent(game.EventDiscard, 0, mustUITiles(t, "1m")[0], "")
+	model.Screen = ScreenTable
+	model.UnicodeTiles = true
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "01. You discard 🀇") {
+		t.Fatalf("view missing unicode event tile:\n%s", view)
 	}
 }
 
