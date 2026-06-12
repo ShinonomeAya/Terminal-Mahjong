@@ -60,6 +60,8 @@ func updateOnlineTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case " ":
 		return discardOnlineSelected(m)
+	case "r":
+		return readyOnline(m)
 	case "q":
 		if m.OnlineClient != nil {
 			m.OnlineClient.Close()
@@ -74,6 +76,10 @@ func updateOnlineTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func discardOnlineSelected(m Model) (tea.Model, tea.Cmd) {
 	hand := onlineHand(m)
+	if !m.OnlineStarted {
+		m.StatusLine = "Waiting for players to ready"
+		return m, nil
+	}
 	if m.OnlineClient == nil || len(hand) == 0 {
 		m.StatusLine = "Online room is not ready"
 		return m, nil
@@ -89,6 +95,15 @@ func discardOnlineSelected(m Model) (tea.Model, tea.Cmd) {
 	discardTile := hand[discardIndex]
 	m.StatusLine = selectionStatus("Discarding", discardIndex, discardTile, m.UnicodeTiles)
 	return m, sendOnlineDiscardCmd(m.OnlineClient, discardIndex)
+}
+
+func readyOnline(m Model) (tea.Model, tea.Cmd) {
+	if m.OnlineClient == nil {
+		m.StatusLine = "Online room is not ready"
+		return m, nil
+	}
+	m.StatusLine = "Ready sent"
+	return m, sendOnlineReadyCmd(m.OnlineClient)
 }
 
 func discardSelected(m Model) (tea.Model, tea.Cmd) {

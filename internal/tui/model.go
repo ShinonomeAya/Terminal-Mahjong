@@ -18,29 +18,32 @@ const (
 )
 
 type Model struct {
-	Screen           Screen
-	MenuIndex        int
-	GameOverIndex    int
-	SelectedIndex    int
-	UnicodeTiles     bool
-	Game             *game.Game
-	Online           bool
-	OnlineClient     *online.Client
-	OnlineSnapshot   game.GameSnapshot
-	OnlinePlayerID   string
-	OnlineRoomCode   string
-	OnlineSeat       int
-	OnlineServerURL  string
-	OnlineName       string
-	OnlineSession    string
-	JoinRoomCode     string
-	HandHitBoxes     []TileHitBox
-	StatusLine       string
-	NetworkStatus    NetworkStatus
-	ReconnectAttempt int
-	ReconnectMax     int
-	Width            int
-	Height           int
+	Screen              Screen
+	MenuIndex           int
+	GameOverIndex       int
+	SelectedIndex       int
+	UnicodeTiles        bool
+	Game                *game.Game
+	Online              bool
+	OnlineClient        *online.Client
+	OnlineSnapshot      game.GameSnapshot
+	OnlinePlayerID      string
+	OnlineRoomCode      string
+	OnlineSeat          int
+	OnlineReadySeats    []int
+	OnlineOccupiedSeats []int
+	OnlineStarted       bool
+	OnlineServerURL     string
+	OnlineName          string
+	OnlineSession       string
+	JoinRoomCode        string
+	HandHitBoxes        []TileHitBox
+	StatusLine          string
+	NetworkStatus       NetworkStatus
+	ReconnectAttempt    int
+	ReconnectMax        int
+	Width               int
+	Height              int
 }
 
 func NewModel() Model {

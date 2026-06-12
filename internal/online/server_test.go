@@ -58,6 +58,11 @@ func TestWebSocketServerRejectsNonTurnCommand(t *testing.T) {
 	sendMessage(t, second, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode})
 	_ = readUntil(t, second, protocol.MsgRoomJoined)
 
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntil(t, first, protocol.MsgRoomState)
+	sendMessage(t, second, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntil(t, second, protocol.MsgRoomState)
+
 	sendMessage(t, second, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandDiscard, TileIndex: 0}})
 	errMsg := readUntil(t, second, protocol.MsgError)
 	if !strings.Contains(errMsg.Error, "not the current player") {
@@ -80,10 +85,53 @@ func TestWebSocketServerBroadcastsAcceptedCommand(t *testing.T) {
 	sendMessage(t, second, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode})
 	_ = readUntil(t, second, protocol.MsgRoomJoined)
 
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntil(t, first, protocol.MsgRoomState)
+	sendMessage(t, second, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntil(t, second, protocol.MsgRoomState)
+
 	sendMessage(t, first, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandDiscard, TileIndex: 0}})
 	update := readUntil(t, second, protocol.MsgGameSnapshot)
 	if update.Snapshot.Current != 1 || len(update.Snapshot.Events) == 0 {
 		t.Fatalf("broadcast update = %#v", update)
+	}
+}
+
+func TestWebSocketServerBroadcastsReadyRoomState(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	first := dialTestClient(t, url)
+	defer first.Close()
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgCreateRoom})
+	created := readUntil(t, first, protocol.MsgRoomCreated)
+
+	second := dialTestClient(t, url)
+	defer second.Close()
+	sendMessage(t, second, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode})
+	_ = readUntil(t, second, protocol.MsgRoomJoined)
+
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgReady})
+	state := readUntil(t, second, protocol.MsgRoomState)
+	if state.RoomCode != created.RoomCode {
+		t.Fatalf("room code = %q, want %q", state.RoomCode, created.RoomCode)
+	}
+	if len(state.ReadySeats) != 1 || state.ReadySeats[0] != 0 {
+		t.Fatalf("ready seats = %#v, want [0]", state.ReadySeats)
+	}
+	if state.Started {
+		t.Fatalf("started = true, want false until all occupied seats are ready")
+	}
+
+	sendMessage(t, second, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntil(t, first, protocol.MsgRoomState)
+	started := readUntil(t, first, protocol.MsgRoomState)
+	if !started.Started {
+		t.Fatalf("started = false, want true after occupied seats ready: %#v", started)
+	}
+	if len(started.ReadySeats) != 2 {
+		t.Fatalf("ready seats = %#v, want two ready seats", started.ReadySeats)
 	}
 }
 
@@ -138,19 +186,17 @@ func sendMessage(t *testing.T, conn *websocket.Conn, message protocol.Message) {
 func readUntil(t *testing.T, conn *websocket.Conn, messageType protocol.MessageType) protocol.Message {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if err := conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
-			t.Fatal(err)
-		}
+	if err := conn.SetReadDeadline(deadline); err != nil {
+		t.Fatal(err)
+	}
+	for {
 		var message protocol.Message
 		err := conn.ReadJSON(&message)
 		if err != nil {
-			continue
+			t.Fatalf("did not receive %s: %v", messageType, err)
 		}
 		if message.Type == messageType {
 			return message
 		}
 	}
-	t.Fatalf("did not receive %s", messageType)
-	return protocol.Message{}
 }

@@ -114,6 +114,13 @@ func (c *Client) SendCommand(ctx context.Context, command game.GameCommand) erro
 	return c.write(protocol.Message{Type: protocol.MsgPlayCommand, Command: command})
 }
 
+func (c *Client) SendReady(ctx context.Context) error {
+	if err := c.connect(ctx); err != nil {
+		return err
+	}
+	return c.write(protocol.Message{Type: protocol.MsgReady})
+}
+
 func (c *Client) ReadUntil(ctx context.Context, timeout time.Duration, messageTypes ...protocol.MessageType) (protocol.Message, error) {
 	if err := c.connect(ctx); err != nil {
 		return protocol.Message{}, err
@@ -123,16 +130,13 @@ func (c *Client) ReadUntil(ctx context.Context, timeout time.Duration, messageTy
 		if err := ctx.Err(); err != nil {
 			return protocol.Message{}, err
 		}
-		if time.Now().After(deadline) {
-			return protocol.Message{}, fmt.Errorf("timeout waiting for %v", messageTypes)
-		}
-		if err := c.conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
+		if err := c.conn.SetReadDeadline(deadline); err != nil {
 			return protocol.Message{}, err
 		}
 		var message protocol.Message
 		err := c.conn.ReadJSON(&message)
 		if err != nil {
-			continue
+			return protocol.Message{}, err
 		}
 		for _, messageType := range messageTypes {
 			if message.Type == messageType {
@@ -157,7 +161,7 @@ func (c *Client) ReadUntilWithReconnect(ctx context.Context, timeout time.Durati
 		if time.Now().After(deadline) {
 			return protocol.Message{}, fmt.Errorf("timeout waiting for %v", messageTypes)
 		}
-		if err := c.conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
+		if err := c.conn.SetReadDeadline(deadline); err != nil {
 			reconnected, reconnectErr := c.reconnectWithBackoff(ctx, policy)
 			if reconnectErr != nil {
 				return protocol.Message{}, reconnectErr
@@ -182,8 +186,8 @@ func (c *Client) ReadUntilWithReconnect(ctx context.Context, timeout time.Durati
 			}
 			continue
 		}
-		if !time.Now().Before(deadline) {
-			continue
+		if time.Now().After(deadline) {
+			return protocol.Message{}, fmt.Errorf("timeout waiting for %v", messageTypes)
 		}
 		reconnected, reconnectErr := c.reconnectWithBackoff(ctx, policy)
 		if reconnectErr != nil {

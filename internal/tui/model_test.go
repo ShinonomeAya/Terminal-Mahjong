@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -135,6 +136,7 @@ func TestOnlineConnectedMessageShowsSnapshotTable(t *testing.T) {
 			RoomCode: "000123",
 			PlayerID: "player-1",
 			Seat:     0,
+			Started:  true,
 			Snapshot: snapshot,
 		},
 	})
@@ -172,6 +174,16 @@ func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := client.SendReady(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	state, err := client.ReadUntil(context.Background(), 2*time.Second, protocol.MsgRoomState)
+	if err != nil {
+		t.Fatal(err)
+	}
+	created.Started = state.Started
+	created.ReadySeats = state.ReadySeats
+	created.OccupiedSeats = state.OccupiedSeats
 	model := applyOnlineConnected(NewModel(), onlineConnectedMsg{Message: created, Client: client})
 	startEvents := len(model.OnlineSnapshot.Events)
 
@@ -187,6 +199,9 @@ func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	msg := cmd()
 	next, _ = updated.Update(msg)
 	updated = next.(Model)
+	msg = waitOnlineSnapshot(client)()
+	next, _ = updated.Update(msg)
+	updated = next.(Model)
 
 	if len(updated.OnlineSnapshot.Events) <= startEvents {
 		t.Fatalf("events = %d, want more than %d", len(updated.OnlineSnapshot.Events), startEvents)
@@ -196,6 +211,70 @@ func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	}
 	if updated.NetworkStatus != NetworkWaiting {
 		t.Fatalf("network status = %q, want waiting", updated.NetworkStatus)
+	}
+}
+
+func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
+	server := online.NewServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	serverURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+
+	first := online.NewClient(serverURL, "first")
+	defer first.Close()
+	created, err := first.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	second := online.NewClient(serverURL, "second")
+	defer second.Close()
+	if _, err := second.JoinRoom(context.Background(), created.RoomCode); err != nil {
+		t.Fatal(err)
+	}
+	model := applyOnlineConnected(NewModel(), onlineConnectedMsg{Message: created, Client: first})
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	updated := next.(Model)
+	if cmd == nil {
+		t.Fatal("expected ready command")
+	}
+	if !strings.Contains(updated.StatusLine, "Ready") {
+		t.Fatalf("status line = %q", updated.StatusLine)
+	}
+
+	msg := cmd()
+	next, _ = updated.Update(msg)
+	updated = next.(Model)
+	msg = waitOnlineSnapshot(first)()
+	next, _ = updated.Update(msg)
+	updated = next.(Model)
+
+	if len(updated.OnlineReadySeats) != 1 || updated.OnlineReadySeats[0] != 0 {
+		t.Fatalf("ready seats = %#v", updated.OnlineReadySeats)
+	}
+	view := updated.View()
+	for _, text := range []string{"Ready: 1/2", "Press R ready", "Waiting for players"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestOnlineTableDiscardBeforeStartedShowsWaiting(t *testing.T) {
+	model := NewModel()
+	model.Online = true
+	model.Screen = ScreenTable
+	model.OnlineClient = nil
+	model.OnlineSnapshot = game.NewGame(9).Snapshot()
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if cmd != nil {
+		t.Fatal("expected no discard command before room starts")
+	}
+	if !strings.Contains(updated.StatusLine, "Waiting for players") {
+		t.Fatalf("status line = %q", updated.StatusLine)
 	}
 }
 

@@ -87,6 +87,7 @@ The TUI start menu supports local play plus online room actions:
 - `Create Online Room`: connect to `ws://127.0.0.1:8080/ws`, create a room, and save `.mahjong-session.json`.
 - `Join Online Room`: type a numeric room code and join an existing room.
 - `Reconnect Online`: restore the saved session after a disconnect.
+- Online tables use `R` to ready up; discards are blocked until all occupied seats are ready.
 
 Start the local WebSocket server:
 

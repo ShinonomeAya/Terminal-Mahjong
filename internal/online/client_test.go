@@ -118,6 +118,19 @@ func TestClientSendsCommandAndReceivesBroadcast(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if err := first.SendReady(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := first.ReadUntil(context.Background(), 2*time.Second, protocol.MsgRoomState); err != nil {
+		t.Fatal(err)
+	}
+	if err := second.SendReady(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := second.ReadUntil(context.Background(), 2*time.Second, protocol.MsgRoomState); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := first.SendCommand(context.Background(), game.GameCommand{Kind: game.CommandDiscard, TileIndex: 0}); err != nil {
 		t.Fatal(err)
 	}
@@ -127,6 +140,36 @@ func TestClientSendsCommandAndReceivesBroadcast(t *testing.T) {
 	}
 	if update.Snapshot.Current != 1 || len(update.Snapshot.Events) == 0 {
 		t.Fatalf("update = %#v", update)
+	}
+}
+
+func TestClientSendsReadyAndReceivesRoomState(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	first := NewClient(url+"/ws", "first")
+	defer first.Close()
+	created, err := first.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	second := NewClient(url+"/ws", "second")
+	defer second.Close()
+	if _, err := second.JoinRoom(context.Background(), created.RoomCode); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := first.SendReady(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	state, err := second.ReadUntil(context.Background(), 2*time.Second, protocol.MsgRoomState)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(state.ReadySeats) != 1 || state.ReadySeats[0] != 0 {
+		t.Fatalf("ready seats = %#v", state.ReadySeats)
 	}
 }
 

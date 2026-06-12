@@ -9,6 +9,7 @@ const (
 	MsgCreateRoom   MessageType = "create_room"
 	MsgJoinRoom     MessageType = "join_room"
 	MsgReady        MessageType = "ready"
+	MsgRoomState    MessageType = "room_state"
 	MsgGameSnapshot MessageType = "game_snapshot"
 	MsgPlayCommand  MessageType = "play_command"
 	MsgReconnect    MessageType = "reconnect"
@@ -25,6 +26,9 @@ type Message struct {
 	RoomCode       string             `json:"room_code,omitempty"`
 	Name           string             `json:"name,omitempty"`
 	Seat           int                `json:"seat,omitempty"`
+	ReadySeats     []int              `json:"ready_seats,omitempty"`
+	Started        bool               `json:"started,omitempty"`
+	OccupiedSeats  []int              `json:"occupied_seats,omitempty"`
 	Command        game.GameCommand   `json:"command,omitempty"`
 	Result         game.CommandResult `json:"result,omitempty"`
 	Snapshot       game.GameSnapshot  `json:"snapshot,omitempty"`

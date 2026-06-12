@@ -90,7 +90,8 @@ func renderOnlineTable(m Model) string {
 	}
 	var out strings.Builder
 	out.WriteString(styleTitle("TERMINAL MAHJONG") + "\n")
-	out.WriteString(styleMuted(fmt.Sprintf("Room:%s  Seat:%d  Wall:%d  Events:%d", m.OnlineRoomCode, m.OnlineSeat+1, snapshot.WallCount, len(snapshot.Events))) + "\n\n")
+	out.WriteString(styleMuted(fmt.Sprintf("Room:%s  Seat:%d  Wall:%d  Events:%d", m.OnlineRoomCode, m.OnlineSeat+1, snapshot.WallCount, len(snapshot.Events))) + "\n")
+	out.WriteString(styleMuted(renderOnlineRoomState(m)) + "\n\n")
 	out.WriteString(styleMuted(renderNetworkStatus(m)) + "\n\n")
 	out.WriteString(styleSectionTitle("Opponents") + "\n")
 	out.WriteString(renderOnlineOpponents(m))
@@ -106,6 +107,18 @@ func renderOnlineTable(m Model) string {
 	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
 	out.WriteString(styleMuted(tableControls(m)) + "\n")
 	return out.String()
+}
+
+func renderOnlineRoomState(m Model) string {
+	status := "Waiting for players"
+	if m.OnlineStarted {
+		status = "Started"
+	}
+	total := len(m.OnlineOccupiedSeats)
+	if total == 0 {
+		total = 1
+	}
+	return fmt.Sprintf("Ready: %d/%d  State: %s  Press R ready", len(m.OnlineReadySeats), total, status)
 }
 
 func renderOnlineOpponents(m Model) string {
@@ -164,6 +177,12 @@ func meldSummary(melds []game.Meld) string {
 }
 
 func tableControls(m Model) string {
+	if m.Online {
+		if m.Width > 0 && m.Width < 80 {
+			return "Arrows select | R ready | Enter discard | Q menu"
+		}
+		return "Left/Right select | R ready | Enter/Space discard | click select | second click discard | Q menu"
+	}
 	if m.Width > 0 && m.Width < 80 {
 		return "Arrows select | Enter discard | Click tile | Q quit"
 	}

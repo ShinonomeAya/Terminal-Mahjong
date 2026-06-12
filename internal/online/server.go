@@ -25,10 +25,11 @@ type Server struct {
 }
 
 type room struct {
-	code  string
-	game  *game.Game
-	seats [4]string
-	ready map[string]bool
+	code    string
+	game    *game.Game
+	seats   [4]string
+	ready   map[string]bool
+	started bool
 }
 
 type session struct {
@@ -92,6 +93,9 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			ReconnectToken: session.reconnectToken,
 			RoomCode:       created.code,
 			Seat:           session.seat,
+			ReadySeats:     readySeats(created),
+			Started:        created.started,
+			OccupiedSeats:  occupiedSeats(created),
 			Snapshot:       created.game.Snapshot(),
 		})
 		return session
@@ -107,6 +111,9 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			ReconnectToken: session.reconnectToken,
 			RoomCode:       joined.code,
 			Seat:           session.seat,
+			ReadySeats:     readySeats(joined),
+			Started:        joined.started,
+			OccupiedSeats:  occupiedSeats(joined),
 			Snapshot:       joined.game.Snapshot(),
 		})
 		return session
@@ -115,7 +122,7 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 	case protocol.MsgPlayCommand:
 		s.playCommand(conn, current, message.Command)
 	case protocol.MsgReconnect:
-		session, snapshot, err := s.reconnect(conn, message.PlayerID, message.ReconnectToken)
+		session, room, snapshot, err := s.reconnect(conn, message.PlayerID, message.ReconnectToken)
 		if err != nil {
 			writeError(conn, err.Error())
 			return current
@@ -126,6 +133,9 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			ReconnectToken: session.reconnectToken,
 			RoomCode:       session.roomCode,
 			Seat:           session.seat,
+			ReadySeats:     readySeats(room),
+			Started:        room.started,
+			OccupiedSeats:  occupiedSeats(room),
 			Snapshot:       snapshot,
 		})
 		return session
@@ -179,6 +189,8 @@ func (s *Server) setReady(session *session) {
 	defer s.mu.Unlock()
 	if room := s.rooms[session.roomCode]; room != nil {
 		room.ready[session.playerID] = true
+		room.started = allOccupiedReady(room)
+		s.broadcastRoomLocked(room, roomStateMessage(room))
 	}
 }
 
@@ -194,6 +206,11 @@ func (s *Server) playCommand(conn *websocket.Conn, session *session, command gam
 		writeError(conn, "room not found")
 		return
 	}
+	if !room.started {
+		s.mu.Unlock()
+		writeError(conn, "room has not started")
+		return
+	}
 	command.PlayerID = fmt.Sprintf("%d", session.seat)
 	result := room.game.ApplyCommand(command)
 	if !result.OK {
@@ -205,24 +222,24 @@ func (s *Server) playCommand(conn *websocket.Conn, session *session, command gam
 	s.mu.Unlock()
 }
 
-func (s *Server) reconnect(conn *websocket.Conn, playerID string, token string) (*session, game.GameSnapshot, error) {
+func (s *Server) reconnect(conn *websocket.Conn, playerID string, token string) (*session, *room, game.GameSnapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	session := s.sessions[playerID]
 	if session == nil || session.reconnectToken != token {
-		return nil, game.GameSnapshot{}, fmt.Errorf("invalid reconnect token")
+		return nil, nil, game.GameSnapshot{}, fmt.Errorf("invalid reconnect token")
 	}
 	if !session.offlineAt.IsZero() && time.Since(session.offlineAt) > reconnectWindow {
-		return nil, game.GameSnapshot{}, fmt.Errorf("reconnect window expired")
+		return nil, nil, game.GameSnapshot{}, fmt.Errorf("reconnect window expired")
 	}
 	session.conn = conn
 	session.offlineAt = time.Time{}
 	room := s.rooms[session.roomCode]
 	if room == nil {
-		return nil, game.GameSnapshot{}, fmt.Errorf("room not found")
+		return nil, nil, game.GameSnapshot{}, fmt.Errorf("room not found")
 	}
-	return session, room.game.Snapshot(), nil
+	return session, room, room.game.Snapshot(), nil
 }
 
 func (s *Server) markOffline(session *session) {
@@ -256,6 +273,51 @@ func firstOpenSeat(room *room) int {
 		}
 	}
 	return -1
+}
+
+func roomStateMessage(room *room) protocol.Message {
+	return protocol.Message{
+		Type:          protocol.MsgRoomState,
+		RoomCode:      room.code,
+		ReadySeats:    readySeats(room),
+		Started:       room.started,
+		OccupiedSeats: occupiedSeats(room),
+		Snapshot:      room.game.Snapshot(),
+	}
+}
+
+func readySeats(room *room) []int {
+	seats := make([]int, 0, len(room.ready))
+	for seat, playerID := range room.seats {
+		if playerID != "" && room.ready[playerID] {
+			seats = append(seats, seat)
+		}
+	}
+	return seats
+}
+
+func occupiedSeats(room *room) []int {
+	seats := make([]int, 0, len(room.seats))
+	for seat, playerID := range room.seats {
+		if playerID != "" {
+			seats = append(seats, seat)
+		}
+	}
+	return seats
+}
+
+func allOccupiedReady(room *room) bool {
+	occupied := 0
+	for _, playerID := range room.seats {
+		if playerID == "" {
+			continue
+		}
+		occupied++
+		if !room.ready[playerID] {
+			return false
+		}
+	}
+	return occupied > 0
 }
 
 func newSession(name string, roomCode string, seat int, conn *websocket.Conn) *session {

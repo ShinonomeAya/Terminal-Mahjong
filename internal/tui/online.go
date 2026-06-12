@@ -25,6 +25,8 @@ type onlineErrorMsg struct {
 	Err error
 }
 
+type onlineCommandSentMsg struct{}
+
 func createOnlineRoomCmd(m Model) tea.Cmd {
 	serverURL := m.OnlineServerURL
 	name := m.OnlineName
@@ -97,12 +99,24 @@ func waitOnlineSnapshot(client *online.Client) tea.Cmd {
 			24*time.Hour,
 			online.ReconnectPolicy{MaxAttempts: 5, BaseDelay: 200 * time.Millisecond},
 			protocol.MsgGameSnapshot,
+			protocol.MsgRoomState,
 			protocol.MsgReconnected,
 		)
 		if err != nil {
 			return onlineErrorMsg{Err: err}
 		}
 		return onlineSnapshotMsg{Message: message}
+	}
+}
+
+func sendOnlineReadyCmd(client *online.Client) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := client.SendReady(ctx); err != nil {
+			return onlineErrorMsg{Err: err}
+		}
+		return onlineCommandSentMsg{}
 	}
 }
 
@@ -113,16 +127,7 @@ func sendOnlineDiscardCmd(client *online.Client, tileIndex int) tea.Cmd {
 		if err := client.SendCommand(ctx, game.GameCommand{Kind: game.CommandDiscard, TileIndex: tileIndex}); err != nil {
 			return onlineErrorMsg{Err: err}
 		}
-		message, err := client.ReadUntilWithReconnect(
-			ctx,
-			2*time.Second,
-			online.ReconnectPolicy{MaxAttempts: 5, BaseDelay: 200 * time.Millisecond},
-			protocol.MsgGameSnapshot,
-		)
-		if err != nil {
-			return onlineErrorMsg{Err: err}
-		}
-		return onlineSnapshotMsg{Message: message}
+		return onlineCommandSentMsg{}
 	}
 }
 
@@ -133,6 +138,9 @@ func applyOnlineConnected(m Model, msg onlineConnectedMsg) Model {
 	m.OnlinePlayerID = msg.Message.PlayerID
 	m.OnlineRoomCode = msg.Message.RoomCode
 	m.OnlineSeat = msg.Message.Seat
+	m.OnlineReadySeats = append([]int(nil), msg.Message.ReadySeats...)
+	m.OnlineOccupiedSeats = append([]int(nil), msg.Message.OccupiedSeats...)
+	m.OnlineStarted = msg.Message.Started
 	m.OnlineSnapshot = msg.Message.Snapshot
 	m.Game = nil
 	m.StatusLine = fmt.Sprintf("Room:%s Seat:%d", m.OnlineRoomCode, m.OnlineSeat+1)
@@ -148,13 +156,27 @@ func applyOnlineSnapshot(m Model, message protocol.Message) Model {
 	if message.RoomCode != "" {
 		m.OnlineRoomCode = message.RoomCode
 	}
-	m.OnlineSnapshot = message.Snapshot
+	if message.ReadySeats != nil {
+		m.OnlineReadySeats = append([]int(nil), message.ReadySeats...)
+	}
+	if message.OccupiedSeats != nil {
+		m.OnlineOccupiedSeats = append([]int(nil), message.OccupiedSeats...)
+	}
+	if message.Started {
+		m.OnlineStarted = true
+	}
+	if len(message.Snapshot.Players) > 0 {
+		m.OnlineSnapshot = message.Snapshot
+	}
 	m.NetworkStatus = networkStatusForOnlineSnapshot(m)
 	return m
 }
 
 func networkStatusForOnlineSnapshot(m Model) NetworkStatus {
 	if len(m.OnlineSnapshot.Players) == 0 {
+		return NetworkWaiting
+	}
+	if !m.OnlineStarted {
 		return NetworkWaiting
 	}
 	if m.OnlineSnapshot.Current == m.OnlineSeat {
