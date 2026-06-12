@@ -1,32 +1,74 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
-	"github.com/gorilla/websocket"
-
+	"mahjong/internal/game"
+	"mahjong/internal/online"
 	"mahjong/internal/protocol"
 )
 
 func main() {
-	addr := flag.String("server", "ws://127.0.0.1:8080/ws", "server websocket URL")
+	serverURL := flag.String("server", "ws://127.0.0.1:8080/ws", "server websocket URL")
 	name := flag.String("name", "Player", "player name")
+	joinRoom := flag.String("join", "", "room code to join")
+	reconnect := flag.Bool("reconnect", false, "reconnect using the saved session file")
+	sessionPath := flag.String("session", ".mahjong-session.json", "session file path")
+	discard := flag.Int("discard", 0, "discard a 1-based hand tile index after connecting")
 	flag.Parse()
 
-	conn, _, err := websocket.DefaultDialer.Dial(*addr, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	client := online.NewClient(*serverURL, *name)
+	defer client.Close()
+
+	message, err := connect(ctx, client, *sessionPath, *reconnect, *joinRoom)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer conn.Close()
+	if err := online.SaveClientSession(*sessionPath, client.Session()); err != nil {
+		log.Fatal(err)
+	}
+	printMessage(message)
 
-	if err := conn.WriteJSON(protocol.Message{Type: protocol.MsgCreateRoom, Name: *name}); err != nil {
-		log.Fatal(err)
+	if *discard > 0 {
+		command := game.GameCommand{Kind: game.CommandDiscard, TileIndex: *discard - 1}
+		if err := client.SendCommand(ctx, command); err != nil {
+			log.Fatal(err)
+		}
+		update, err := client.ReadUntil(ctx, 2*time.Second, protocol.MsgGameSnapshot)
+		if err != nil {
+			log.Fatal(err)
+		}
+		printMessage(update)
 	}
-	var response protocol.Message
-	if err := conn.ReadJSON(&response); err != nil {
-		log.Fatal(err)
+}
+
+func connect(ctx context.Context, client *online.Client, sessionPath string, reconnect bool, joinRoom string) (protocol.Message, error) {
+	if reconnect {
+		session, err := online.LoadClientSession(sessionPath)
+		if err != nil {
+			return protocol.Message{}, err
+		}
+		return client.Reconnect(ctx, session)
 	}
-	fmt.Printf("type=%s room=%s player=%s token=%s\n", response.Type, response.RoomCode, response.PlayerID, response.ReconnectToken)
+	if joinRoom != "" {
+		return client.JoinRoom(ctx, joinRoom)
+	}
+	return client.CreateRoom(ctx)
+}
+
+func printMessage(message protocol.Message) {
+	fmt.Printf("type=%s room=%s player=%s wall=%d current=%d\n",
+		message.Type,
+		message.RoomCode,
+		message.PlayerID,
+		message.Snapshot.WallCount,
+		message.Snapshot.Current,
+	)
 }

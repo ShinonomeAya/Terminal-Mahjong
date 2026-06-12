@@ -82,6 +82,30 @@ The game remains terminal-first. Phase 10 adds a restrained Lip Gloss visual ski
 go run ./cmd/mahjong
 ```
 
+Start the local WebSocket server:
+
+```powershell
+go run ./cmd/server
+```
+
+Use the minimal online CLI client:
+
+```powershell
+# Create a room and save the reconnect session.
+go run ./cmd/client -name Alice
+
+# Join from another terminal.
+go run ./cmd/client -name Bob -join 000001 -session .mahjong-bob.json
+
+# Reconnect with a saved session.
+go run ./cmd/client -reconnect
+
+# Send a one-shot discard after connecting. Indexes are 1-based for the CLI.
+go run ./cmd/client -reconnect -discard 1
+```
+
+The first online version uses in-memory rooms for local or LAN play. Restarting the server clears rooms and reconnect sessions.
+
 ## Test
 
 ```powershell
