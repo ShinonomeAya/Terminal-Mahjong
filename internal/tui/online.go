@@ -169,6 +169,10 @@ func applyOnlineSnapshot(m Model, message protocol.Message) Model {
 		m.OnlineSnapshot = message.Snapshot
 	}
 	m.NetworkStatus = networkStatusForOnlineSnapshot(m)
+	if m.OnlineSnapshot.Over {
+		m.Screen = ScreenGameOver
+		m.StatusLine = "Online round ended"
+	}
 	return m
 }
 

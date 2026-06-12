@@ -431,6 +431,9 @@ func padRightRunes(text string, width int) string {
 var gameOverItems = []string{"Restart", "Main Menu", "Quit"}
 
 func renderGameOver(m Model) string {
+	if m.Online {
+		return renderOnlineGameOver(m)
+	}
 	if m.Game == nil {
 		return "GAME OVER\n"
 	}
@@ -450,5 +453,32 @@ func renderGameOver(m Model) string {
 	}
 	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
 	out.WriteString(styleMuted("Up/Down choose | Enter confirm | R restart | M menu | Q quit") + "\n")
+	return out.String()
+}
+
+func renderOnlineGameOver(m Model) string {
+	snapshot := m.OnlineSnapshot
+	var out strings.Builder
+	out.WriteString(styleTitle("GAME OVER") + "\n")
+	out.WriteString(fmt.Sprintf("Room: %s\n", m.OnlineRoomCode))
+	out.WriteString(fmt.Sprintf("Result: %s\n", snapshot.Reason))
+	if snapshot.Winner >= 0 {
+		out.WriteString(fmt.Sprintf("Winner: Seat %d\n", snapshot.Winner+1))
+	} else {
+		out.WriteString("Winner: -\n")
+	}
+	out.WriteString(fmt.Sprintf("Events: %d\n", len(snapshot.Events)))
+	out.WriteString("Replay-ready event log: yes\n\n")
+	for i, item := range gameOverItems {
+		prefix := "  "
+		if i == m.GameOverIndex {
+			prefix = "> "
+			out.WriteString(styleSelectedTile(prefix+item) + "\n")
+			continue
+		}
+		out.WriteString(prefix + item + "\n")
+	}
+	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
+	out.WriteString(styleMuted("Up/Down choose | Enter confirm | M menu | Q quit") + "\n")
 	return out.String()
 }

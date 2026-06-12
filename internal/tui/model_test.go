@@ -380,6 +380,55 @@ func TestOnlineTableEnterWithoutSnapshotDoesNotSendCommand(t *testing.T) {
 	}
 }
 
+func TestOnlineGameOverSnapshotShowsResultScreen(t *testing.T) {
+	model := NewModel()
+	snapshot := game.NewGame(13).Snapshot()
+	snapshot.Over = true
+	snapshot.Winner = 0
+	snapshot.Reason = "self-draw"
+
+	next, _ := model.Update(onlineSnapshotMsg{
+		Message: protocol.Message{
+			Type:     protocol.MsgGameSnapshot,
+			RoomCode: "000777",
+			Started:  true,
+			Snapshot: snapshot,
+		},
+	})
+	updated := next.(Model)
+
+	if updated.Screen != ScreenGameOver {
+		t.Fatalf("screen = %v, want game over", updated.Screen)
+	}
+	view := updated.View()
+	for _, text := range []string{"GAME OVER", "Room: 000777", "Result: self-draw", "Winner: Seat 1", "Main Menu"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("online game over missing %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestOnlineGameOverMainMenuClearsOnlineState(t *testing.T) {
+	model := NewModel()
+	model.Screen = ScreenGameOver
+	model.Online = true
+	model.OnlineRoomCode = "000777"
+	model.OnlineClient = online.NewClient("ws://127.0.0.1:1/ws", "first")
+	model.OnlineSnapshot = game.NewGame(13).Snapshot()
+	model.OnlineSnapshot.Over = true
+	model.GameOverIndex = 1
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if updated.Screen != ScreenMenu {
+		t.Fatalf("screen = %v, want menu", updated.Screen)
+	}
+	if updated.Online || updated.OnlineClient != nil || updated.OnlineRoomCode != "" {
+		t.Fatalf("online state not cleared: online=%v client=%v room=%q", updated.Online, updated.OnlineClient, updated.OnlineRoomCode)
+	}
+}
+
 func TestMenuViewUsesReadableSections(t *testing.T) {
 	view := NewModel().View()
 	for _, text := range []string{"Menu", "Controls", "Up/Down choose"} {

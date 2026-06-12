@@ -187,6 +187,9 @@ func updateGameOver(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.GameOverIndex--
 		}
 	case tea.KeyEnter:
+		if m.Online {
+			return updateOnlineGameOver(m)
+		}
 		switch m.GameOverIndex {
 		case 0:
 			m.Game = newStartedGame()
@@ -204,17 +207,55 @@ func updateGameOver(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	switch key.String() {
 	case "r":
+		if m.Online {
+			return m, nil
+		}
 		m.Game = newStartedGame()
 		m.Screen = ScreenTable
 		m.SelectedIndex = 0
 		m.GameOverIndex = 0
 	case "m":
-		m.Game = nil
-		m.Screen = ScreenMenu
-		m.SelectedIndex = 0
-		m.GameOverIndex = 0
+		return clearOnlineStateForMenu(m), nil
 	case "q":
 		return m, tea.Quit
 	}
 	return m, nil
+}
+
+func updateOnlineGameOver(m Model) (tea.Model, tea.Cmd) {
+	switch m.GameOverIndex {
+	case 0:
+		return m, nil
+	case 1:
+		return clearOnlineStateForMenu(m), nil
+	case 2:
+		if m.OnlineClient != nil {
+			m.OnlineClient.Close()
+		}
+		return m, tea.Quit
+	default:
+		return m, nil
+	}
+}
+
+func clearOnlineStateForMenu(m Model) Model {
+	if m.OnlineClient != nil {
+		m.OnlineClient.Close()
+	}
+	m.Game = nil
+	m.Online = false
+	m.OnlineClient = nil
+	m.OnlineSnapshot = game.GameSnapshot{}
+	m.OnlinePlayerID = ""
+	m.OnlineRoomCode = ""
+	m.OnlineSeat = 0
+	m.OnlineReadySeats = nil
+	m.OnlineOccupiedSeats = nil
+	m.OnlineStarted = false
+	m.Screen = ScreenMenu
+	m.SelectedIndex = 0
+	m.GameOverIndex = 0
+	m.StatusLine = ""
+	m.NetworkStatus = NetworkLocal
+	return m
 }
