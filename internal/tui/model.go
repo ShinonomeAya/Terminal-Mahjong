@@ -16,16 +16,19 @@ const (
 )
 
 type Model struct {
-	Screen        Screen
-	MenuIndex     int
-	GameOverIndex int
-	SelectedIndex int
-	UnicodeTiles  bool
-	Game          *game.Game
-	HandHitBoxes  []TileHitBox
-	StatusLine    string
-	Width         int
-	Height        int
+	Screen           Screen
+	MenuIndex        int
+	GameOverIndex    int
+	SelectedIndex    int
+	UnicodeTiles     bool
+	Game             *game.Game
+	HandHitBoxes     []TileHitBox
+	StatusLine       string
+	NetworkStatus    NetworkStatus
+	ReconnectAttempt int
+	ReconnectMax     int
+	Width            int
+	Height           int
 }
 
 func NewModel() Model {

@@ -16,7 +16,7 @@ type TileHitBox struct {
 
 const (
 	handStartX = 6
-	handRowY   = 25
+	handRowY   = 27
 	handRowGap = 2
 	handCellW  = 10
 	handCols   = 7
@@ -60,6 +60,7 @@ func renderTable(m Model) string {
 	var out strings.Builder
 	out.WriteString(styleTitle("TERMINAL MAHJONG") + "\n")
 	out.WriteString(styleMuted(fmt.Sprintf("Wall:%d  Events:%d  Turn:%s  Replay:ready", len(g.Wall), len(g.Events), g.Players[g.Current].Name)) + "\n\n")
+	out.WriteString(styleMuted(renderNetworkStatus(m)) + "\n\n")
 	out.WriteString(styleSectionTitle("Opponents") + "\n")
 	out.WriteString(renderOpponents(g, m.UnicodeTiles))
 	out.WriteString("\n" + styleSectionTitle("Table") + "\n")

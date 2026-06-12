@@ -129,6 +129,33 @@ func TestRenderTableIncludesRoundStatusPanel(t *testing.T) {
 	}
 }
 
+func TestRenderTableShowsNetworkStatus(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.NetworkStatus = NetworkReconnecting
+	model.ReconnectAttempt = 2
+	model.ReconnectMax = 5
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "Network: reconnecting 2/5") {
+		t.Fatalf("view missing reconnecting status:\n%s", view)
+	}
+}
+
+func TestRenderTableDefaultsToLocalNetworkStatus(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "Network: local") {
+		t.Fatalf("view missing local network status:\n%s", view)
+	}
+}
+
 func TestRenderTableLimitsRecentEventsPanel(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
