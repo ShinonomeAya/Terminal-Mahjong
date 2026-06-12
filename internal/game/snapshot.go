@@ -104,6 +104,22 @@ func (g *Game) ApplyCommand(command GameCommand) CommandResult {
 	}
 }
 
+func (g *Game) EnsureCurrentTurnDraw() (Tile, bool) {
+	if g.Over || g.Current < 0 || g.Current >= len(g.Players) {
+		return -1, false
+	}
+	if len(g.Players[g.Current].Hand)%3 != 1 {
+		return -1, false
+	}
+	if len(g.Wall) == 0 {
+		g.Over = true
+		g.Reason = "draw: wall exhausted"
+		g.RecordEvent(EventWallExhausted, g.Current, -1, g.Reason)
+		return -1, false
+	}
+	return g.draw(g.Current), true
+}
+
 func (g *Game) discardCurrent(index int) (Tile, error) {
 	if g.Over {
 		return -1, io.ErrClosedPipe

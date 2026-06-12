@@ -189,7 +189,11 @@ func (s *Server) setReady(session *session) {
 	defer s.mu.Unlock()
 	if room := s.rooms[session.roomCode]; room != nil {
 		room.ready[session.playerID] = true
+		wasStarted := room.started
 		room.started = allOccupiedReady(room)
+		if room.started && !wasStarted {
+			room.game.EnsureCurrentTurnDraw()
+		}
 		s.broadcastRoomLocked(room, roomStateMessage(room))
 	}
 }
@@ -218,6 +222,8 @@ func (s *Server) playCommand(conn *websocket.Conn, session *session, command gam
 		writeError(conn, result.Error)
 		return
 	}
+	room.game.EnsureCurrentTurnDraw()
+	result.Snapshot = room.game.Snapshot()
 	s.broadcastRoomLocked(room, protocol.Message{Type: protocol.MsgGameSnapshot, Result: result, Snapshot: result.Snapshot})
 	s.mu.Unlock()
 }

@@ -95,6 +95,9 @@ func TestWebSocketServerBroadcastsAcceptedCommand(t *testing.T) {
 	if update.Snapshot.Current != 1 || len(update.Snapshot.Events) == 0 {
 		t.Fatalf("broadcast update = %#v", update)
 	}
+	if len(update.Snapshot.Players[1].Hand) != 14 {
+		t.Fatalf("next player hand = %d, want 14 after turn draw", len(update.Snapshot.Players[1].Hand))
+	}
 }
 
 func TestWebSocketServerBroadcastsReadyRoomState(t *testing.T) {
@@ -132,6 +135,9 @@ func TestWebSocketServerBroadcastsReadyRoomState(t *testing.T) {
 	}
 	if len(started.ReadySeats) != 2 {
 		t.Fatalf("ready seats = %#v, want two ready seats", started.ReadySeats)
+	}
+	if len(started.Snapshot.Players[0].Hand) != 14 {
+		t.Fatalf("current hand = %d, want 14 after room start draw", len(started.Snapshot.Players[0].Hand))
 	}
 }
 

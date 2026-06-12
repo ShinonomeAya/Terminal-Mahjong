@@ -77,6 +77,31 @@ func TestApplyGameCommandSupportsCurrentSeatDiscard(t *testing.T) {
 	}
 }
 
+func TestEnsureCurrentTurnDrawDrawsOnceWhenHandNeedsTile(t *testing.T) {
+	g := NewGame(9)
+	startWall := len(g.Wall)
+	startEvents := len(g.Events)
+
+	tile, ok := g.EnsureCurrentTurnDraw()
+	if !ok {
+		t.Fatal("expected current player to draw")
+	}
+	if tile < 0 || len(g.Players[g.Current].Hand) != 14 {
+		t.Fatalf("tile=%v hand=%d", tile, len(g.Players[g.Current].Hand))
+	}
+	if len(g.Wall) != startWall-1 || len(g.Events) != startEvents+1 {
+		t.Fatalf("wall/events = %d/%d", len(g.Wall), len(g.Events))
+	}
+
+	_, ok = g.EnsureCurrentTurnDraw()
+	if ok {
+		t.Fatal("expected second ensure not to draw again")
+	}
+	if len(g.Players[g.Current].Hand) != 14 || len(g.Wall) != startWall-1 {
+		t.Fatalf("second ensure hand/wall = %d/%d", len(g.Players[g.Current].Hand), len(g.Wall))
+	}
+}
+
 func TestApplyGameCommandWinsWhenHandIsComplete(t *testing.T) {
 	g := NewGame(9)
 	g.Players[0].Hand = mustTiles(t,
