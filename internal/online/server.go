@@ -120,6 +120,7 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			OccupiedSeats:  occupiedSeats(joined),
 			Snapshot:       joined.game.Snapshot(),
 		})
+		s.broadcastRoomStateExcept(joined, session.playerID)
 		return session
 	case protocol.MsgReady:
 		s.setReady(current)
@@ -288,6 +289,24 @@ func (s *Server) markOffline(session *session) {
 func (s *Server) broadcastRoomLocked(room *room, message protocol.Message) {
 	for _, playerID := range room.seats {
 		if playerID == "" {
+			continue
+		}
+		session := s.sessions[playerID]
+		if session != nil && session.conn != nil {
+			writeJSON(session.conn, message)
+		}
+	}
+}
+
+func (s *Server) broadcastRoomStateExcept(room *room, excludedPlayerID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.broadcastRoomLockedExcept(room, roomStateMessage(room), excludedPlayerID)
+}
+
+func (s *Server) broadcastRoomLockedExcept(room *room, message protocol.Message, excludedPlayerID string) {
+	for _, playerID := range room.seats {
+		if playerID == "" || playerID == excludedPlayerID {
 			continue
 		}
 		session := s.sessions[playerID]

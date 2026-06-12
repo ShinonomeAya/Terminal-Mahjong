@@ -43,6 +43,33 @@ func TestWebSocketServerCreatesAndJoinsRoom(t *testing.T) {
 	}
 }
 
+func TestWebSocketServerBroadcastsRoomStateWhenPlayerJoins(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	first := dialTestClient(t, url)
+	defer first.Close()
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgCreateRoom})
+	created := readUntil(t, first, protocol.MsgRoomCreated)
+
+	second := dialTestClient(t, url)
+	defer second.Close()
+	sendMessage(t, second, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode})
+	_ = readUntil(t, second, protocol.MsgRoomJoined)
+
+	state := readUntil(t, first, protocol.MsgRoomState)
+	if state.RoomCode != created.RoomCode {
+		t.Fatalf("room code = %q, want %q", state.RoomCode, created.RoomCode)
+	}
+	if len(state.OccupiedSeats) != 2 || state.OccupiedSeats[0] != 0 || state.OccupiedSeats[1] != 1 {
+		t.Fatalf("occupied seats = %#v, want [0 1]", state.OccupiedSeats)
+	}
+	if state.Started {
+		t.Fatalf("started = true, want false before players ready")
+	}
+}
+
 func TestWebSocketServerRejectsNonTurnCommand(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)
@@ -147,6 +174,7 @@ func TestWebSocketServerBroadcastsReadyRoomState(t *testing.T) {
 	defer second.Close()
 	sendMessage(t, second, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode})
 	_ = readUntil(t, second, protocol.MsgRoomJoined)
+	_ = readUntil(t, first, protocol.MsgRoomState)
 
 	sendMessage(t, first, protocol.Message{Type: protocol.MsgReady})
 	state := readUntil(t, second, protocol.MsgRoomState)

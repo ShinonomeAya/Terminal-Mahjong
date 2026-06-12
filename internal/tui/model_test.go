@@ -325,6 +325,9 @@ func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
 		t.Fatal(err)
 	}
 	model := applyOnlineConnected(NewModel(), onlineConnectedMsg{Message: created, Client: first})
+	msg := waitOnlineSnapshot(first)()
+	next, _ := model.Update(msg)
+	model = next.(Model)
 
 	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
 	updated := next.(Model)
@@ -335,7 +338,7 @@ func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
 		t.Fatalf("status line = %q", updated.StatusLine)
 	}
 
-	msg := cmd()
+	msg = cmd()
 	next, _ = updated.Update(msg)
 	updated = next.(Model)
 	msg = waitOnlineSnapshot(first)()
