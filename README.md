@@ -90,6 +90,7 @@ The TUI start menu supports local play plus online room actions:
 - Online tables use `R` to ready up; discards are blocked until all occupied seats are ready.
 - Online tables support mouse tile selection and second-click discard, using the same server snapshot sync as keyboard discards.
 - Online rounds draw for the current seat when the room starts and after each accepted discard.
+- Online rooms can start with fewer than four humans; empty seats are advanced by the built-in heuristic bot.
 - Online game-over snapshots show a result screen with room, winner, result, and a main-menu return path.
 
 Start the local WebSocket server:

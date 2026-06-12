@@ -208,11 +208,14 @@ func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	if len(updated.OnlineSnapshot.Events) <= startEvents {
 		t.Fatalf("events = %d, want more than %d", len(updated.OnlineSnapshot.Events), startEvents)
 	}
-	if updated.OnlineSnapshot.Current != 1 {
-		t.Fatalf("current = %d, want 1", updated.OnlineSnapshot.Current)
+	if updated.OnlineSnapshot.Current != 0 {
+		t.Fatalf("current = %d, want 0 after bot turns", updated.OnlineSnapshot.Current)
 	}
-	if updated.NetworkStatus != NetworkWaiting {
-		t.Fatalf("network status = %q, want waiting", updated.NetworkStatus)
+	if len(updated.OnlineSnapshot.Players[0].Hand) != 14 {
+		t.Fatalf("human hand = %d, want 14 after bot turns", len(updated.OnlineSnapshot.Players[0].Hand))
+	}
+	if updated.NetworkStatus != NetworkYourTurn {
+		t.Fatalf("network status = %q, want your turn", updated.NetworkStatus)
 	}
 }
 
@@ -296,8 +299,11 @@ func TestOnlineSecondMouseClickSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	if len(updated.OnlineSnapshot.Events) <= startEvents {
 		t.Fatalf("events = %d, want more than %d", len(updated.OnlineSnapshot.Events), startEvents)
 	}
-	if updated.OnlineSnapshot.Current != 1 {
-		t.Fatalf("current = %d, want 1", updated.OnlineSnapshot.Current)
+	if updated.OnlineSnapshot.Current != 0 {
+		t.Fatalf("current = %d, want 0 after bot turns", updated.OnlineSnapshot.Current)
+	}
+	if len(updated.OnlineSnapshot.Players[0].Hand) != 14 {
+		t.Fatalf("human hand = %d, want 14 after bot turns", len(updated.OnlineSnapshot.Players[0].Hand))
 	}
 }
 

@@ -100,6 +100,39 @@ func TestWebSocketServerBroadcastsAcceptedCommand(t *testing.T) {
 	}
 }
 
+func TestWebSocketServerAdvancesBotsForUnoccupiedSeats(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	first := dialTestClient(t, url)
+	defer first.Close()
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgCreateRoom})
+	_ = readUntil(t, first, protocol.MsgRoomCreated)
+
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgReady})
+	started := readUntil(t, first, protocol.MsgRoomState)
+	if !started.Started {
+		t.Fatalf("started = false, want true for single occupied ready room")
+	}
+	startEvents := len(started.Snapshot.Events)
+
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandDiscard, TileIndex: 0}})
+	update := readUntil(t, first, protocol.MsgGameSnapshot)
+	if update.Snapshot.Over {
+		return
+	}
+	if update.Snapshot.Current != 0 {
+		t.Fatalf("current = %d, want human seat after bot turns", update.Snapshot.Current)
+	}
+	if len(update.Snapshot.Players[0].Hand) != 14 {
+		t.Fatalf("human hand = %d, want 14 after bot turns return control", len(update.Snapshot.Players[0].Hand))
+	}
+	if len(update.Snapshot.Events) <= startEvents+1 {
+		t.Fatalf("events = %d, want bot actions after human discard", len(update.Snapshot.Events))
+	}
+}
+
 func TestWebSocketServerBroadcastsReadyRoomState(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)

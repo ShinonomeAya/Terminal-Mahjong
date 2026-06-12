@@ -1,6 +1,7 @@
 package online
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"mahjong/internal/bot"
 	"mahjong/internal/game"
 	"mahjong/internal/protocol"
 )
@@ -20,6 +22,7 @@ type Server struct {
 	mu       sync.Mutex
 	rooms    map[string]*room
 	sessions map[string]*session
+	bots     bot.BotEngine
 	upgrader websocket.Upgrader
 	nextRoom int
 }
@@ -46,6 +49,7 @@ func NewServer() *Server {
 	return &Server{
 		rooms:    make(map[string]*room),
 		sessions: make(map[string]*session),
+		bots:     bot.NewHeuristicBot(),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
@@ -222,10 +226,31 @@ func (s *Server) playCommand(conn *websocket.Conn, session *session, command gam
 		writeError(conn, result.Error)
 		return
 	}
-	room.game.EnsureCurrentTurnDraw()
+	s.advanceUnoccupiedBotsLocked(room)
 	result.Snapshot = room.game.Snapshot()
 	s.broadcastRoomLocked(room, protocol.Message{Type: protocol.MsgGameSnapshot, Result: result, Snapshot: result.Snapshot})
 	s.mu.Unlock()
+}
+
+func (s *Server) advanceUnoccupiedBotsLocked(room *room) {
+	const maxBotActions = 200
+	for actions := 0; actions < maxBotActions && !room.game.Over; actions++ {
+		current := room.game.Current
+		if current < 0 || current >= len(room.seats) || room.seats[current] != "" {
+			room.game.EnsureCurrentTurnDraw()
+			return
+		}
+		room.game.EnsureCurrentTurnDraw()
+		command := s.bots.Decide(context.Background(), room.game.Snapshot(), fmt.Sprintf("%d", current))
+		command.PlayerID = fmt.Sprintf("%d", current)
+		result := room.game.ApplyCommand(command)
+		if !result.OK {
+			fallback := game.GameCommand{PlayerID: fmt.Sprintf("%d", current), Kind: game.CommandDiscard, TileIndex: 0}
+			if fallbackResult := room.game.ApplyCommand(fallback); !fallbackResult.OK {
+				return
+			}
+		}
+	}
 }
 
 func (s *Server) reconnect(conn *websocket.Conn, playerID string, token string) (*session, *room, game.GameSnapshot, error) {
