@@ -178,9 +178,6 @@ func (c *Client) ReadUntilWithReconnect(ctx context.Context, timeout time.Durati
 		if err == nil {
 			for _, messageType := range messageTypes {
 				if message.Type == messageType {
-					if message.Type == protocol.MsgError {
-						return protocol.Message{}, errors.New(message.Error)
-					}
 					return message, nil
 				}
 			}

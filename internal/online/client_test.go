@@ -3,6 +3,7 @@ package online
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -202,5 +203,30 @@ func TestClientReadUntilWithReconnectRestoresSession(t *testing.T) {
 	}
 	if reconnected.Snapshot.WallCount == 0 {
 		t.Fatalf("missing snapshot after reconnect: %#v", reconnected)
+	}
+}
+
+func TestClientReadUntilWithReconnectReturnsRequestedServerError(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	client := NewClient(url+"/ws", "first")
+	defer client.Close()
+
+	if err := client.SendCommand(context.Background(), game.GameCommand{Kind: game.CommandDiscard, TileIndex: 0}); err != nil {
+		t.Fatal(err)
+	}
+	message, err := client.ReadUntilWithReconnect(
+		context.Background(),
+		2*time.Second,
+		ReconnectPolicy{MaxAttempts: 1, BaseDelay: time.Millisecond},
+		protocol.MsgError,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if message.Type != protocol.MsgError || !strings.Contains(message.Error, "not joined") {
+		t.Fatalf("message = %#v, want not joined error", message)
 	}
 }

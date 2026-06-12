@@ -515,6 +515,28 @@ func TestOnlineGameOverSnapshotShowsResultScreen(t *testing.T) {
 	}
 }
 
+func TestOnlineServerErrorShowsStatusAndKeepsNetworkState(t *testing.T) {
+	model := NewModel()
+	model.Online = true
+	model.Screen = ScreenTable
+	model.NetworkStatus = NetworkWaiting
+
+	next, cmd := model.Update(onlineSnapshotMsg{
+		Message: protocol.Message{Type: protocol.MsgError, Error: "not the current player"},
+	})
+	updated := next.(Model)
+
+	if cmd != nil {
+		t.Fatal("expected no wait command without an online client")
+	}
+	if !strings.Contains(updated.StatusLine, "not the current player") {
+		t.Fatalf("status line = %q", updated.StatusLine)
+	}
+	if updated.NetworkStatus != NetworkWaiting {
+		t.Fatalf("network status = %q, want waiting", updated.NetworkStatus)
+	}
+}
+
 func startCommandCaptureServer(t *testing.T) (string, <-chan protocol.Message, func()) {
 	t.Helper()
 	commands := make(chan protocol.Message, 1)

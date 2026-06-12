@@ -101,6 +101,7 @@ func waitOnlineSnapshot(client *online.Client) tea.Cmd {
 			protocol.MsgGameSnapshot,
 			protocol.MsgRoomState,
 			protocol.MsgReconnected,
+			protocol.MsgError,
 		)
 		if err != nil {
 			return onlineErrorMsg{Err: err}
@@ -161,6 +162,10 @@ func applyOnlineConnected(m Model, msg onlineConnectedMsg) Model {
 }
 
 func applyOnlineSnapshot(m Model, message protocol.Message) Model {
+	if message.Type == protocol.MsgError {
+		m.StatusLine = message.Error
+		return m
+	}
 	m.Online = true
 	if message.PlayerID != "" {
 		m.OnlinePlayerID = message.PlayerID
