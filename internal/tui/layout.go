@@ -104,6 +104,7 @@ func renderOnlineTable(m Model) string {
 	out.WriteString(fmt.Sprintf("Melds: %s\n", meldSummary(player.Melds)))
 	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(player.Discards, m.UnicodeTiles)))
 	out.WriteString(renderHand(player.Hand, m.SelectedIndex, m.UnicodeTiles))
+	out.WriteString(renderOnlineActionBar(m))
 	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
 	out.WriteString(styleMuted(tableControls(m)) + "\n")
 	return out.String()
@@ -179,9 +180,9 @@ func meldSummary(melds []game.Meld) string {
 func tableControls(m Model) string {
 	if m.Online {
 		if m.Width > 0 && m.Width < 80 {
-			return "Arrows select | R ready | Enter discard | Q menu"
+			return "Arrows select | R ready | H win | K kong | Enter discard | Q menu"
 		}
-		return "Left/Right select | R ready | Enter/Space discard | click select | second click discard | Q menu"
+		return "Left/Right select | R ready | H win | K kong | Enter/Space discard | click select | second click discard | Q menu"
 	}
 	if m.Width > 0 && m.Width < 80 {
 		return "Arrows select | Enter discard | Click tile | Q quit"
@@ -212,6 +213,34 @@ func renderActionBar(m Model) string {
 		winAction,
 		kongAction,
 		"[Q] Quit",
+	) + "\n"
+}
+
+func renderOnlineActionBar(m Model) string {
+	winReady := canOnlineWin(m)
+	kongReady := canOnlineKong(m)
+	winAction := actionState("[H] Win", winReady)
+	kongAction := actionState("[K] Kong", kongReady)
+	if m.Width > 0 && m.Width < 80 {
+		return actionBarLine(
+			"Actions:",
+			"[R]Ready",
+			"[Enter] Discard",
+			"[Click] Tile",
+			compactActionState("[H]Win", winReady),
+			compactActionState("[K]Kong", kongReady),
+			"[Q] Menu",
+		) + "\n"
+	}
+	return actionBarLine(
+		"Actions:",
+		"[R] Ready",
+		"[←/→] Select",
+		"[Enter/Space] Discard",
+		"[Click] Tile",
+		winAction,
+		kongAction,
+		"[Q] Menu",
 	) + "\n"
 }
 
@@ -251,6 +280,41 @@ func canHumanKong(m Model) bool {
 		}
 	}
 	return false
+}
+
+func canOnlineWin(m Model) bool {
+	if !m.OnlineStarted || m.OnlineSnapshot.Current != m.OnlineSeat {
+		return false
+	}
+	return game.CanWin(onlineHand(m))
+}
+
+func canOnlineKong(m Model) bool {
+	if !m.OnlineStarted || m.OnlineSnapshot.Current != m.OnlineSeat {
+		return false
+	}
+	_, ok := onlineKongTile(m)
+	return ok
+}
+
+func onlineKongTile(m Model) (game.Tile, bool) {
+	hand := onlineHand(m)
+	if len(hand) == 0 {
+		return 0, false
+	}
+	if m.SelectedIndex >= 0 && m.SelectedIndex < len(hand) {
+		selected := hand[m.SelectedIndex]
+		if game.TileCounts(hand)[selected] >= 4 {
+			return selected, true
+		}
+	}
+	counts := game.TileCounts(hand)
+	for tile, count := range counts {
+		if count >= 4 {
+			return game.Tile(tile), true
+		}
+	}
+	return 0, false
 }
 
 func renderStatus(m Model) string {

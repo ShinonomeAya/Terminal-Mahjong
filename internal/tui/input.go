@@ -62,6 +62,10 @@ func updateOnlineTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return discardOnlineSelected(m)
 	case "r":
 		return readyOnline(m)
+	case "h":
+		return winOnline(m)
+	case "k":
+		return kongOnline(m)
 	case "q":
 		if m.OnlineClient != nil {
 			m.OnlineClient.Close()
@@ -95,6 +99,49 @@ func discardOnlineSelected(m Model) (tea.Model, tea.Cmd) {
 	discardTile := hand[discardIndex]
 	m.StatusLine = selectionStatus("Discarding", discardIndex, discardTile, m.UnicodeTiles)
 	return m, sendOnlineDiscardCmd(m.OnlineClient, discardIndex)
+}
+
+func winOnline(m Model) (tea.Model, tea.Cmd) {
+	if !m.OnlineStarted {
+		m.StatusLine = "Waiting for players to ready"
+		return m, nil
+	}
+	if m.OnlineClient == nil {
+		m.StatusLine = "Online room is not ready"
+		return m, nil
+	}
+	if m.OnlineSnapshot.Current != m.OnlineSeat {
+		m.StatusLine = "Waiting for your turn"
+		return m, nil
+	}
+	if !canOnlineWin(m) {
+		m.StatusLine = "Win is not available"
+		return m, nil
+	}
+	m.StatusLine = "Winning"
+	return m, sendOnlineWinCmd(m.OnlineClient)
+}
+
+func kongOnline(m Model) (tea.Model, tea.Cmd) {
+	if !m.OnlineStarted {
+		m.StatusLine = "Waiting for players to ready"
+		return m, nil
+	}
+	if m.OnlineClient == nil {
+		m.StatusLine = "Online room is not ready"
+		return m, nil
+	}
+	if m.OnlineSnapshot.Current != m.OnlineSeat {
+		m.StatusLine = "Waiting for your turn"
+		return m, nil
+	}
+	tile, ok := onlineKongTile(m)
+	if !ok {
+		m.StatusLine = "Kong is not available"
+		return m, nil
+	}
+	m.StatusLine = fmt.Sprintf("Kong %s", game.TileLabel(tile, m.UnicodeTiles))
+	return m, sendOnlineKongCmd(m.OnlineClient, tile.String())
 }
 
 func readyOnline(m Model) (tea.Model, tea.Cmd) {

@@ -121,10 +121,22 @@ func sendOnlineReadyCmd(client *online.Client) tea.Cmd {
 }
 
 func sendOnlineDiscardCmd(client *online.Client, tileIndex int) tea.Cmd {
+	return sendOnlineGameCommandCmd(client, game.GameCommand{Kind: game.CommandDiscard, TileIndex: tileIndex})
+}
+
+func sendOnlineWinCmd(client *online.Client) tea.Cmd {
+	return sendOnlineGameCommandCmd(client, game.GameCommand{Kind: game.CommandWin})
+}
+
+func sendOnlineKongCmd(client *online.Client, tile string) tea.Cmd {
+	return sendOnlineGameCommandCmd(client, game.GameCommand{Kind: game.CommandKong, Tile: tile})
+}
+
+func sendOnlineGameCommandCmd(client *online.Client, command game.GameCommand) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := client.SendCommand(ctx, game.GameCommand{Kind: game.CommandDiscard, TileIndex: tileIndex}); err != nil {
+		if err := client.SendCommand(ctx, command); err != nil {
 			return onlineErrorMsg{Err: err}
 		}
 		return onlineCommandSentMsg{}

@@ -2,12 +2,14 @@ package tui
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gorilla/websocket"
 
 	"mahjong/internal/game"
 	"mahjong/internal/online"
@@ -380,6 +382,102 @@ func TestOnlineTableEnterWithoutSnapshotDoesNotSendCommand(t *testing.T) {
 	}
 }
 
+func TestOnlineTableWinKeySendsWinCommand(t *testing.T) {
+	serverURL, commands, closeServer := startCommandCaptureServer(t)
+	defer closeServer()
+
+	model := NewModel()
+	model.Online = true
+	model.Screen = ScreenTable
+	model.OnlineClient = online.NewClient(serverURL, "first")
+	defer model.OnlineClient.Close()
+	model.OnlineStarted = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = game.NewGame(13).Snapshot()
+	model.OnlineSnapshot.Current = 0
+	model.OnlineSnapshot.Players[0].Hand = tilesForTUI(t,
+		"1m", "2m", "3m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("h")})
+	updated := next.(Model)
+	if cmd == nil {
+		t.Fatal("expected win command")
+	}
+	if !strings.Contains(updated.StatusLine, "Winning") {
+		t.Fatalf("status line = %q", updated.StatusLine)
+	}
+	_ = cmd()
+
+	message := readCapturedCommand(t, commands)
+	if message.Type != protocol.MsgPlayCommand || message.Command.Kind != game.CommandWin {
+		t.Fatalf("message = %#v", message)
+	}
+}
+
+func TestOnlineTableKongKeySendsKongCommand(t *testing.T) {
+	serverURL, commands, closeServer := startCommandCaptureServer(t)
+	defer closeServer()
+
+	model := NewModel()
+	model.Online = true
+	model.Screen = ScreenTable
+	model.OnlineClient = online.NewClient(serverURL, "first")
+	defer model.OnlineClient.Close()
+	model.OnlineStarted = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = game.NewGame(13).Snapshot()
+	model.OnlineSnapshot.Current = 0
+	model.OnlineSnapshot.Players[0].Hand = tilesForTUI(t,
+		"1m", "1m", "1m", "1m",
+		"2m", "3m", "4m",
+		"2p", "3p", "4p",
+		"7s", "8s", "9s", "E",
+	)
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	updated := next.(Model)
+	if cmd == nil {
+		t.Fatal("expected kong command")
+	}
+	if !strings.Contains(updated.StatusLine, "Kong") {
+		t.Fatalf("status line = %q", updated.StatusLine)
+	}
+	_ = cmd()
+
+	message := readCapturedCommand(t, commands)
+	if message.Type != protocol.MsgPlayCommand || message.Command.Kind != game.CommandKong || message.Command.Tile != "1m" {
+		t.Fatalf("message = %#v", message)
+	}
+}
+
+func TestOnlineActionBarShowsReadyWinAndKong(t *testing.T) {
+	model := NewModel()
+	model.Online = true
+	model.Screen = ScreenTable
+	model.OnlineStarted = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = game.NewGame(13).Snapshot()
+	model.OnlineSnapshot.Current = 0
+	model.OnlineSnapshot.Players[0].Hand = tilesForTUI(t,
+		"1m", "1m", "1m", "1m",
+		"2m", "3m", "4m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s", "E",
+	)
+
+	view := model.View()
+	for _, text := range []string{"[H] Win", "[K] Kong"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("online action bar missing %q:\n%s", text, view)
+		}
+	}
+}
+
 func TestOnlineGameOverSnapshotShowsResultScreen(t *testing.T) {
 	model := NewModel()
 	snapshot := game.NewGame(13).Snapshot()
@@ -406,6 +504,51 @@ func TestOnlineGameOverSnapshotShowsResultScreen(t *testing.T) {
 			t.Fatalf("online game over missing %q:\n%s", text, view)
 		}
 	}
+}
+
+func startCommandCaptureServer(t *testing.T) (string, <-chan protocol.Message, func()) {
+	t.Helper()
+	commands := make(chan protocol.Message, 1)
+	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer conn.Close()
+		var message protocol.Message
+		if err := conn.ReadJSON(&message); err != nil {
+			t.Error(err)
+			return
+		}
+		commands <- message
+	}))
+	return "ws" + strings.TrimPrefix(server.URL, "http"), commands, server.Close
+}
+
+func readCapturedCommand(t *testing.T, commands <-chan protocol.Message) protocol.Message {
+	t.Helper()
+	select {
+	case message := <-commands:
+		return message
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for command")
+		return protocol.Message{}
+	}
+}
+
+func tilesForTUI(t *testing.T, texts ...string) []game.Tile {
+	t.Helper()
+	tiles := make([]game.Tile, len(texts))
+	for i, text := range texts {
+		tile, ok := game.ParseTile(text)
+		if !ok {
+			t.Fatalf("bad tile %q", text)
+		}
+		tiles[i] = tile
+	}
+	return tiles
 }
 
 func TestOnlineGameOverMainMenuClearsOnlineState(t *testing.T) {
