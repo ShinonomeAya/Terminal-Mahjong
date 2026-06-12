@@ -123,3 +123,35 @@ func TestClientSendsCommandAndReceivesBroadcast(t *testing.T) {
 		t.Fatalf("update = %#v", update)
 	}
 }
+
+func TestClientReadUntilWithReconnectRestoresSession(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	client := NewClient(url+"/ws", "first")
+	defer client.Close()
+	created, err := client.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	reconnected, err := client.ReadUntilWithReconnect(
+		context.Background(),
+		2*time.Second,
+		ReconnectPolicy{MaxAttempts: 5, BaseDelay: time.Millisecond},
+		protocol.MsgReconnected,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reconnected.PlayerID != created.PlayerID || reconnected.RoomCode != created.RoomCode {
+		t.Fatalf("reconnected = %#v created = %#v", reconnected, created)
+	}
+	if reconnected.Snapshot.WallCount == 0 {
+		t.Fatalf("missing snapshot after reconnect: %#v", reconnected)
+	}
+}

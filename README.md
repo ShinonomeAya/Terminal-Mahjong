@@ -100,6 +100,9 @@ go run ./cmd/client -name Bob -join 000001 -session .mahjong-bob.json
 # Reconnect with a saved session.
 go run ./cmd/client -reconnect
 
+# Keep reading game snapshots and reconnect up to 5 times if the socket drops.
+go run ./cmd/client -reconnect -watch
+
 # Send a one-shot discard after connecting. Indexes are 1-based for the CLI.
 go run ./cmd/client -reconnect -discard 1
 ```

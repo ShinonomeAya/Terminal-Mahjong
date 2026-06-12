@@ -30,6 +30,11 @@ type Client struct {
 	session   ClientSession
 }
 
+type ReconnectPolicy struct {
+	MaxAttempts int
+	BaseDelay   time.Duration
+}
+
 func NewClient(serverURL string, name string) *Client {
 	return &Client{
 		serverURL: serverURL,
@@ -139,6 +144,58 @@ func (c *Client) ReadUntil(ctx context.Context, timeout time.Duration, messageTy
 	}
 }
 
+func (c *Client) ReadUntilWithReconnect(ctx context.Context, timeout time.Duration, policy ReconnectPolicy, messageTypes ...protocol.MessageType) (protocol.Message, error) {
+	if err := c.connect(ctx); err != nil {
+		return protocol.Message{}, err
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		if err := ctx.Err(); err != nil {
+			return protocol.Message{}, err
+		}
+		if time.Now().After(deadline) {
+			return protocol.Message{}, fmt.Errorf("timeout waiting for %v", messageTypes)
+		}
+		if err := c.conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
+			reconnected, reconnectErr := c.reconnectWithBackoff(ctx, policy)
+			if reconnectErr != nil {
+				return protocol.Message{}, reconnectErr
+			}
+			for _, messageType := range messageTypes {
+				if reconnected.Type == messageType {
+					return reconnected, nil
+				}
+			}
+			continue
+		}
+		var message protocol.Message
+		err := c.conn.ReadJSON(&message)
+		if err == nil {
+			for _, messageType := range messageTypes {
+				if message.Type == messageType {
+					if message.Type == protocol.MsgError {
+						return protocol.Message{}, errors.New(message.Error)
+					}
+					return message, nil
+				}
+			}
+			continue
+		}
+		if !time.Now().Before(deadline) {
+			continue
+		}
+		reconnected, reconnectErr := c.reconnectWithBackoff(ctx, policy)
+		if reconnectErr != nil {
+			return protocol.Message{}, reconnectErr
+		}
+		for _, messageType := range messageTypes {
+			if reconnected.Type == messageType {
+				return reconnected, nil
+			}
+		}
+	}
+}
+
 func (c *Client) connect(ctx context.Context) error {
 	if c.conn != nil {
 		return nil
@@ -156,6 +213,37 @@ func (c *Client) write(message protocol.Message) error {
 		return fmt.Errorf("client is not connected")
 	}
 	return c.conn.WriteJSON(message)
+}
+
+func (c *Client) reconnectWithBackoff(ctx context.Context, policy ReconnectPolicy) (protocol.Message, error) {
+	if policy.MaxAttempts <= 0 {
+		policy.MaxAttempts = 5
+	}
+	if policy.BaseDelay <= 0 {
+		policy.BaseDelay = 100 * time.Millisecond
+	}
+	session := c.session
+	if session.PlayerID == "" || session.ReconnectToken == "" {
+		return protocol.Message{}, fmt.Errorf("missing reconnect session")
+	}
+	var lastErr error
+	for attempt := 0; attempt < policy.MaxAttempts; attempt++ {
+		c.Close()
+		message, err := c.Reconnect(ctx, session)
+		if err == nil {
+			return message, nil
+		}
+		lastErr = err
+		delay := policy.BaseDelay << attempt
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return protocol.Message{}, ctx.Err()
+		case <-timer.C:
+		}
+	}
+	return protocol.Message{}, fmt.Errorf("reconnect failed after %d attempts: %w", policy.MaxAttempts, lastErr)
 }
 
 func (c *Client) acceptSessionMessage(message protocol.Message) (protocol.Message, error) {
