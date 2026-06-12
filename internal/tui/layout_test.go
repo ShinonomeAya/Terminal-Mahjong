@@ -253,6 +253,17 @@ func TestRenderTableHighlightsReadyKongAction(t *testing.T) {
 	}
 }
 
+func TestReadyActionStateKeepsStableVisibleWidth(t *testing.T) {
+	action := actionState("[H] Win", true)
+
+	if !strings.Contains(action, "[H] Win:READY") {
+		t.Fatalf("ready action missing label: %q", action)
+	}
+	if got := visibleWidth(action); got != visibleWidth("[H] Win:READY") {
+		t.Fatalf("ready action width = %d, want plain width", got)
+	}
+}
+
 func TestRenderTableUsesCompactActionBarForNarrowWidth(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()

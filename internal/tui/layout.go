@@ -89,21 +89,40 @@ func renderActionBar(m Model) string {
 	winAction := actionState("[H] Win", winReady)
 	kongAction := actionState("[K] Kong", kongReady)
 	if m.Width > 0 && m.Width < 80 {
-		return styleMuted(fmt.Sprintf("Actions: [Enter] Discard [Click] Tile %s %s [Q] Quit", compactActionState("[H]Win", winReady), compactActionState("[K]Kong", kongReady))) + "\n"
+		return actionBarLine(
+			"Actions:",
+			"[Enter] Discard",
+			"[Click] Tile",
+			compactActionState("[H]Win", winReady),
+			compactActionState("[K]Kong", kongReady),
+			"[Q] Quit",
+		) + "\n"
 	}
-	return styleMuted(fmt.Sprintf("Actions: [←/→] Select [Enter/Space] Discard [Click] Tile %s %s [Q] Quit", winAction, kongAction)) + "\n"
+	return actionBarLine(
+		"Actions:",
+		"[←/→] Select",
+		"[Enter/Space] Discard",
+		"[Click] Tile",
+		winAction,
+		kongAction,
+		"[Q] Quit",
+	) + "\n"
+}
+
+func actionBarLine(parts ...string) string {
+	return styleMuted(strings.Join(parts, " "))
 }
 
 func actionState(label string, ready bool) string {
 	if ready {
-		return label + ":READY"
+		return styleSelectedTile(label + ":READY")
 	}
 	return label + ":off"
 }
 
 func compactActionState(label string, ready bool) string {
 	if ready {
-		return label + ":READY"
+		return styleSelectedTile(label + ":READY")
 	}
 	return label + ":off"
 }
