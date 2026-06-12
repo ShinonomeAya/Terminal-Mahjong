@@ -214,6 +214,91 @@ func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	}
 }
 
+func TestOnlineMouseClickSelectsTile(t *testing.T) {
+	model := NewModel()
+	snapshot := game.NewGame(11).Snapshot()
+	model.Online = true
+	model.Screen = ScreenTable
+	model.OnlineStarted = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = snapshot
+	model.HandHitBoxes = handHitBoxes(len(snapshot.Players[0].Hand), 2, 10)
+
+	next, cmd := model.Update(tea.MouseMsg{
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+		X:      model.HandHitBoxes[2].X1,
+		Y:      model.HandHitBoxes[2].Y,
+	})
+	updated := next.(Model)
+
+	if cmd != nil {
+		t.Fatal("expected no command on first online mouse selection")
+	}
+	if updated.SelectedIndex != 2 {
+		t.Fatalf("selected index = %d, want 2", updated.SelectedIndex)
+	}
+	if !strings.Contains(updated.StatusLine, "Mouse selected [03]") {
+		t.Fatalf("status line = %q", updated.StatusLine)
+	}
+}
+
+func TestOnlineSecondMouseClickSendsDiscardAndAppliesSnapshot(t *testing.T) {
+	server := online.NewServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	serverURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+
+	client := online.NewClient(serverURL, "first")
+	defer client.Close()
+	created, err := client.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SendReady(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	state, err := client.ReadUntil(context.Background(), 2*time.Second, protocol.MsgRoomState)
+	if err != nil {
+		t.Fatal(err)
+	}
+	created.Started = state.Started
+	created.ReadySeats = state.ReadySeats
+	created.OccupiedSeats = state.OccupiedSeats
+	model := applyOnlineConnected(NewModel(), onlineConnectedMsg{Message: created, Client: client})
+	model.SelectedIndex = 2
+	model.HandHitBoxes = handHitBoxes(len(model.OnlineSnapshot.Players[0].Hand), 2, 10)
+	startEvents := len(model.OnlineSnapshot.Events)
+
+	next, cmd := model.Update(tea.MouseMsg{
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+		X:      model.HandHitBoxes[2].X1,
+		Y:      model.HandHitBoxes[2].Y,
+	})
+	updated := next.(Model)
+	if cmd == nil {
+		t.Fatal("expected online mouse discard command")
+	}
+	if !strings.Contains(updated.StatusLine, "Discarding [03]") {
+		t.Fatalf("status line = %q", updated.StatusLine)
+	}
+
+	msg := cmd()
+	next, _ = updated.Update(msg)
+	updated = next.(Model)
+	msg = waitOnlineSnapshot(client)()
+	next, _ = updated.Update(msg)
+	updated = next.(Model)
+
+	if len(updated.OnlineSnapshot.Events) <= startEvents {
+		t.Fatalf("events = %d, want more than %d", len(updated.OnlineSnapshot.Events), startEvents)
+	}
+	if updated.OnlineSnapshot.Current != 1 {
+		t.Fatalf("current = %d, want 1", updated.OnlineSnapshot.Current)
+	}
+}
+
 func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
 	server := online.NewServer()
 	httpServer := httptest.NewServer(server)

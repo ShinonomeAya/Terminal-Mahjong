@@ -132,7 +132,13 @@ func discardSelected(m Model) (tea.Model, tea.Cmd) {
 }
 
 func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft || m.Game == nil {
+	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
+		return m, nil
+	}
+	if m.Online {
+		return updateOnlineTableMouse(m, msg)
+	}
+	if m.Game == nil {
 		return m, nil
 	}
 	boxes := currentHandHitBoxes(m)
@@ -145,6 +151,24 @@ func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 	m.SelectedIndex = index
 	m.StatusLine = selectionStatus("Mouse selected", index, m.Game.Players[0].Hand[index], m.UnicodeTiles)
+	return m, nil
+}
+
+func updateOnlineTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	hand := onlineHand(m)
+	if len(hand) == 0 {
+		return m, nil
+	}
+	boxes := currentHandHitBoxes(m)
+	index, ok := tileIndexAt(boxes, msg.X, msg.Y)
+	if !ok {
+		return m, nil
+	}
+	if index == m.SelectedIndex {
+		return discardOnlineSelected(m)
+	}
+	m.SelectedIndex = index
+	m.StatusLine = selectionStatus("Mouse selected", index, hand[index], m.UnicodeTiles)
 	return m, nil
 }
 
