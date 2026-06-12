@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var menuItems = []string{"Solo Game", "How to Play", "Quit"}
+var menuItems = []string{"Solo Game", "Create Online Room", "Reconnect Online", "How to Play", "Quit"}
 
 func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.Type {
@@ -19,10 +19,22 @@ func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch m.MenuIndex {
 		case 0:
 			m.Game = newStartedGame()
+			m.Online = false
+			m.NetworkStatus = NetworkLocal
 			m.Screen = ScreenTable
 		case 1:
-			m.Screen = ScreenHelp
+			m.NetworkStatus = NetworkWaiting
+			m.StatusLine = "Connecting online room..."
+			return m, createOnlineRoomCmd(m)
 		case 2:
+			m.NetworkStatus = NetworkReconnecting
+			m.ReconnectAttempt = 1
+			m.ReconnectMax = 5
+			m.StatusLine = "Reconnecting online room..."
+			return m, reconnectOnlineCmd(m)
+		case 3:
+			m.Screen = ScreenHelp
+		case 4:
 			return m, tea.Quit
 		}
 	}

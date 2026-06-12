@@ -46,6 +46,9 @@ func currentHandHitBoxes(m Model) []TileHitBox {
 	if len(m.HandHitBoxes) > 0 {
 		return m.HandHitBoxes
 	}
+	if m.Online {
+		return handHitBoxes(len(onlineHand(m)), handStartX, handRowY)
+	}
 	if m.Game == nil {
 		return nil
 	}
@@ -53,6 +56,9 @@ func currentHandHitBoxes(m Model) []TileHitBox {
 }
 
 func renderTable(m Model) string {
+	if m.Online {
+		return renderOnlineTable(m)
+	}
 	if m.Game == nil {
 		return "No game\n"
 	}
@@ -75,6 +81,86 @@ func renderTable(m Model) string {
 	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
 	out.WriteString(styleMuted(tableControls(m)) + "\n")
 	return out.String()
+}
+
+func renderOnlineTable(m Model) string {
+	snapshot := m.OnlineSnapshot
+	if len(snapshot.Players) == 0 {
+		return styleTitle("TERMINAL MAHJONG") + "\n" + styleMuted(renderNetworkStatus(m)) + "\nWaiting for online snapshot\n"
+	}
+	var out strings.Builder
+	out.WriteString(styleTitle("TERMINAL MAHJONG") + "\n")
+	out.WriteString(styleMuted(fmt.Sprintf("Room:%s  Seat:%d  Wall:%d  Events:%d", m.OnlineRoomCode, m.OnlineSeat+1, snapshot.WallCount, len(snapshot.Events))) + "\n\n")
+	out.WriteString(styleMuted(renderNetworkStatus(m)) + "\n\n")
+	out.WriteString(styleSectionTitle("Opponents") + "\n")
+	out.WriteString(renderOnlineOpponents(m))
+	out.WriteString("\n" + styleSectionTitle("Table") + "\n")
+	out.WriteString(renderOnlineCenter(m))
+	out.WriteString("\n" + styleSectionTitle("You") + "\n")
+	out.WriteString(renderStatus(m))
+	out.WriteString(renderLastAction(m))
+	player := onlinePlayer(m, m.OnlineSeat)
+	out.WriteString(fmt.Sprintf("Melds: %s\n", meldSummary(player.Melds)))
+	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(player.Discards, m.UnicodeTiles)))
+	out.WriteString(renderHand(player.Hand, m.SelectedIndex, m.UnicodeTiles))
+	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
+	out.WriteString(styleMuted(tableControls(m)) + "\n")
+	return out.String()
+}
+
+func renderOnlineOpponents(m Model) string {
+	opposite := onlinePlayer(m, (m.OnlineSeat+2)%4)
+	left := onlinePlayer(m, (m.OnlineSeat+1)%4)
+	right := onlinePlayer(m, (m.OnlineSeat+3)%4)
+	var out strings.Builder
+	out.WriteString("                 " + renderOnlineSeat("Opposite", opposite, m.UnicodeTiles) + "\n")
+	out.WriteString(padRightVisible(renderOnlineSeat("Left", left, m.UnicodeTiles), 44))
+	out.WriteString(renderOnlineSeat("Right", right, m.UnicodeTiles) + "\n")
+	return out.String()
+}
+
+func renderOnlineSeat(seat string, player game.PlayerView, unicode bool) string {
+	discards := game.FormatTileLabels(recentTiles(player.Discards, 4), unicode)
+	if discards == "" {
+		discards = "-"
+	}
+	return fmt.Sprintf("%s: %s hand:%02d melds:%s last:%s", seat, player.Name, len(player.Hand), meldSummary(player.Melds), discards)
+}
+
+func renderOnlineCenter(m Model) string {
+	var out strings.Builder
+	snapshot := m.OnlineSnapshot
+	turnName := "-"
+	if snapshot.Current >= 0 && snapshot.Current < len(snapshot.Players) {
+		turnName = snapshot.Players[snapshot.Current].Name
+	}
+	out.WriteString(styleMuted("Round Status") + "\n")
+	out.WriteString(fmt.Sprintf("Wall: %02d | Turn: %s | Events: %d\n", snapshot.WallCount, turnName, len(snapshot.Events)))
+	out.WriteString(renderEventLog(snapshot.Events, m.UnicodeTiles, 4))
+	out.WriteString(fmt.Sprintf("Tips: %s\n", game.HandTips(onlineHand(m))))
+	return out.String()
+}
+
+func onlineHand(m Model) []game.Tile {
+	return onlinePlayer(m, m.OnlineSeat).Hand
+}
+
+func onlinePlayer(m Model, seat int) game.PlayerView {
+	if seat >= 0 && seat < len(m.OnlineSnapshot.Players) {
+		return m.OnlineSnapshot.Players[seat]
+	}
+	return game.PlayerView{Name: "-"}
+}
+
+func meldSummary(melds []game.Meld) string {
+	if len(melds) == 0 {
+		return "-"
+	}
+	parts := make([]string, len(melds))
+	for i, meld := range melds {
+		parts[i] = string(meld.Kind)
+	}
+	return strings.Join(parts, ",")
 }
 
 func tableControls(m Model) string {

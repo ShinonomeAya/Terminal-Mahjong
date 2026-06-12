@@ -24,6 +24,9 @@ func TestWebSocketServerCreatesAndJoinsRoom(t *testing.T) {
 	if created.RoomCode == "" || created.PlayerID == "" || created.ReconnectToken == "" {
 		t.Fatalf("created = %#v", created)
 	}
+	if created.Seat != 0 {
+		t.Fatalf("created seat = %d, want 0", created.Seat)
+	}
 
 	second := dialTestClient(t, url)
 	defer second.Close()
@@ -31,6 +34,9 @@ func TestWebSocketServerCreatesAndJoinsRoom(t *testing.T) {
 	joined := readUntil(t, second, protocol.MsgRoomJoined)
 	if joined.RoomCode != created.RoomCode || joined.PlayerID == "" {
 		t.Fatalf("joined = %#v", joined)
+	}
+	if joined.Seat != 1 {
+		t.Fatalf("joined seat = %d, want 1", joined.Seat)
 	}
 	if len(joined.Snapshot.Players) != 4 {
 		t.Fatalf("snapshot players = %d", len(joined.Snapshot.Players))

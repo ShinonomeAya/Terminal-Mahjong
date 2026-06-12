@@ -91,6 +91,7 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			PlayerID:       session.playerID,
 			ReconnectToken: session.reconnectToken,
 			RoomCode:       created.code,
+			Seat:           session.seat,
 			Snapshot:       created.game.Snapshot(),
 		})
 		return session
@@ -105,6 +106,7 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			PlayerID:       session.playerID,
 			ReconnectToken: session.reconnectToken,
 			RoomCode:       joined.code,
+			Seat:           session.seat,
 			Snapshot:       joined.game.Snapshot(),
 		})
 		return session
@@ -123,6 +125,7 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			PlayerID:       session.playerID,
 			ReconnectToken: session.reconnectToken,
 			RoomCode:       session.roomCode,
+			Seat:           session.seat,
 			Snapshot:       snapshot,
 		})
 		return session

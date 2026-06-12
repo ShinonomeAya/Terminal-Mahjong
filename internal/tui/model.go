@@ -2,6 +2,7 @@ package tui
 
 import (
 	"mahjong/internal/game"
+	"mahjong/internal/online"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -22,6 +23,15 @@ type Model struct {
 	SelectedIndex    int
 	UnicodeTiles     bool
 	Game             *game.Game
+	Online           bool
+	OnlineClient     *online.Client
+	OnlineSnapshot   game.GameSnapshot
+	OnlinePlayerID   string
+	OnlineRoomCode   string
+	OnlineSeat       int
+	OnlineServerURL  string
+	OnlineName       string
+	OnlineSession    string
 	HandHitBoxes     []TileHitBox
 	StatusLine       string
 	NetworkStatus    NetworkStatus
@@ -32,7 +42,13 @@ type Model struct {
 }
 
 func NewModel() Model {
-	return Model{Screen: ScreenMenu, UnicodeTiles: true}
+	return Model{
+		Screen:          ScreenMenu,
+		UnicodeTiles:    true,
+		OnlineServerURL: "ws://127.0.0.1:8080/ws",
+		OnlineName:      "Player",
+		OnlineSession:   ".mahjong-session.json",
+	}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -62,6 +78,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height
+		return m, nil
+	case onlineConnectedMsg:
+		return applyOnlineConnected(m, msg), waitOnlineSnapshot(msg.Client)
+	case onlineSnapshotMsg:
+		return applyOnlineSnapshot(m, msg.Message), waitOnlineSnapshot(m.OnlineClient)
+	case onlineErrorMsg:
+		m.NetworkStatus = NetworkOffline
+		m.StatusLine = msg.Err.Error()
 		return m, nil
 	default:
 		return m, nil

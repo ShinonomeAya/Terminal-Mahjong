@@ -25,6 +25,9 @@ func TestClientCreatesRoomAndPersistsSession(t *testing.T) {
 	if created.RoomCode == "" || created.PlayerID == "" || created.ReconnectToken == "" {
 		t.Fatalf("created = %#v", created)
 	}
+	if client.Session().Seat != 0 {
+		t.Fatalf("client seat = %d, want 0", client.Session().Seat)
+	}
 
 	sessionPath := filepath.Join(t.TempDir(), "session.json")
 	if err := SaveClientSession(sessionPath, client.Session()); err != nil {
@@ -34,7 +37,7 @@ func TestClientCreatesRoomAndPersistsSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loaded.PlayerID != created.PlayerID || loaded.ReconnectToken != created.ReconnectToken || loaded.RoomCode != created.RoomCode {
+	if loaded.PlayerID != created.PlayerID || loaded.ReconnectToken != created.ReconnectToken || loaded.RoomCode != created.RoomCode || loaded.Seat != created.Seat {
 		t.Fatalf("loaded = %#v created = %#v", loaded, created)
 	}
 }
@@ -91,6 +94,9 @@ func TestClientJoinsRoom(t *testing.T) {
 	}
 	if joined.Type != protocol.MsgRoomJoined || joined.RoomCode != created.RoomCode || joined.PlayerID == "" {
 		t.Fatalf("joined = %#v", joined)
+	}
+	if second.Session().Seat != 1 {
+		t.Fatalf("second seat = %d, want 1", second.Session().Seat)
 	}
 }
 

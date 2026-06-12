@@ -21,6 +21,7 @@ type ClientSession struct {
 	PlayerID       string `json:"player_id"`
 	ReconnectToken string `json:"reconnect_token"`
 	RoomCode       string `json:"room_code"`
+	Seat           int    `json:"seat"`
 }
 
 type Client struct {
@@ -253,6 +254,7 @@ func (c *Client) acceptSessionMessage(message protocol.Message) (protocol.Messag
 	c.session.PlayerID = message.PlayerID
 	c.session.ReconnectToken = message.ReconnectToken
 	c.session.RoomCode = message.RoomCode
+	c.session.Seat = message.Seat
 	return message, nil
 }
 

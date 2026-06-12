@@ -1,10 +1,16 @@
 package tui
 
 import (
+	"context"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"mahjong/internal/game"
+	"mahjong/internal/online"
+	"mahjong/internal/protocol"
 )
 
 func TestNewModelStartsAtMenu(t *testing.T) {
@@ -40,10 +46,101 @@ func TestMenuEnterStartsSoloGame(t *testing.T) {
 
 func TestMenuViewContainsOptions(t *testing.T) {
 	view := NewModel().View()
-	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "How to Play", "Quit"} {
+	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Create Online Room", "Reconnect Online", "How to Play", "Quit"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing %q:\n%s", text, view)
 		}
+	}
+}
+
+func TestOnlineConnectedMessageShowsSnapshotTable(t *testing.T) {
+	model := NewModel()
+	snapshot := game.NewGame(7).Snapshot()
+
+	next, _ := model.Update(onlineConnectedMsg{
+		Message: protocol.Message{
+			Type:     protocol.MsgRoomCreated,
+			RoomCode: "000123",
+			PlayerID: "player-1",
+			Seat:     0,
+			Snapshot: snapshot,
+		},
+	})
+	updated := next.(Model)
+
+	if updated.Screen != ScreenTable {
+		t.Fatalf("screen = %v, want table", updated.Screen)
+	}
+	if !updated.Online {
+		t.Fatal("expected online mode")
+	}
+	if updated.OnlineSeat != 0 || updated.OnlineRoomCode != "000123" {
+		t.Fatalf("online metadata seat=%d room=%q", updated.OnlineSeat, updated.OnlineRoomCode)
+	}
+	if updated.NetworkStatus != NetworkYourTurn {
+		t.Fatalf("network status = %q, want your turn", updated.NetworkStatus)
+	}
+	view := updated.View()
+	for _, text := range []string{"Room:000123", "Network: your turn", "Hand Tray"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("online view missing %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
+	server := online.NewServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	serverURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+
+	client := online.NewClient(serverURL, "first")
+	defer client.Close()
+	created, err := client.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := applyOnlineConnected(NewModel(), onlineConnectedMsg{Message: created, Client: client})
+	startEvents := len(model.OnlineSnapshot.Events)
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+	if cmd == nil {
+		t.Fatal("expected online discard command")
+	}
+	if !strings.Contains(updated.StatusLine, "Discarding [01]") {
+		t.Fatalf("status line = %q", updated.StatusLine)
+	}
+
+	msg := cmd()
+	next, _ = updated.Update(msg)
+	updated = next.(Model)
+
+	if len(updated.OnlineSnapshot.Events) <= startEvents {
+		t.Fatalf("events = %d, want more than %d", len(updated.OnlineSnapshot.Events), startEvents)
+	}
+	if updated.OnlineSnapshot.Current != 1 {
+		t.Fatalf("current = %d, want 1", updated.OnlineSnapshot.Current)
+	}
+	if updated.NetworkStatus != NetworkWaiting {
+		t.Fatalf("network status = %q, want waiting", updated.NetworkStatus)
+	}
+}
+
+func TestOnlineTableEnterWithoutSnapshotDoesNotSendCommand(t *testing.T) {
+	model := NewModel()
+	model.Online = true
+	model.Screen = ScreenTable
+	model.OnlineClient = nil
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if cmd != nil {
+		t.Fatal("expected no command")
+	}
+	if updated.StatusLine == "" {
+		t.Fatal("expected status feedback")
 	}
 }
 

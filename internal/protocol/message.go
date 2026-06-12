@@ -24,6 +24,7 @@ type Message struct {
 	ReconnectToken string             `json:"reconnect_token,omitempty"`
 	RoomCode       string             `json:"room_code,omitempty"`
 	Name           string             `json:"name,omitempty"`
+	Seat           int                `json:"seat,omitempty"`
 	Command        game.GameCommand   `json:"command,omitempty"`
 	Result         game.CommandResult `json:"result,omitempty"`
 	Snapshot       game.GameSnapshot  `json:"snapshot,omitempty"`

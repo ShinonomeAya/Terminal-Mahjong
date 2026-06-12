@@ -1,0 +1,142 @@
+package tui
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"mahjong/internal/game"
+	"mahjong/internal/online"
+	"mahjong/internal/protocol"
+)
+
+type onlineConnectedMsg struct {
+	Message protocol.Message
+	Client  *online.Client
+}
+
+type onlineSnapshotMsg struct {
+	Message protocol.Message
+}
+
+type onlineErrorMsg struct {
+	Err error
+}
+
+func createOnlineRoomCmd(m Model) tea.Cmd {
+	serverURL := m.OnlineServerURL
+	name := m.OnlineName
+	sessionPath := m.OnlineSession
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		client := online.NewClient(serverURL, name)
+		message, err := client.CreateRoom(ctx)
+		if err != nil {
+			client.Close()
+			return onlineErrorMsg{Err: err}
+		}
+		if err := online.SaveClientSession(sessionPath, client.Session()); err != nil {
+			client.Close()
+			return onlineErrorMsg{Err: err}
+		}
+		return onlineConnectedMsg{Message: message, Client: client}
+	}
+}
+
+func reconnectOnlineCmd(m Model) tea.Cmd {
+	sessionPath := m.OnlineSession
+	return func() tea.Msg {
+		session, err := online.LoadClientSession(sessionPath)
+		if err != nil {
+			return onlineErrorMsg{Err: err}
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		client := online.NewClient(session.ServerURL, session.Name)
+		message, err := client.Reconnect(ctx, session)
+		if err != nil {
+			client.Close()
+			return onlineErrorMsg{Err: err}
+		}
+		return onlineConnectedMsg{Message: message, Client: client}
+	}
+}
+
+func waitOnlineSnapshot(client *online.Client) tea.Cmd {
+	if client == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		message, err := client.ReadUntilWithReconnect(
+			context.Background(),
+			24*time.Hour,
+			online.ReconnectPolicy{MaxAttempts: 5, BaseDelay: 200 * time.Millisecond},
+			protocol.MsgGameSnapshot,
+			protocol.MsgReconnected,
+		)
+		if err != nil {
+			return onlineErrorMsg{Err: err}
+		}
+		return onlineSnapshotMsg{Message: message}
+	}
+}
+
+func sendOnlineDiscardCmd(client *online.Client, tileIndex int) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := client.SendCommand(ctx, game.GameCommand{Kind: game.CommandDiscard, TileIndex: tileIndex}); err != nil {
+			return onlineErrorMsg{Err: err}
+		}
+		message, err := client.ReadUntilWithReconnect(
+			ctx,
+			2*time.Second,
+			online.ReconnectPolicy{MaxAttempts: 5, BaseDelay: 200 * time.Millisecond},
+			protocol.MsgGameSnapshot,
+		)
+		if err != nil {
+			return onlineErrorMsg{Err: err}
+		}
+		return onlineSnapshotMsg{Message: message}
+	}
+}
+
+func applyOnlineConnected(m Model, msg onlineConnectedMsg) Model {
+	m.Screen = ScreenTable
+	m.Online = true
+	m.OnlineClient = msg.Client
+	m.OnlinePlayerID = msg.Message.PlayerID
+	m.OnlineRoomCode = msg.Message.RoomCode
+	m.OnlineSeat = msg.Message.Seat
+	m.OnlineSnapshot = msg.Message.Snapshot
+	m.Game = nil
+	m.StatusLine = fmt.Sprintf("Room:%s Seat:%d", m.OnlineRoomCode, m.OnlineSeat+1)
+	m.NetworkStatus = networkStatusForOnlineSnapshot(m)
+	return m
+}
+
+func applyOnlineSnapshot(m Model, message protocol.Message) Model {
+	m.Online = true
+	if message.PlayerID != "" {
+		m.OnlinePlayerID = message.PlayerID
+	}
+	if message.RoomCode != "" {
+		m.OnlineRoomCode = message.RoomCode
+	}
+	m.OnlineSnapshot = message.Snapshot
+	m.NetworkStatus = networkStatusForOnlineSnapshot(m)
+	return m
+}
+
+func networkStatusForOnlineSnapshot(m Model) NetworkStatus {
+	if len(m.OnlineSnapshot.Players) == 0 {
+		return NetworkWaiting
+	}
+	if m.OnlineSnapshot.Current == m.OnlineSeat {
+		return NetworkYourTurn
+	}
+	return NetworkWaiting
+}
