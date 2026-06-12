@@ -46,10 +46,82 @@ func TestMenuEnterStartsSoloGame(t *testing.T) {
 
 func TestMenuViewContainsOptions(t *testing.T) {
 	view := NewModel().View()
-	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Create Online Room", "Reconnect Online", "How to Play", "Quit"} {
+	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Create Online Room", "Join Online Room", "Reconnect Online", "How to Play", "Quit"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing %q:\n%s", text, view)
 		}
+	}
+}
+
+func TestMenuEnterJoinOnlineShowsRoomCodeInput(t *testing.T) {
+	model := NewModel()
+	model.MenuIndex = 2
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if updated.Screen != ScreenJoinOnline {
+		t.Fatalf("screen = %v, want join online", updated.Screen)
+	}
+	view := updated.View()
+	for _, text := range []string{"JOIN ONLINE ROOM", "Room Code", "Enter join"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("join screen missing %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestJoinOnlineInputEditsRoomCode(t *testing.T) {
+	model := NewModel()
+	model.Screen = ScreenJoinOnline
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated := next.(Model)
+
+	if updated.JoinRoomCode != "1" {
+		t.Fatalf("join room code = %q, want 1", updated.JoinRoomCode)
+	}
+}
+
+func TestJoinOnlineEnterJoinsRoomAndShowsTable(t *testing.T) {
+	server := online.NewServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	serverURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+
+	host := online.NewClient(serverURL, "host")
+	defer host.Close()
+	created, err := host.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	model := NewModel()
+	model.Screen = ScreenJoinOnline
+	model.OnlineServerURL = serverURL
+	model.OnlineSession = t.TempDir() + "/session.json"
+	model.JoinRoomCode = created.RoomCode
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+	if cmd == nil {
+		t.Fatal("expected join command")
+	}
+	if !strings.Contains(updated.StatusLine, "Joining room") {
+		t.Fatalf("status line = %q", updated.StatusLine)
+	}
+
+	msg := cmd()
+	next, _ = updated.Update(msg)
+	updated = next.(Model)
+
+	if updated.Screen != ScreenTable || !updated.Online {
+		t.Fatalf("screen=%v online=%v, want online table", updated.Screen, updated.Online)
+	}
+	if updated.OnlineRoomCode != created.RoomCode || updated.OnlineSeat != 1 {
+		t.Fatalf("room=%q seat=%d", updated.OnlineRoomCode, updated.OnlineSeat)
 	}
 }
 

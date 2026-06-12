@@ -82,6 +82,12 @@ The game remains terminal-first. Phase 10 adds a restrained Lip Gloss visual ski
 go run ./cmd/mahjong
 ```
 
+The TUI start menu supports local play plus online room actions:
+
+- `Create Online Room`: connect to `ws://127.0.0.1:8080/ws`, create a room, and save `.mahjong-session.json`.
+- `Join Online Room`: type a numeric room code and join an existing room.
+- `Reconnect Online`: restore the saved session after a disconnect.
+
 Start the local WebSocket server:
 
 ```powershell

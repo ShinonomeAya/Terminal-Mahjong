@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var menuItems = []string{"Solo Game", "Create Online Room", "Reconnect Online", "How to Play", "Quit"}
+var menuItems = []string{"Solo Game", "Create Online Room", "Join Online Room", "Reconnect Online", "How to Play", "Quit"}
 
 func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.Type {
@@ -27,15 +27,44 @@ func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.StatusLine = "Connecting online room..."
 			return m, createOnlineRoomCmd(m)
 		case 2:
+			m.Screen = ScreenJoinOnline
+			m.StatusLine = ""
+		case 3:
 			m.NetworkStatus = NetworkReconnecting
 			m.ReconnectAttempt = 1
 			m.ReconnectMax = 5
 			m.StatusLine = "Reconnecting online room..."
 			return m, reconnectOnlineCmd(m)
-		case 3:
-			m.Screen = ScreenHelp
 		case 4:
+			m.Screen = ScreenHelp
+		case 5:
 			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func updateJoinOnline(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch key.Type {
+	case tea.KeyEsc:
+		m.Screen = ScreenMenu
+	case tea.KeyBackspace:
+		if len(m.JoinRoomCode) > 0 {
+			m.JoinRoomCode = m.JoinRoomCode[:len(m.JoinRoomCode)-1]
+		}
+	case tea.KeyEnter:
+		if len(m.JoinRoomCode) == 0 {
+			m.StatusLine = "Room code is required"
+			return m, nil
+		}
+		m.NetworkStatus = NetworkWaiting
+		m.StatusLine = "Joining room " + m.JoinRoomCode + "..."
+		return m, joinOnlineRoomCmd(m)
+	case tea.KeyRunes:
+		for _, r := range key.Runes {
+			if r >= '0' && r <= '9' && len(m.JoinRoomCode) < 6 {
+				m.JoinRoomCode += string(r)
+			}
 		}
 	}
 	return m, nil
@@ -63,6 +92,21 @@ func renderMenu(m Model) string {
 	}
 	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
 	out.WriteString(styleMuted("Up/Down choose | Enter confirm | Q quit") + "\n")
+	return out.String()
+}
+
+func renderJoinOnline(m Model) string {
+	var out strings.Builder
+	out.WriteString(styleTitle("JOIN ONLINE ROOM") + "\n\n")
+	out.WriteString(styleSectionTitle("Room Code") + "\n")
+	code := m.JoinRoomCode
+	if code == "" {
+		code = "______"
+	}
+	out.WriteString(styleSelectedTile(code) + "\n\n")
+	out.WriteString(renderStatus(m))
+	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
+	out.WriteString(styleMuted("Digits type room code | Backspace edit | Enter join | Esc menu") + "\n")
 	return out.String()
 }
 

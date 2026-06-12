@@ -46,6 +46,28 @@ func createOnlineRoomCmd(m Model) tea.Cmd {
 	}
 }
 
+func joinOnlineRoomCmd(m Model) tea.Cmd {
+	serverURL := m.OnlineServerURL
+	name := m.OnlineName
+	sessionPath := m.OnlineSession
+	roomCode := m.JoinRoomCode
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		client := online.NewClient(serverURL, name)
+		message, err := client.JoinRoom(ctx, roomCode)
+		if err != nil {
+			client.Close()
+			return onlineErrorMsg{Err: err}
+		}
+		if err := online.SaveClientSession(sessionPath, client.Session()); err != nil {
+			client.Close()
+			return onlineErrorMsg{Err: err}
+		}
+		return onlineConnectedMsg{Message: message, Client: client}
+	}
+}
+
 func reconnectOnlineCmd(m Model) tea.Cmd {
 	sessionPath := m.OnlineSession
 	return func() tea.Msg {

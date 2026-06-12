@@ -11,6 +11,7 @@ type Screen int
 
 const (
 	ScreenMenu Screen = iota
+	ScreenJoinOnline
 	ScreenHelp
 	ScreenTable
 	ScreenGameOver
@@ -32,6 +33,7 @@ type Model struct {
 	OnlineServerURL  string
 	OnlineName       string
 	OnlineSession    string
+	JoinRoomCode     string
 	HandHitBoxes     []TileHitBox
 	StatusLine       string
 	NetworkStatus    NetworkStatus
@@ -61,6 +63,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.Screen {
 		case ScreenMenu:
 			return updateMenu(m, msg)
+		case ScreenJoinOnline:
+			return updateJoinOnline(m, msg)
 		case ScreenHelp:
 			return updateHelp(m, msg)
 		case ScreenTable:
@@ -96,6 +100,8 @@ func (m Model) View() string {
 	switch m.Screen {
 	case ScreenMenu:
 		return renderMenu(m)
+	case ScreenJoinOnline:
+		return renderJoinOnline(m)
 	case ScreenHelp:
 		return renderHelp()
 	case ScreenTable:
