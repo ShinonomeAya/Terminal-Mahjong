@@ -18,6 +18,43 @@ func TestNewGameDealsThirteenTilesToEachPlayer(t *testing.T) {
 	}
 }
 
+func TestFixedSeedDealsReproducibleWall(t *testing.T) {
+	first := NewGame(42)
+	second := NewGame(42)
+
+	if first.Seed != 42 || second.Seed != 42 {
+		t.Fatalf("seeds = %d/%d, want 42", first.Seed, second.Seed)
+	}
+	if FormatTiles(first.Wall) != FormatTiles(second.Wall) {
+		t.Fatalf("walls differ for fixed seed:\n%s\n%s", FormatTiles(first.Wall), FormatTiles(second.Wall))
+	}
+	if first.ShuffleProof.WallHash != second.ShuffleProof.WallHash {
+		t.Fatalf("wall hashes differ for fixed seed: %s vs %s", first.ShuffleProof.WallHash, second.ShuffleProof.WallHash)
+	}
+}
+
+func TestDefaultGameUsesCryptoSeededMode(t *testing.T) {
+	game := NewGame(0)
+
+	if game.RNGMode != CryptoSeeded {
+		t.Fatalf("rng mode = %v, want CryptoSeeded", game.RNGMode)
+	}
+	if game.Seed == 0 || game.ShuffleProof.Seed != game.Seed || game.ShuffleProof.WallHash == "" {
+		t.Fatalf("shuffle proof = %#v seed=%d", game.ShuffleProof, game.Seed)
+	}
+}
+
+func TestShuffleProofHashCoversInitialWall(t *testing.T) {
+	game := NewGame(42)
+
+	if game.ShuffleProof.WallHash == wallHash(game.Wall) {
+		t.Fatal("shuffle proof should hash the full initial wall before dealing, not the remaining wall")
+	}
+	if len(game.ShuffleProof.WallHash) != 64 {
+		t.Fatalf("wall hash length = %d, want sha256 hex", len(game.ShuffleProof.WallHash))
+	}
+}
+
 func TestChooseAIDiscardReturnsValidIndex(t *testing.T) {
 	hand := mustTiles(t, "1m", "2m", "3m", "E", "E")
 	index := ChooseAIDiscard(hand)

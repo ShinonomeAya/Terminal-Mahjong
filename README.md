@@ -10,6 +10,13 @@ A small, complete terminal Mahjong game written in Go.
 - Win check: standard `4 melds + 1 pair` hand shape.
 - No scoring, flowers, seat wind rounds, riichi rules, or network play in the first version.
 
+## Fair Shuffle And Replay Audit
+
+- New default games use a seed generated from `crypto/rand`, then shuffle the wall deterministically from that seed.
+- Tests and scripted runs can still pass a fixed seed to reproduce the exact deal and event sequence.
+- Replay logs include the seed and a SHA-256 wall hash so a round can be audited without scraping terminal output.
+- The game does not use player history, win rate, or any adaptive deal control when shuffling.
+
 ## Controls
 
 - `Up` / `Down`: move in menus.

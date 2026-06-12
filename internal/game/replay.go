@@ -7,11 +7,12 @@ import (
 )
 
 type ReplayLog struct {
-	Seed   int64       `json:"seed"`
-	Winner string      `json:"winner"`
-	Result string      `json:"result"`
-	Score  string      `json:"score"`
-	Events []GameEvent `json:"events"`
+	Seed         int64        `json:"seed"`
+	ShuffleProof ShuffleProof `json:"shuffle_proof"`
+	Winner       string       `json:"winner"`
+	Result       string       `json:"result"`
+	Score        string       `json:"score"`
+	Events       []GameEvent  `json:"events"`
 }
 
 func (g *Game) ReplayLog() ReplayLog {
@@ -27,11 +28,12 @@ func (g *Game) ReplayLog() ReplayLog {
 		scoreLabel = score.Label
 	}
 	return ReplayLog{
-		Seed:   g.Seed,
-		Winner: winner,
-		Result: g.Reason,
-		Score:  scoreLabel,
-		Events: append([]GameEvent(nil), g.Events...),
+		Seed:         g.Seed,
+		ShuffleProof: g.ShuffleProof,
+		Winner:       winner,
+		Result:       g.Reason,
+		Score:        scoreLabel,
+		Events:       append([]GameEvent(nil), g.Events...),
 	}
 }
 
@@ -43,6 +45,7 @@ func ReplaySummary(log ReplayLog) string {
 	lines := []string{
 		"Replay",
 		fmt.Sprintf("Seed: %d", log.Seed),
+		fmt.Sprintf("Wall Hash: %s", emptyDash(log.ShuffleProof.WallHash)),
 		fmt.Sprintf("Winner: %s", emptyDash(log.Winner)),
 		fmt.Sprintf("Result: %s", emptyDash(log.Result)),
 		fmt.Sprintf("Score: %s", emptyDash(log.Score)),

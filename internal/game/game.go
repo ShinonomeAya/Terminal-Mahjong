@@ -2,35 +2,53 @@ package game
 
 import (
 	"bufio"
+	cryptoRand "crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"math/rand"
 	"strings"
-	"time"
 )
 
+type RNGMode string
+
+const (
+	CryptoSeeded RNGMode = "crypto_seeded"
+	FixedSeed    RNGMode = "fixed_seed"
+)
+
+type ShuffleProof struct {
+	Seed     int64  `json:"seed"`
+	WallHash string `json:"wall_hash"`
+}
+
 type Game struct {
-	Players []Player
-	Wall    []Tile
-	Current int
-	Seed    int64
-	Winner  int
-	Reason  string
-	WinType WinType
-	Over    bool
-	Events  []GameEvent
-	rng     *rand.Rand
+	Players      []Player
+	Wall         []Tile
+	Current      int
+	Seed         int64
+	RNGMode      RNGMode
+	ShuffleProof ShuffleProof
+	Winner       int
+	Reason       string
+	WinType      WinType
+	Over         bool
+	Events       []GameEvent
+	rng          *rand.Rand
 }
 
 func NewGame(seed int64) *Game {
+	mode := FixedSeed
 	if seed == 0 {
-		seed = time.Now().UnixNano()
+		seed = cryptoSeed()
+		mode = CryptoSeeded
 	}
 	rng := rand.New(rand.NewSource(seed))
 	wall := BuildWall()
 	rng.Shuffle(len(wall), func(i, j int) {
 		wall[i], wall[j] = wall[j], wall[i]
 	})
+	proof := ShuffleProof{Seed: seed, WallHash: wallHash(wall)}
 	players := NewPlayers()
 	for round := 0; round < 13; round++ {
 		for i := range players {
@@ -39,12 +57,26 @@ func NewGame(seed int64) *Game {
 		}
 	}
 	return &Game{
-		Players: players,
-		Wall:    wall,
-		Seed:    seed,
-		Winner:  -1,
-		rng:     rng,
+		Players:      players,
+		Wall:         wall,
+		Seed:         seed,
+		RNGMode:      mode,
+		ShuffleProof: proof,
+		Winner:       -1,
+		rng:          rng,
 	}
+}
+
+func cryptoSeed() int64 {
+	var bytes [8]byte
+	if _, err := cryptoRand.Read(bytes[:]); err != nil {
+		panic(fmt.Sprintf("crypto random seed failed: %v", err))
+	}
+	seed := int64(binary.LittleEndian.Uint64(bytes[:]) & ^(uint64(1) << 63))
+	if seed == 0 {
+		return 1
+	}
+	return seed
 }
 
 func (g *Game) Play(in io.Reader, out io.Writer) {
