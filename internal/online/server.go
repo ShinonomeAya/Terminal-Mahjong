@@ -176,6 +176,9 @@ func (s *Server) joinRoom(conn *websocket.Conn, code string, name string) (*sess
 	if joined == nil {
 		return nil, nil, fmt.Errorf("room not found")
 	}
+	if joined.started {
+		return nil, nil, fmt.Errorf("room already started")
+	}
 	seat := firstOpenSeat(joined)
 	if seat < 0 {
 		return nil, nil, fmt.Errorf("room is full")

@@ -70,6 +70,30 @@ func TestWebSocketServerBroadcastsRoomStateWhenPlayerJoins(t *testing.T) {
 	}
 }
 
+func TestWebSocketServerRejectsJoinAfterRoomStarted(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	first := dialTestClient(t, url)
+	defer first.Close()
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgCreateRoom})
+	created := readUntil(t, first, protocol.MsgRoomCreated)
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgReady})
+	started := readUntil(t, first, protocol.MsgRoomState)
+	if !started.Started {
+		t.Fatalf("started = false, want true")
+	}
+
+	late := dialTestClient(t, url)
+	defer late.Close()
+	sendMessage(t, late, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode})
+	errMsg := readUntil(t, late, protocol.MsgError)
+	if !strings.Contains(errMsg.Error, "already started") {
+		t.Fatalf("error = %#v, want already started", errMsg)
+	}
+}
+
 func TestWebSocketServerRejectsNonTurnCommand(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)
