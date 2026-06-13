@@ -115,8 +115,15 @@ go run ./cmd/client -reconnect
 # Keep reading game snapshots and reconnect up to 5 times if the socket drops.
 go run ./cmd/client -reconnect -watch
 
+# Mark yourself ready after connecting.
+go run ./cmd/client -reconnect -ready
+
 # Send a one-shot discard after connecting. Indexes are 1-based for the CLI.
 go run ./cmd/client -reconnect -discard 1
+
+# Send win or concealed-kong actions after connecting.
+go run ./cmd/client -reconnect -win
+go run ./cmd/client -reconnect -kong 1m
 ```
 
 The first online version uses in-memory rooms for local or LAN play. Restarting the server clears rooms and reconnect sessions.
