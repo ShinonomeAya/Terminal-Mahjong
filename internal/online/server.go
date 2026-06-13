@@ -16,8 +16,6 @@ import (
 	"mahjong/internal/protocol"
 )
 
-const reconnectWindow = 2 * time.Minute
-
 type Server struct {
 	mu       sync.Mutex
 	rooms    map[string]*room
@@ -25,14 +23,16 @@ type Server struct {
 	bots     bot.BotEngine
 	upgrader websocket.Upgrader
 	nextRoom int
+	options  ServerOptions
 }
 
 type room struct {
-	code    string
-	game    *game.Game
-	seats   [4]string
-	ready   map[string]bool
-	started bool
+	code      string
+	game      *game.Game
+	seats     [4]string
+	ready     map[string]bool
+	started   bool
+	updatedAt time.Time
 }
 
 type session struct {
@@ -46,6 +46,11 @@ type session struct {
 }
 
 func NewServer() *Server {
+	return NewServerWithOptions(ServerOptions{})
+}
+
+func NewServerWithOptions(options ServerOptions) *Server {
+	options = options.withDefaults()
 	return &Server{
 		rooms:    make(map[string]*room),
 		sessions: make(map[string]*session),
@@ -53,6 +58,7 @@ func NewServer() *Server {
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
+		options: options,
 	}
 }
 
@@ -159,6 +165,7 @@ func (s *Server) roomSummaries() []protocol.RoomSummary {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.pruneExpiredRoomsLocked(time.Now())
 	rooms := make([]protocol.RoomSummary, 0, len(s.rooms))
 	for _, room := range s.rooms {
 		if room.started {
@@ -182,9 +189,10 @@ func (s *Server) createRoom(conn *websocket.Conn, name string) (*session, *room)
 	s.nextRoom++
 	code := fmt.Sprintf("%06d", s.nextRoom)
 	created := &room{
-		code:  code,
-		game:  game.NewGame(0),
-		ready: make(map[string]bool),
+		code:      code,
+		game:      game.NewGame(0),
+		ready:     make(map[string]bool),
+		updatedAt: time.Now(),
 	}
 	session := newSession(name, code, 0, conn)
 	created.seats[0] = session.playerID
@@ -210,6 +218,7 @@ func (s *Server) joinRoom(conn *websocket.Conn, code string, name string) (*sess
 	}
 	session := newSession(name, code, seat, conn)
 	joined.seats[seat] = session.playerID
+	s.touchRoomLocked(joined)
 	s.sessions[session.playerID] = session
 	return session, joined, nil
 }
@@ -224,6 +233,7 @@ func (s *Server) setReady(session *session) {
 		room.ready[session.playerID] = true
 		wasStarted := room.started
 		room.started = allOccupiedReady(room)
+		s.touchRoomLocked(room)
 		if room.started && !wasStarted {
 			room.game.EnsureCurrentTurnDraw()
 		}
@@ -255,6 +265,7 @@ func (s *Server) playCommand(conn *websocket.Conn, session *session, command gam
 		writeError(conn, result.Error)
 		return
 	}
+	s.touchRoomLocked(room)
 	s.advanceUnoccupiedBotsLocked(room)
 	result.Snapshot = room.game.Snapshot()
 	s.broadcastRoomLocked(room, protocol.Message{Type: protocol.MsgGameSnapshot, Result: result, Snapshot: result.Snapshot})
@@ -290,7 +301,7 @@ func (s *Server) reconnect(conn *websocket.Conn, playerID string, token string) 
 	if session == nil || session.reconnectToken != token {
 		return nil, nil, game.GameSnapshot{}, fmt.Errorf("invalid reconnect token")
 	}
-	if !session.offlineAt.IsZero() && time.Since(session.offlineAt) > reconnectWindow {
+	if !session.offlineAt.IsZero() && time.Since(session.offlineAt) > s.options.ReconnectWindow {
 		return nil, nil, game.GameSnapshot{}, fmt.Errorf("reconnect window expired")
 	}
 	session.conn = conn
@@ -300,6 +311,29 @@ func (s *Server) reconnect(conn *websocket.Conn, playerID string, token string) 
 		return nil, nil, game.GameSnapshot{}, fmt.Errorf("room not found")
 	}
 	return session, room, room.game.Snapshot(), nil
+}
+
+func (s *Server) touchRoomLocked(room *room) {
+	if room != nil {
+		room.updatedAt = time.Now()
+	}
+}
+
+func (s *Server) pruneExpiredRoomsLocked(now time.Time) {
+	for code, room := range s.rooms {
+		if room.started {
+			continue
+		}
+		if now.Sub(room.updatedAt) <= s.options.RoomIdleTTL {
+			continue
+		}
+		for _, playerID := range room.seats {
+			if playerID != "" {
+				delete(s.sessions, playerID)
+			}
+		}
+		delete(s.rooms, code)
+	}
 }
 
 func (s *Server) markOffline(session *session) {

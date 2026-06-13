@@ -276,6 +276,52 @@ func TestWebSocketServerReconnectsWithToken(t *testing.T) {
 	}
 }
 
+func TestWebSocketServerRejectsReconnectAfterConfiguredWindow(t *testing.T) {
+	server := NewServerWithOptions(ServerOptions{ReconnectWindow: time.Nanosecond})
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	first := dialTestClient(t, url)
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgCreateRoom})
+	created := readUntil(t, first, protocol.MsgRoomCreated)
+	first.Close()
+
+	time.Sleep(2 * time.Millisecond)
+
+	reconnecting := dialTestClient(t, url)
+	defer reconnecting.Close()
+	sendMessage(t, reconnecting, protocol.Message{
+		Type:           protocol.MsgReconnect,
+		PlayerID:       created.PlayerID,
+		ReconnectToken: created.ReconnectToken,
+	})
+	errMsg := readUntil(t, reconnecting, protocol.MsgError)
+	if !strings.Contains(errMsg.Error, "reconnect window expired") {
+		t.Fatalf("error = %#v", errMsg)
+	}
+}
+
+func TestWebSocketServerDoesNotListExpiredIdleRooms(t *testing.T) {
+	server := NewServerWithOptions(ServerOptions{RoomIdleTTL: time.Nanosecond})
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	host := dialTestClient(t, url)
+	sendMessage(t, host, protocol.Message{Type: protocol.MsgCreateRoom})
+	_ = readUntil(t, host, protocol.MsgRoomCreated)
+	host.Close()
+
+	time.Sleep(2 * time.Millisecond)
+
+	lister := dialTestClient(t, url)
+	defer lister.Close()
+	sendMessage(t, lister, protocol.Message{Type: protocol.MsgListRooms})
+	list := readUntil(t, lister, protocol.MsgRoomList)
+	if len(list.Rooms) != 0 {
+		t.Fatalf("rooms = %#v, want expired room hidden", list.Rooms)
+	}
+}
+
 func startTestServer(t *testing.T, server *Server) (string, func()) {
 	t.Helper()
 	httpServer := httptest.NewServer(server)
