@@ -86,6 +86,20 @@ func (c *Client) JoinRoom(ctx context.Context, roomCode string) (protocol.Messag
 	return c.acceptSessionMessage(message)
 }
 
+func (c *Client) ListRooms(ctx context.Context) ([]protocol.RoomSummary, error) {
+	if err := c.connect(ctx); err != nil {
+		return nil, err
+	}
+	if err := c.write(protocol.Message{Type: protocol.MsgListRooms}); err != nil {
+		return nil, err
+	}
+	message, err := c.ReadUntil(ctx, 2*time.Second, protocol.MsgRoomList, protocol.MsgError)
+	if err != nil {
+		return nil, err
+	}
+	return append([]protocol.RoomSummary(nil), message.Rooms...), nil
+}
+
 func (c *Client) Reconnect(ctx context.Context, session ClientSession) (protocol.Message, error) {
 	c.session = session
 	c.serverURL = session.ServerURL

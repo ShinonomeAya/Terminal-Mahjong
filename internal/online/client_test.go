@@ -101,6 +101,29 @@ func TestClientJoinsRoom(t *testing.T) {
 	}
 }
 
+func TestClientListsWaitingRooms(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	host := NewClient(url+"/ws", "host")
+	defer host.Close()
+	created, err := host.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lister := NewClient(url+"/ws", "lister")
+	defer lister.Close()
+	rooms, err := lister.ListRooms(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rooms) != 1 || rooms[0].Code != created.RoomCode {
+		t.Fatalf("rooms = %#v, created = %#v", rooms, created)
+	}
+}
+
 func TestClientSendsCommandAndReceivesBroadcast(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)

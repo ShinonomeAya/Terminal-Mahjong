@@ -32,10 +32,24 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	ready := flags.Bool("ready", false, "send ready after connecting")
 	win := flags.Bool("win", false, "declare win after connecting")
 	kong := flags.String("kong", "", "declare a concealed kong tile after connecting")
+	listRooms := flags.Bool("list", false, "list waiting rooms and exit")
 	watch := flags.Bool("watch", false, "keep reading snapshots and reconnect if the connection drops")
 	reconnectAttempts := flags.Int("reconnect-attempts", 5, "maximum reconnect attempts in watch mode")
 	if err := flags.Parse(args); err != nil {
 		return err
+	}
+
+	if *listRooms {
+		client := online.NewClient(*serverURL, *name)
+		defer client.Close()
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		rooms, err := client.ListRooms(ctx)
+		if err != nil {
+			return err
+		}
+		printRoomList(out, rooms)
+		return nil
 	}
 
 	connectCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -122,6 +136,19 @@ func printMessage(out io.Writer, message protocol.Message) {
 		message.Snapshot.Current,
 		message.Started,
 	)
+}
+
+func printRoomList(out io.Writer, rooms []protocol.RoomSummary) {
+	fmt.Fprintf(out, "rooms=%d\n", len(rooms))
+	for _, room := range rooms {
+		fmt.Fprintf(out, "room=%s occupied=%d ready=%d started=%t wall=%d\n",
+			room.Code,
+			room.Occupied,
+			room.Ready,
+			room.Started,
+			room.Wall,
+		)
+	}
 }
 
 func watchClient(ctx context.Context, client *online.Client, reconnectAttempts int, out io.Writer) error {

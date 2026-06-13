@@ -98,6 +98,32 @@ func TestRunClientKongFlagSendsKongCommand(t *testing.T) {
 	}
 }
 
+func TestRunListsRooms(t *testing.T) {
+	server := online.NewServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	url := "ws" + strings.TrimPrefix(httpServer.URL, "http")
+
+	host := online.NewClient(url+"/ws", "host")
+	defer host.Close()
+	created, err := host.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var out strings.Builder
+	err = run(context.Background(), []string{"-server", url + "/ws", "-list"}, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := out.String()
+	for _, want := range []string{"rooms=1", created.RoomCode, "occupied=1", "ready=0"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("output missing %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestWatchOncePrintsRoomState(t *testing.T) {
 	serverURL, closeServer := startClientMessageServer(t, protocol.Message{
 		Type:     protocol.MsgRoomState,
