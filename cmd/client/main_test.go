@@ -98,10 +98,48 @@ func TestRunClientKongFlagSendsKongCommand(t *testing.T) {
 	}
 }
 
+func TestWatchOncePrintsRoomState(t *testing.T) {
+	serverURL, closeServer := startClientMessageServer(t, protocol.Message{
+		Type:     protocol.MsgRoomState,
+		RoomCode: "000777",
+		Started:  true,
+		Snapshot: game.NewGame(13).Snapshot(),
+	})
+	defer closeServer()
+
+	client := online.NewClient(serverURL, "first")
+	defer client.Close()
+
+	var output bytes.Buffer
+	if err := watchOnce(context.Background(), client, 1, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "type=room_state") || !strings.Contains(output.String(), "room=000777") {
+		t.Fatalf("output missing room_state:\n%s", output.String())
+	}
+}
+
 func startClientTestServer() (string, func()) {
 	server := online.NewServer()
 	httpServer := httptest.NewServer(server)
 	return "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws", httpServer.Close
+}
+
+func startClientMessageServer(t *testing.T, message protocol.Message) (string, func()) {
+	t.Helper()
+	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer conn.Close()
+		if err := conn.WriteJSON(message); err != nil {
+			t.Error(err)
+		}
+	}))
+	return "ws" + strings.TrimPrefix(server.URL, "http"), server.Close
 }
 
 func startClientCommandCaptureServer(t *testing.T) (string, <-chan protocol.Message, func()) {

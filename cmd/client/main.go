@@ -125,12 +125,27 @@ func printMessage(out io.Writer, message protocol.Message) {
 }
 
 func watchClient(ctx context.Context, client *online.Client, reconnectAttempts int, out io.Writer) error {
-	policy := online.ReconnectPolicy{MaxAttempts: reconnectAttempts, BaseDelay: 200 * time.Millisecond}
 	for {
-		message, err := client.ReadUntilWithReconnect(ctx, 24*time.Hour, policy, protocol.MsgGameSnapshot, protocol.MsgReconnected)
-		if err != nil {
+		if err := watchOnce(ctx, client, reconnectAttempts, out); err != nil {
 			return err
 		}
-		printMessage(out, message)
 	}
+}
+
+func watchOnce(ctx context.Context, client *online.Client, reconnectAttempts int, out io.Writer) error {
+	policy := online.ReconnectPolicy{MaxAttempts: reconnectAttempts, BaseDelay: 200 * time.Millisecond}
+	message, err := client.ReadUntilWithReconnect(
+		ctx,
+		24*time.Hour,
+		policy,
+		protocol.MsgGameSnapshot,
+		protocol.MsgRoomState,
+		protocol.MsgReconnected,
+		protocol.MsgError,
+	)
+	if err != nil {
+		return err
+	}
+	printMessage(out, message)
+	return nil
 }

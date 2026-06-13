@@ -112,7 +112,7 @@ go run ./cmd/client -name Bob -join 000001 -session .mahjong-bob.json
 # Reconnect with a saved session.
 go run ./cmd/client -reconnect
 
-# Keep reading game snapshots and reconnect up to 5 times if the socket drops.
+# Keep reading room states and game snapshots; reconnect up to 5 times if the socket drops.
 go run ./cmd/client -reconnect -watch
 
 # Mark yourself ready after connecting.
