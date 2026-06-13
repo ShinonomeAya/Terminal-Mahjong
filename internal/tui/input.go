@@ -296,6 +296,7 @@ func clearOnlineStateForMenu(m Model) Model {
 	m.OnlinePlayerID = ""
 	m.OnlineRoomCode = ""
 	m.OnlineSeat = 0
+	m.OnlineEvents = nil
 	m.OnlineReadySeats = nil
 	m.OnlineOccupiedSeats = nil
 	m.OnlineStarted = false

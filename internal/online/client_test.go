@@ -229,6 +229,55 @@ func TestClientReadUntilWithReconnectRestoresSession(t *testing.T) {
 	}
 }
 
+func TestClientReadUntilWithReconnectReportsAttemptsAndSuccess(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	client := NewClient(url+"/ws", "first")
+	defer client.Close()
+	created, err := client.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var attempts []int
+	successes := 0
+	reconnected, err := client.ReadUntilWithReconnect(
+		context.Background(),
+		2*time.Second,
+		ReconnectPolicy{
+			MaxAttempts: 5,
+			BaseDelay:   time.Millisecond,
+			OnAttempt: func(attempt int, max int) {
+				if max != 5 {
+					t.Fatalf("max = %d, want 5", max)
+				}
+				attempts = append(attempts, attempt)
+			},
+			OnSuccess: func() {
+				successes++
+			},
+		},
+		protocol.MsgReconnected,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reconnected.PlayerID != created.PlayerID {
+		t.Fatalf("reconnected player = %q, want %q", reconnected.PlayerID, created.PlayerID)
+	}
+	if len(attempts) == 0 || attempts[0] != 1 {
+		t.Fatalf("attempts = %#v, want first attempt reported", attempts)
+	}
+	if successes != 1 {
+		t.Fatalf("successes = %d, want 1", successes)
+	}
+}
+
 func TestClientReadUntilWithReconnectReturnsRequestedServerError(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)

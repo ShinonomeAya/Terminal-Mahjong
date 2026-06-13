@@ -201,7 +201,7 @@ func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	msg := cmd()
 	next, _ = updated.Update(msg)
 	updated = next.(Model)
-	msg = waitOnlineSnapshot(client)()
+	msg = waitOnlineSnapshot(client, nil)()
 	next, _ = updated.Update(msg)
 	updated = next.(Model)
 
@@ -292,7 +292,7 @@ func TestOnlineSecondMouseClickSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	msg := cmd()
 	next, _ = updated.Update(msg)
 	updated = next.(Model)
-	msg = waitOnlineSnapshot(client)()
+	msg = waitOnlineSnapshot(client, nil)()
 	next, _ = updated.Update(msg)
 	updated = next.(Model)
 
@@ -325,7 +325,7 @@ func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
 		t.Fatal(err)
 	}
 	model := applyOnlineConnected(NewModel(), onlineConnectedMsg{Message: created, Client: first})
-	msg := waitOnlineSnapshot(first)()
+	msg := waitOnlineSnapshot(first, nil)()
 	next, _ := model.Update(msg)
 	model = next.(Model)
 
@@ -341,7 +341,7 @@ func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
 	msg = cmd()
 	next, _ = updated.Update(msg)
 	updated = next.(Model)
-	msg = waitOnlineSnapshot(first)()
+	msg = waitOnlineSnapshot(first, nil)()
 	next, _ = updated.Update(msg)
 	updated = next.(Model)
 
@@ -534,6 +534,50 @@ func TestOnlineServerErrorShowsStatusAndKeepsNetworkState(t *testing.T) {
 	}
 	if updated.NetworkStatus != NetworkWaiting {
 		t.Fatalf("network status = %q, want waiting", updated.NetworkStatus)
+	}
+}
+
+func TestOnlineReconnectAttemptMessageUpdatesNetworkStatus(t *testing.T) {
+	model := NewModel()
+	model.Online = true
+	model.Screen = ScreenTable
+
+	next, cmd := model.Update(onlineReconnectAttemptMsg{Attempt: 2, Max: 5})
+	updated := next.(Model)
+
+	if cmd != nil {
+		t.Fatal("expected no command for direct reconnect message without event channel")
+	}
+	if updated.NetworkStatus != NetworkReconnecting {
+		t.Fatalf("network status = %q, want reconnecting", updated.NetworkStatus)
+	}
+	if updated.ReconnectAttempt != 2 || updated.ReconnectMax != 5 {
+		t.Fatalf("attempt = %d/%d, want 2/5", updated.ReconnectAttempt, updated.ReconnectMax)
+	}
+	if !strings.Contains(updated.View(), "Network: reconnecting 2/5") {
+		t.Fatalf("view missing reconnecting status:\n%s", updated.View())
+	}
+}
+
+func TestOnlineReconnectSuccessMessageUpdatesNetworkStatus(t *testing.T) {
+	model := NewModel()
+	model.Online = true
+	model.Screen = ScreenTable
+	model.NetworkStatus = NetworkReconnecting
+	model.ReconnectAttempt = 2
+	model.ReconnectMax = 5
+
+	next, cmd := model.Update(onlineReconnectSuccessMsg{})
+	updated := next.(Model)
+
+	if cmd != nil {
+		t.Fatal("expected no command for direct reconnect success without event channel")
+	}
+	if updated.NetworkStatus != NetworkReconnected {
+		t.Fatalf("network status = %q, want reconnected", updated.NetworkStatus)
+	}
+	if !strings.Contains(updated.View(), "Network: reconnected") {
+		t.Fatalf("view missing reconnected status:\n%s", updated.View())
 	}
 }
 

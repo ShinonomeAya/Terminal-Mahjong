@@ -27,6 +27,36 @@ type onlineErrorMsg struct {
 
 type onlineCommandSentMsg struct{}
 
+type onlineReconnectAttemptMsg struct {
+	Attempt int
+	Max     int
+}
+
+type onlineReconnectSuccessMsg struct{}
+
+func listenOnlineEvents(events <-chan tea.Msg) tea.Cmd {
+	if events == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		msg, ok := <-events
+		if !ok {
+			return nil
+		}
+		return msg
+	}
+}
+
+func sendOnlineEvent(events chan<- tea.Msg, msg tea.Msg) {
+	if events == nil {
+		return
+	}
+	select {
+	case events <- msg:
+	default:
+	}
+}
+
 func createOnlineRoomCmd(m Model) tea.Cmd {
 	serverURL := m.OnlineServerURL
 	name := m.OnlineName
@@ -89,7 +119,7 @@ func reconnectOnlineCmd(m Model) tea.Cmd {
 	}
 }
 
-func waitOnlineSnapshot(client *online.Client) tea.Cmd {
+func waitOnlineSnapshot(client *online.Client, events chan<- tea.Msg) tea.Cmd {
 	if client == nil {
 		return nil
 	}
@@ -97,7 +127,16 @@ func waitOnlineSnapshot(client *online.Client) tea.Cmd {
 		message, err := client.ReadUntilWithReconnect(
 			context.Background(),
 			24*time.Hour,
-			online.ReconnectPolicy{MaxAttempts: 5, BaseDelay: 200 * time.Millisecond},
+			online.ReconnectPolicy{
+				MaxAttempts: 5,
+				BaseDelay:   200 * time.Millisecond,
+				OnAttempt: func(attempt int, max int) {
+					sendOnlineEvent(events, onlineReconnectAttemptMsg{Attempt: attempt, Max: max})
+				},
+				OnSuccess: func() {
+					sendOnlineEvent(events, onlineReconnectSuccessMsg{})
+				},
+			},
 			protocol.MsgGameSnapshot,
 			protocol.MsgRoomState,
 			protocol.MsgReconnected,
@@ -154,6 +193,9 @@ func applyOnlineConnected(m Model, msg onlineConnectedMsg) Model {
 	m.OnlineReadySeats = append([]int(nil), msg.Message.ReadySeats...)
 	m.OnlineOccupiedSeats = append([]int(nil), msg.Message.OccupiedSeats...)
 	m.OnlineStarted = msg.Message.Started
+	if m.OnlineEvents == nil {
+		m.OnlineEvents = make(chan tea.Msg, 8)
+	}
 	m.OnlineSnapshot = msg.Message.Snapshot
 	m.Game = nil
 	m.StatusLine = fmt.Sprintf("Room:%s Seat:%d", m.OnlineRoomCode, m.OnlineSeat+1)

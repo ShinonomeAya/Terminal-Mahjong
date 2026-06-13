@@ -34,6 +34,8 @@ type Client struct {
 type ReconnectPolicy struct {
 	MaxAttempts int
 	BaseDelay   time.Duration
+	OnAttempt   func(attempt int, max int)
+	OnSuccess   func()
 }
 
 func NewClient(serverURL string, name string) *Client {
@@ -244,9 +246,15 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, policy ReconnectPolic
 	}
 	var lastErr error
 	for attempt := 0; attempt < policy.MaxAttempts; attempt++ {
+		if policy.OnAttempt != nil {
+			policy.OnAttempt(attempt+1, policy.MaxAttempts)
+		}
 		c.Close()
 		message, err := c.Reconnect(ctx, session)
 		if err == nil {
+			if policy.OnSuccess != nil {
+				policy.OnSuccess()
+			}
 			return message, nil
 		}
 		lastErr = err

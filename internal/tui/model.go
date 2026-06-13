@@ -33,6 +33,7 @@ type Model struct {
 	OnlineReadySeats    []int
 	OnlineOccupiedSeats []int
 	OnlineStarted       bool
+	OnlineEvents        chan tea.Msg
 	OnlineServerURL     string
 	OnlineName          string
 	OnlineSession       string
@@ -87,9 +88,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Height = msg.Height
 		return m, nil
 	case onlineConnectedMsg:
-		return applyOnlineConnected(m, msg), waitOnlineSnapshot(msg.Client)
+		updated := applyOnlineConnected(m, msg)
+		return updated, tea.Batch(waitOnlineSnapshot(msg.Client, updated.OnlineEvents), listenOnlineEvents(updated.OnlineEvents))
 	case onlineSnapshotMsg:
-		return applyOnlineSnapshot(m, msg.Message), waitOnlineSnapshot(m.OnlineClient)
+		updated := applyOnlineSnapshot(m, msg.Message)
+		return updated, waitOnlineSnapshot(updated.OnlineClient, updated.OnlineEvents)
+	case onlineReconnectAttemptMsg:
+		m.NetworkStatus = NetworkReconnecting
+		m.ReconnectAttempt = msg.Attempt
+		m.ReconnectMax = msg.Max
+		return m, listenOnlineEvents(m.OnlineEvents)
+	case onlineReconnectSuccessMsg:
+		m.NetworkStatus = NetworkReconnected
+		m.StatusLine = "Reconnected"
+		return m, listenOnlineEvents(m.OnlineEvents)
 	case onlineErrorMsg:
 		m.NetworkStatus = NetworkOffline
 		m.StatusLine = msg.Err.Error()
