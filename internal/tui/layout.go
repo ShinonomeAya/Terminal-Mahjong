@@ -14,12 +14,14 @@ type TileHitBox struct {
 	X1    int
 	X2    int
 	Y     int
+	Y1    int
+	Y2    int
 }
 
 const (
 	handStartX = 6
-	handRowY   = 29
-	handRowGap = 2
+	handRowY   = 30
+	handRowGap = 3
 	handCellW  = 6
 	handCols   = 14
 )
@@ -30,14 +32,19 @@ func handHitBoxes(count int, startX int, y int) []TileHitBox {
 		col := i % handCols
 		row := i / handCols
 		x := startX + col*handCellW
-		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: y + row*handRowGap}
+		faceY := y + row*handRowGap
+		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: faceY, Y1: faceY - 1, Y2: faceY + 1}
 	}
 	return boxes
 }
 
 func tileIndexAt(boxes []TileHitBox, x int, y int) (int, bool) {
 	for _, box := range boxes {
-		if y == box.Y && x >= box.X1 && x <= box.X2 {
+		y1, y2 := box.Y1, box.Y2
+		if y1 == 0 && y2 == 0 {
+			y1, y2 = box.Y, box.Y
+		}
+		if y >= y1 && y <= y2 && x >= box.X1 && x <= box.X2 {
 			return box.Index, true
 		}
 	}
@@ -527,20 +534,23 @@ func renderHand(hand []game.Tile, selected int, unicode bool) string {
 	out.WriteString("Focus: " + selectedHandText(hand, selected, unicode) + "\n")
 	for rowStart := 0; rowStart < len(hand); rowStart += handCols {
 		rowEnd := min(rowStart+handCols, len(hand))
-		if rowStart == 0 {
-			out.WriteString("Hand: ")
-		} else {
-			out.WriteString("      ")
-		}
-		for i := rowStart; i < rowEnd; i++ {
-			tile := hand[i]
-			out.WriteString(renderTileCell(i, tile, i == selected, unicode))
-		}
-		out.WriteString("\n")
-		out.WriteString(renderHandFocusMarker(rowStart, rowEnd, selected))
-		out.WriteString("\n")
+		top, face, bottom := renderHandCardRow(hand[rowStart:rowEnd], selected-rowStart, unicode)
+		out.WriteString("      " + top + "\n")
+		out.WriteString("Hand: " + face + "\n")
+		out.WriteString("      " + bottom + "\n")
 	}
 	return out.String()
+}
+
+func renderHandCardRow(hand []game.Tile, selected int, unicode bool) (string, string, string) {
+	var top, face, bottom strings.Builder
+	for i, tile := range hand {
+		cardTop, cardFace, cardBottom := renderTileCard(tile, i == selected, unicode)
+		top.WriteString(cardTop)
+		face.WriteString(cardFace)
+		bottom.WriteString(cardBottom)
+	}
+	return top.String(), face.String(), bottom.String()
 }
 
 func selectedHandText(hand []game.Tile, selected int, unicode bool) string {
@@ -550,40 +560,36 @@ func selectedHandText(hand []game.Tile, selected int, unicode bool) string {
 	return selectedTileText(selected, hand[selected], unicode)
 }
 
-func renderHandFocusMarker(rowStart int, rowEnd int, selected int) string {
-	var out strings.Builder
-	out.WriteString("      ")
-	for i := rowStart; i < rowEnd; i++ {
-		if i == selected {
-			out.WriteString(padRightRunes("  ▲", handCellW))
-			continue
-		}
-		out.WriteString(strings.Repeat(" ", handCellW))
-	}
-	return out.String()
+func renderTileCell(index int, tile game.Tile, selected bool, unicode bool) string {
+	_, face, _ := renderTileCard(tile, selected, unicode)
+	return face
 }
 
-func renderTileCell(index int, tile game.Tile, selected bool, unicode bool) string {
+func renderTileCard(tile game.Tile, selected bool, unicode bool) (string, string, string) {
 	label := game.TileLabel(tile, unicode)
+	content := centeredCardContent(label, 3)
 	if selected {
-		return padRightRunes(styleMahjongTile(tile, "▶"+label+"◀", true), handCellW)
+		return styleSelectedTile("┏━━━┓ "), styleSelectedTile("┃" + content + "┃ "), styleSelectedTile("┗━━━┛ ")
 	}
-	return padRightRunes(styleMahjongTile(tile, " "+label+" ", false), handCellW)
+	return "╭───╮ ", "│" + styledCardContent(tile, label, content) + "│ ", "╰───╯ "
 }
 
 func selectedTileText(index int, tile game.Tile, unicode bool) string {
 	return fmt.Sprintf("[%02d] %s (%s)", index+1, game.TileLabel(tile, unicode), tile.String())
 }
 
-func runeWidth(text string) int {
-	return len([]rune(text))
+func centeredCardContent(label string, width int) string {
+	labelWidth := visibleWidth(label)
+	if labelWidth >= width {
+		return label
+	}
+	left := (width - labelWidth) / 2
+	right := width - labelWidth - left
+	return strings.Repeat(" ", left) + label + strings.Repeat(" ", right)
 }
 
-func padRightRunes(text string, width int) string {
-	if runeWidth(text) >= width {
-		return text
-	}
-	return text + strings.Repeat(" ", width-runeWidth(text))
+func styledCardContent(tile game.Tile, label string, content string) string {
+	return strings.Replace(content, label, styleMahjongTile(tile, label, false), 1)
 }
 
 var gameOverItems = []string{"Restart", "Main Menu", "Quit"}

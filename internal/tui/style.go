@@ -83,7 +83,10 @@ func styleTileFace(label string, selected bool) string {
 }
 
 func styleMahjongTile(tile game.Tile, label string, selected bool) string {
-	style := tileFaceStyle.Foreground(tileColor(tile))
+	style := tileFaceStyle.
+		Foreground(tileColor(tile)).
+		Background(lipgloss.NoColor{}).
+		Padding(0, 0)
 	if selected {
 		style = style.Background(lipgloss.Color("#FDE68A"))
 	}

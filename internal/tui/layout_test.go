@@ -22,8 +22,8 @@ func TestTileCellRendersSelectedUnicodeTile(t *testing.T) {
 
 	cell := renderTileCell(1, tile, true, true)
 
-	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "▶") || !strings.Contains(cell, "🀈") || !strings.Contains(cell, "◀") {
-		t.Fatalf("selected cell = %q, want selected markers", cell)
+	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") {
+		t.Fatalf("selected cell = %q, want highlighted tile without visible index", cell)
 	}
 }
 
@@ -42,8 +42,32 @@ func TestTileCellStaysWithinWidthBudget(t *testing.T) {
 
 	cell := renderTileCell(1, tile, true, true)
 
-	if got := runeWidth(cell); got > handCellW {
-		t.Fatalf("cell width = %d, want <= %d: %q", got, handCellW, cell)
+	if got := visibleWidth(cell); got != handCellW {
+		t.Fatalf("cell width = %d, want %d: %q", got, handCellW, cell)
+	}
+}
+
+func TestSelectedHandCardAlignsInFixedWidthRow(t *testing.T) {
+	hand := mustUITiles(t, "1m", "2m", "3m")
+
+	view := renderHand(hand, 1, true)
+	lines := strings.Split(strings.TrimRight(view, "\n"), "\n")
+	topLine := ""
+	handLine := ""
+	for index, line := range lines {
+		if strings.Contains(line, "Hand:") {
+			if index > 0 {
+				topLine = lines[index-1]
+			}
+			handLine = line
+			break
+		}
+	}
+	if !strings.Contains(topLine, "┏━━━┓") || !strings.Contains(handLine, "┃ 🀈 ┃") {
+		t.Fatalf("selected card should use a heavy bordered tile:\n%s", view)
+	}
+	if got := visibleWidth(strings.TrimPrefix(handLine, "Hand: ")); got != len(hand)*handCellW {
+		t.Fatalf("hand row width = %d, want %d:\n%s", got, len(hand)*handCellW, view)
 	}
 }
 
@@ -228,7 +252,7 @@ func TestRenderTableShowsSelectedTileInHandRow(t *testing.T) {
 
 	view := renderTable(model)
 
-	if strings.Contains(view, "▶ [02]") || !strings.Contains(view, "▶") || !strings.Contains(view, "Focus: [02]") {
+	if strings.Contains(view, "▶ [02]") || !strings.Contains(view, "Focus: [02]") {
 		t.Fatalf("view does not clearly show selected tile:\n%s", view)
 	}
 }
@@ -242,7 +266,7 @@ func TestRenderTableShowsHandTrayFocus(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Hand Tray", "Focus: [02]", "▲"} {
+	for _, text := range []string{"Hand Tray", "Focus: [02]", "┃ 🀈 ┃"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing hand tray focus text %q:\n%s", text, view)
 		}
@@ -502,6 +526,17 @@ func TestHandHitBoxesFindTileIndex(t *testing.T) {
 	}
 	if index != 1 {
 		t.Fatalf("index = %d, want 1", index)
+	}
+}
+
+func TestHandHitBoxesCoverWholeCard(t *testing.T) {
+	boxes := handHitBoxes(3, 2, 4)
+
+	for _, y := range []int{boxes[1].Y1, boxes[1].Y, boxes[1].Y2} {
+		index, ok := tileIndexAt(boxes, boxes[1].X1, y)
+		if !ok || index != 1 {
+			t.Fatalf("hit at y=%d = %d,%v; want tile 1", y, index, ok)
+		}
 	}
 }
 
