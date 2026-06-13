@@ -128,6 +128,10 @@ go run ./cmd/client -reconnect -kong 1m
 
 The first online version uses in-memory rooms for local or LAN play. Restarting the server clears rooms and reconnect sessions.
 
+### Online client acceptance
+
+The online client remains terminal-first. It supports in-memory WebSocket rooms, room discovery, ready/start synchronization, token-based reconnect, bot-filled empty seats, and CLI/TUI smoke flows. The detailed acceptance checklist lives in `docs/online-client-acceptance.md`.
+
 ## Test
 
 ```powershell
