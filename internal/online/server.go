@@ -122,6 +122,11 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 		})
 		s.broadcastRoomStateExcept(joined, session.playerID)
 		return session
+	case protocol.MsgListRooms:
+		writeJSON(conn, protocol.Message{
+			Type:  protocol.MsgRoomList,
+			Rooms: s.roomSummaries(),
+		})
 	case protocol.MsgReady:
 		s.setReady(current)
 	case protocol.MsgPlayCommand:
@@ -148,6 +153,26 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 		writeError(conn, "unknown message")
 	}
 	return current
+}
+
+func (s *Server) roomSummaries() []protocol.RoomSummary {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rooms := make([]protocol.RoomSummary, 0, len(s.rooms))
+	for _, room := range s.rooms {
+		if room.started {
+			continue
+		}
+		rooms = append(rooms, protocol.RoomSummary{
+			Code:     room.code,
+			Occupied: len(occupiedSeats(room)),
+			Ready:    len(readySeats(room)),
+			Started:  room.started,
+			Wall:     room.game.Snapshot().WallCount,
+		})
+	}
+	return rooms
 }
 
 func (s *Server) createRoom(conn *websocket.Conn, name string) (*session, *room) {

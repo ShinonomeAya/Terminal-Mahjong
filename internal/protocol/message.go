@@ -8,7 +8,9 @@ const (
 	MsgHello        MessageType = "hello"
 	MsgCreateRoom   MessageType = "create_room"
 	MsgJoinRoom     MessageType = "join_room"
+	MsgListRooms    MessageType = "list_rooms"
 	MsgReady        MessageType = "ready"
+	MsgRoomList     MessageType = "room_list"
 	MsgRoomState    MessageType = "room_state"
 	MsgGameSnapshot MessageType = "game_snapshot"
 	MsgPlayCommand  MessageType = "play_command"
@@ -18,6 +20,14 @@ const (
 	MsgRoomJoined   MessageType = "room_joined"
 	MsgError        MessageType = "error"
 )
+
+type RoomSummary struct {
+	Code     string `json:"code"`
+	Occupied int    `json:"occupied"`
+	Ready    int    `json:"ready"`
+	Started  bool   `json:"started"`
+	Wall     int    `json:"wall"`
+}
 
 type Message struct {
 	Type           MessageType        `json:"type"`
@@ -32,5 +42,6 @@ type Message struct {
 	Command        game.GameCommand   `json:"command,omitempty"`
 	Result         game.CommandResult `json:"result,omitempty"`
 	Snapshot       game.GameSnapshot  `json:"snapshot,omitempty"`
+	Rooms          []RoomSummary      `json:"rooms,omitempty"`
 	Error          string             `json:"error,omitempty"`
 }

@@ -43,6 +43,30 @@ func TestWebSocketServerCreatesAndJoinsRoom(t *testing.T) {
 	}
 }
 
+func TestWebSocketServerListsWaitingRooms(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	first := dialTestClient(t, url)
+	defer first.Close()
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgCreateRoom, Name: "first"})
+	created := readUntil(t, first, protocol.MsgRoomCreated)
+
+	lister := dialTestClient(t, url)
+	defer lister.Close()
+	sendMessage(t, lister, protocol.Message{Type: protocol.MsgListRooms})
+	list := readUntil(t, lister, protocol.MsgRoomList)
+
+	if len(list.Rooms) != 1 {
+		t.Fatalf("rooms = %#v, want one waiting room", list.Rooms)
+	}
+	room := list.Rooms[0]
+	if room.Code != created.RoomCode || room.Occupied != 1 || room.Ready != 0 || room.Started {
+		t.Fatalf("room = %#v, created = %#v", room, created)
+	}
+}
+
 func TestWebSocketServerBroadcastsRoomStateWhenPlayerJoins(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)
