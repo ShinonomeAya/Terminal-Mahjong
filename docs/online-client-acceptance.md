@@ -43,3 +43,9 @@ go run ./cmd/client -name Host -session .host-session.json
 go run ./cmd/client -name Guest -join <printed-room-code> -session .guest-session.json
 go run ./cmd/client -session .host-session.json -reconnect -ready -watch
 ```
+
+## Latest Verified Result
+
+- `go test ./...`: pass
+- `go build ./cmd/mahjong ./cmd/server ./cmd/client`: pass
+- `go test ./internal/online ./cmd/client ./internal/tui -count=1`: pass
