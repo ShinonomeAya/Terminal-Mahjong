@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"mahjong/internal/game"
 )
 
 var (
@@ -78,4 +80,25 @@ func styleTileFace(label string, selected bool) string {
 		style = style.Background(lipgloss.Color("#FDE68A"))
 	}
 	return style.Render(label)
+}
+
+func styleMahjongTile(tile game.Tile, label string, selected bool) string {
+	style := tileFaceStyle.Foreground(tileColor(tile))
+	if selected {
+		style = style.Background(lipgloss.Color("#FDE68A"))
+	}
+	return style.Render(label)
+}
+
+func tileColor(tile game.Tile) lipgloss.Color {
+	switch {
+	case tile >= 0 && tile < 9:
+		return lipgloss.Color("#DC2626")
+	case tile >= 9 && tile < 18:
+		return lipgloss.Color("#2563EB")
+	case tile >= 18 && tile < 27:
+		return lipgloss.Color("#16A34A")
+	default:
+		return lipgloss.Color("#7C3AED")
+	}
 }

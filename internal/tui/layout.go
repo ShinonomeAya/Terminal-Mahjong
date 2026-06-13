@@ -20,8 +20,8 @@ const (
 	handStartX = 6
 	handRowY   = 29
 	handRowGap = 2
-	handCellW  = 10
-	handCols   = 7
+	handCellW  = 6
+	handCols   = 14
 )
 
 func handHitBoxes(count int, startX int, y int) []TileHitBox {
@@ -89,10 +89,10 @@ func renderTable(m Model) string {
 		game.FormatTileLabels(recentTiles(g.Players[3].Discards, 4), m.UnicodeTiles),
 		g.Current == 3,
 	)
-	center := stylePanelWidth("Table CENTER", renderCenter(g, m.UnicodeTiles), 38)
+	center := stylePanelWidth("牌桌 Table CENTER", renderCenter(g, m.UnicodeTiles), 38)
 	middle := renderTableMiddle(m, leftSeat, center, rightSeat)
 	hand := stylePanelWidth(
-		"You - Hand Tray",
+		"手牌  Hand Tray",
 		renderStatus(m)+
 			renderLastAction(m)+
 			fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary())+
@@ -107,14 +107,14 @@ func renderTable(m Model) string {
 		topSeat,
 		middle,
 		hand,
-		styleSectionTitle("Controls")+"\n"+styleMuted(tableControls(m)),
+		styleSectionTitle("操作  Controls")+"\n"+styleMuted(tableControls(m)),
 	)
 }
 
 func renderOnlineTable(m Model) string {
 	snapshot := m.OnlineSnapshot
 	if len(snapshot.Players) == 0 {
-		return styleTitle("TERMINAL MAHJONG") + "\n" + styleMuted(renderNetworkStatus(m)) + "\nWaiting for online snapshot\n"
+		return styleTitle("终端麻将  TERMINAL MAHJONG") + "\n" + styleMuted(renderNetworkStatus(m)) + "\nWaiting for online snapshot\n"
 	}
 	player := onlinePlayer(m, m.OnlineSeat)
 	opposite := onlinePlayer(m, (m.OnlineSeat+2)%4)
@@ -123,10 +123,10 @@ func renderOnlineTable(m Model) string {
 	topSeat := renderSeatPanel("Opposite:", opposite.Name, len(opposite.Hand), meldSummary(opposite.Melds), game.FormatTileLabels(recentTiles(opposite.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+2)%4)
 	leftSeat := renderSeatPanel("Left:", left.Name, len(left.Hand), meldSummary(left.Melds), game.FormatTileLabels(recentTiles(left.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+1)%4)
 	rightSeat := renderSeatPanel("Right:", right.Name, len(right.Hand), meldSummary(right.Melds), game.FormatTileLabels(recentTiles(right.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+3)%4)
-	center := stylePanelWidth("Table CENTER", renderOnlineCenter(m), 38)
+	center := stylePanelWidth("牌桌 Table CENTER", renderOnlineCenter(m), 38)
 	middle := renderTableMiddle(m, leftSeat, center, rightSeat)
 	hand := stylePanelWidth(
-		"You - Hand Tray",
+		"手牌  Hand Tray",
 		renderStatus(m)+
 			renderLastAction(m)+
 			fmt.Sprintf("Melds: %s\n", meldSummary(player.Melds))+
@@ -141,7 +141,7 @@ func renderOnlineTable(m Model) string {
 		topSeat,
 		middle,
 		hand,
-		styleSectionTitle("Controls")+"\n"+styleMuted(tableControls(m)),
+		styleSectionTitle("操作  Controls")+"\n"+styleMuted(tableControls(m)),
 	)
 }
 
@@ -180,10 +180,10 @@ func renderTableMiddle(m Model, leftSeat string, center string, rightSeat string
 func renderBoardFrame(m Model, meta string, topSeat string, middle string, hand string, prompt string) string {
 	width := tableWidth(m)
 	sections := []string{
-		centerLine(width, styleTitle("TERMINAL MAHJONG")),
+		centerLine(width, styleTitle("终端麻将  TERMINAL MAHJONG")),
 		centerLine(width, meta),
 		centerLine(width, styleMuted(renderNetworkStatus(m))),
-		centerLine(width, styleSectionTitle("Opponents")),
+		centerLine(width, styleSectionTitle("对手  Opponents")),
 		centerLine(width, topSeat),
 		centerLine(width, middle),
 		centerLine(width, hand),
@@ -200,7 +200,7 @@ func renderSeatPanel(label string, name string, handCount int, melds string, dis
 	if active {
 		title = "▶ " + title
 	}
-	body := fmt.Sprintf("hand:%02d  melds:%s\nlast:%s", handCount, melds, discards)
+	body := fmt.Sprintf("手牌:%02d  副露:%s\n最近:%s", handCount, melds, discards)
 	return stylePanelWidth(title, body, 24)
 }
 
@@ -523,7 +523,7 @@ func eventPlayerName(player int) string {
 
 func renderHand(hand []game.Tile, selected int, unicode bool) string {
 	var out strings.Builder
-	out.WriteString(styleMuted("Hand Tray") + "\n")
+	out.WriteString(styleMuted("手牌托盘") + "\n")
 	out.WriteString("Focus: " + selectedHandText(hand, selected, unicode) + "\n")
 	for rowStart := 0; rowStart < len(hand); rowStart += handCols {
 		rowEnd := min(rowStart+handCols, len(hand))
@@ -555,7 +555,7 @@ func renderHandFocusMarker(rowStart int, rowEnd int, selected int) string {
 	out.WriteString("      ")
 	for i := rowStart; i < rowEnd; i++ {
 		if i == selected {
-			out.WriteString(padRightRunes("    ▲", handCellW))
+			out.WriteString(padRightRunes("  ▲", handCellW))
 			continue
 		}
 		out.WriteString(strings.Repeat(" ", handCellW))
@@ -566,9 +566,9 @@ func renderHandFocusMarker(rowStart int, rowEnd int, selected int) string {
 func renderTileCell(index int, tile game.Tile, selected bool, unicode bool) string {
 	label := game.TileLabel(tile, unicode)
 	if selected {
-		return padRightRunes(styleSelectedTile(fmt.Sprintf("▶ [%02d] %s ◀", index+1, label)), handCellW)
+		return padRightRunes(styleMahjongTile(tile, "▶"+label+"◀", true), handCellW)
 	}
-	return padRightRunes(fmt.Sprintf("  [%02d] %s", index+1, label), handCellW)
+	return padRightRunes(styleMahjongTile(tile, " "+label+" ", false), handCellW)
 }
 
 func selectedTileText(index int, tile game.Tile, unicode bool) string {

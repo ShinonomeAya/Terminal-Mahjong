@@ -12,8 +12,8 @@ func TestTileCellRendersUnselectedUnicodeTile(t *testing.T) {
 
 	cell := renderTileCell(1, tile, false, true)
 
-	if !strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") {
-		t.Fatalf("cell = %q, want index and unicode glyph", cell)
+	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") {
+		t.Fatalf("cell = %q, want unicode glyph without visible index", cell)
 	}
 }
 
@@ -22,7 +22,7 @@ func TestTileCellRendersSelectedUnicodeTile(t *testing.T) {
 
 	cell := renderTileCell(1, tile, true, true)
 
-	if !strings.Contains(cell, "▶ [02]") || !strings.Contains(cell, "◀") {
+	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "▶") || !strings.Contains(cell, "🀈") || !strings.Contains(cell, "◀") {
 		t.Fatalf("selected cell = %q, want selected markers", cell)
 	}
 }
@@ -44,6 +44,36 @@ func TestTileCellStaysWithinWidthBudget(t *testing.T) {
 
 	if got := runeWidth(cell); got > handCellW {
 		t.Fatalf("cell width = %d, want <= %d: %q", got, handCellW, cell)
+	}
+}
+
+func TestRenderTableAddsChineseLabels(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+
+	view := renderTable(model)
+
+	for _, text := range []string{"终端麻将", "对手", "牌桌", "手牌"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("view missing Chinese label %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestRenderHandShowsTilesInOneRowWithoutIndices(t *testing.T) {
+	hand := mustUITiles(t, "1m", "2m", "3m", "4m", "5m", "6m", "7m", "8m", "9m", "1p", "2p", "3p", "4p", "5p")
+
+	view := renderHand(hand, 1, true)
+
+	if strings.Contains(view, "[01]") || strings.Contains(view, "[14]") {
+		t.Fatalf("hand should not show numeric tile prefixes:\n%s", view)
+	}
+	if strings.Count(view, "🀇") != 1 || !strings.Contains(view, "🀝") {
+		t.Fatalf("hand missing unicode mahjong tiles:\n%s", view)
+	}
+	if strings.Count(view, "Hand:") != 1 {
+		t.Fatalf("hand should render as one row:\n%s", view)
 	}
 }
 
@@ -198,7 +228,7 @@ func TestRenderTableShowsSelectedTileInHandRow(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "▶ [02]") || !strings.Contains(view, "Focus: [02]") {
+	if strings.Contains(view, "▶ [02]") || !strings.Contains(view, "▶") || !strings.Contains(view, "Focus: [02]") {
 		t.Fatalf("view does not clearly show selected tile:\n%s", view)
 	}
 }
@@ -443,8 +473,8 @@ func TestRenderTableSplitsFullHandIntoTwoRows(t *testing.T) {
 
 	view := renderTable(model)
 
-	if strings.Count(view, "Hand:") != 1 || !strings.Contains(view, "\n      ") {
-		t.Fatalf("view does not split hand into stable rows:\n%s", view)
+	if strings.Count(view, "Hand:") != 1 {
+		t.Fatalf("view should keep one stable hand row:\n%s", view)
 	}
 }
 
@@ -483,8 +513,8 @@ func TestDefaultHandHitBoxesMatchRenderedHandRows(t *testing.T) {
 	if boxes[0].Y != handRowY {
 		t.Fatalf("first row y = %d, want %d", boxes[0].Y, handRowY)
 	}
-	if boxes[7].Y != handRowY+handRowGap {
-		t.Fatalf("second row y = %d, want %d", boxes[7].Y, handRowY+handRowGap)
+	if boxes[7].Y != handRowY {
+		t.Fatalf("eighth tile y = %d, want same hand row %d", boxes[7].Y, handRowY)
 	}
 }
 
