@@ -49,7 +49,7 @@ func TestMenuEnterStartsSoloGame(t *testing.T) {
 
 func TestMenuViewContainsOptions(t *testing.T) {
 	view := NewModel().View()
-	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Create Online Room", "Join Online Room", "Reconnect Online", "How to Play", "Quit"} {
+	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Create Online Room", "Browse Online Rooms", "Join Online Room", "Reconnect Online", "How to Play", "Quit"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing %q:\n%s", text, view)
 		}
@@ -58,7 +58,7 @@ func TestMenuViewContainsOptions(t *testing.T) {
 
 func TestMenuEnterJoinOnlineShowsRoomCodeInput(t *testing.T) {
 	model := NewModel()
-	model.MenuIndex = 2
+	model.MenuIndex = 3
 
 	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	updated := next.(Model)
@@ -353,6 +353,61 @@ func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing %q:\n%s", text, view)
 		}
+	}
+}
+
+func TestOnlineRoomsMessageShowsRoomList(t *testing.T) {
+	model := NewModel()
+
+	next, _ := model.Update(onlineRoomsMsg{Rooms: []protocol.RoomSummary{
+		{Code: "000123", Occupied: 1, Ready: 0, Wall: 67},
+	}})
+	updated := next.(Model)
+
+	if updated.Screen != ScreenOnlineRooms {
+		t.Fatalf("screen = %v, want online rooms", updated.Screen)
+	}
+	view := updated.View()
+	for _, want := range []string{"ONLINE ROOMS", "000123", "players:1", "Enter join"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("view missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestOnlineRoomsEnterJoinsSelectedRoom(t *testing.T) {
+	server := online.NewServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	serverURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+
+	host := online.NewClient(serverURL, "host")
+	defer host.Close()
+	created, err := host.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	model := NewModel()
+	model.Screen = ScreenOnlineRooms
+	model.OnlineServerURL = serverURL
+	model.OnlineSession = t.TempDir() + "/session.json"
+	model.OnlineRooms = []protocol.RoomSummary{{Code: created.RoomCode, Occupied: 1, Ready: 0, Wall: 67}}
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+	if cmd == nil {
+		t.Fatal("expected join command")
+	}
+	if updated.JoinRoomCode != created.RoomCode {
+		t.Fatalf("join room code = %q, want %q", updated.JoinRoomCode, created.RoomCode)
+	}
+
+	msg := cmd()
+	next, _ = updated.Update(msg)
+	updated = next.(Model)
+	if !updated.Online || updated.OnlineRoomCode != created.RoomCode {
+		t.Fatalf("online=%v room=%q want room %q", updated.Online, updated.OnlineRoomCode, created.RoomCode)
 	}
 }
 

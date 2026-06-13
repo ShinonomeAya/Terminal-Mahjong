@@ -21,6 +21,10 @@ type onlineSnapshotMsg struct {
 	Message protocol.Message
 }
 
+type onlineRoomsMsg struct {
+	Rooms []protocol.RoomSummary
+}
+
 type onlineErrorMsg struct {
 	Err error
 }
@@ -116,6 +120,22 @@ func reconnectOnlineCmd(m Model) tea.Cmd {
 			return onlineErrorMsg{Err: err}
 		}
 		return onlineConnectedMsg{Message: message, Client: client}
+	}
+}
+
+func listOnlineRoomsCmd(m Model) tea.Cmd {
+	serverURL := m.OnlineServerURL
+	name := m.OnlineName
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		client := online.NewClient(serverURL, name)
+		defer client.Close()
+		rooms, err := client.ListRooms(ctx)
+		if err != nil {
+			return onlineErrorMsg{Err: err}
+		}
+		return onlineRoomsMsg{Rooms: rooms}
 	}
 }
 

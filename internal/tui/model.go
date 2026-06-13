@@ -1,8 +1,11 @@
 package tui
 
 import (
+	"fmt"
+
 	"mahjong/internal/game"
 	"mahjong/internal/online"
+	"mahjong/internal/protocol"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -12,6 +15,7 @@ type Screen int
 const (
 	ScreenMenu Screen = iota
 	ScreenJoinOnline
+	ScreenOnlineRooms
 	ScreenHelp
 	ScreenTable
 	ScreenGameOver
@@ -34,6 +38,8 @@ type Model struct {
 	OnlineOccupiedSeats []int
 	OnlineStarted       bool
 	OnlineEvents        chan tea.Msg
+	OnlineRooms         []protocol.RoomSummary
+	RoomIndex           int
 	OnlineServerURL     string
 	OnlineName          string
 	OnlineSession       string
@@ -69,6 +75,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return updateMenu(m, msg)
 		case ScreenJoinOnline:
 			return updateJoinOnline(m, msg)
+		case ScreenOnlineRooms:
+			return updateOnlineRooms(m, msg)
 		case ScreenHelp:
 			return updateHelp(m, msg)
 		case ScreenTable:
@@ -93,6 +101,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case onlineSnapshotMsg:
 		updated := applyOnlineSnapshot(m, msg.Message)
 		return updated, waitOnlineSnapshot(updated.OnlineClient, updated.OnlineEvents)
+	case onlineRoomsMsg:
+		m.Screen = ScreenOnlineRooms
+		m.OnlineRooms = append([]protocol.RoomSummary(nil), msg.Rooms...)
+		m.RoomIndex = 0
+		m.StatusLine = fmt.Sprintf("Rooms found: %d", len(msg.Rooms))
+		return m, nil
 	case onlineReconnectAttemptMsg:
 		m.NetworkStatus = NetworkReconnecting
 		m.ReconnectAttempt = msg.Attempt
@@ -117,6 +131,8 @@ func (m Model) View() string {
 		return renderMenu(m)
 	case ScreenJoinOnline:
 		return renderJoinOnline(m)
+	case ScreenOnlineRooms:
+		return renderOnlineRooms(m)
 	case ScreenHelp:
 		return renderHelp()
 	case ScreenTable:
