@@ -1,6 +1,10 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 var (
 	titleStyle = lipgloss.NewStyle().
@@ -21,6 +25,17 @@ var (
 
 	statusStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FBBF24"))
+
+	panelStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#D6CCC2")).
+			Padding(0, 1)
+
+	tileFaceStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#111827")).
+			Background(lipgloss.Color("#F8FAFC")).
+			Bold(true).
+			Padding(0, 1)
 )
 
 func visibleWidth(text string) int {
@@ -45,4 +60,22 @@ func styleMuted(text string) string {
 
 func styleStatus(text string) string {
 	return statusStyle.Render(text)
+}
+
+func stylePanel(title string, body string) string {
+	content := strings.TrimRight(title+"\n"+body, "\n")
+	return panelStyle.Render(content)
+}
+
+func stylePanelWidth(title string, body string, width int) string {
+	content := strings.TrimRight(title+"\n"+body, "\n")
+	return panelStyle.Width(width).Render(content)
+}
+
+func styleTileFace(label string, selected bool) string {
+	style := tileFaceStyle
+	if selected {
+		style = style.Background(lipgloss.Color("#FDE68A"))
+	}
+	return style.Render(label)
 }

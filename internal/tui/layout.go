@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"mahjong/internal/game"
 )
 
@@ -16,7 +18,7 @@ type TileHitBox struct {
 
 const (
 	handStartX = 6
-	handRowY   = 27
+	handRowY   = 29
 	handRowGap = 2
 	handCellW  = 10
 	handCols   = 7
@@ -63,24 +65,50 @@ func renderTable(m Model) string {
 		return "No game\n"
 	}
 	g := m.Game
-	var out strings.Builder
-	out.WriteString(styleTitle("TERMINAL MAHJONG") + "\n")
-	out.WriteString(styleMuted(fmt.Sprintf("Wall:%d  Events:%d  Turn:%s  Replay:ready", len(g.Wall), len(g.Events), g.Players[g.Current].Name)) + "\n\n")
-	out.WriteString(styleMuted(renderNetworkStatus(m)) + "\n\n")
-	out.WriteString(styleSectionTitle("Opponents") + "\n")
-	out.WriteString(renderOpponents(g, m.UnicodeTiles))
-	out.WriteString("\n" + styleSectionTitle("Table") + "\n")
-	out.WriteString(renderCenter(g, m.UnicodeTiles))
-	out.WriteString("\n" + styleSectionTitle("You") + "\n")
-	out.WriteString(renderStatus(m))
-	out.WriteString(renderLastAction(m))
-	out.WriteString(fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary()))
-	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles)))
-	out.WriteString(renderHand(g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles))
-	out.WriteString(renderActionBar(m))
-	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
-	out.WriteString(styleMuted(tableControls(m)) + "\n")
-	return out.String()
+	topSeat := renderSeatPanel(
+		"Opposite:",
+		g.Players[2].Name,
+		len(g.Players[2].Hand),
+		g.Players[2].MeldSummary(),
+		game.FormatTileLabels(recentTiles(g.Players[2].Discards, 4), m.UnicodeTiles),
+		g.Current == 2,
+	)
+	leftSeat := renderSeatPanel(
+		"Left:",
+		g.Players[1].Name,
+		len(g.Players[1].Hand),
+		g.Players[1].MeldSummary(),
+		game.FormatTileLabels(recentTiles(g.Players[1].Discards, 4), m.UnicodeTiles),
+		g.Current == 1,
+	)
+	rightSeat := renderSeatPanel(
+		"Right:",
+		g.Players[3].Name,
+		len(g.Players[3].Hand),
+		g.Players[3].MeldSummary(),
+		game.FormatTileLabels(recentTiles(g.Players[3].Discards, 4), m.UnicodeTiles),
+		g.Current == 3,
+	)
+	center := stylePanelWidth("Table CENTER", renderCenter(g, m.UnicodeTiles), 38)
+	middle := renderTableMiddle(m, leftSeat, center, rightSeat)
+	hand := stylePanelWidth(
+		"You - Hand Tray",
+		renderStatus(m)+
+			renderLastAction(m)+
+			fmt.Sprintf("Melds: %s\n", g.Players[0].MeldSummary())+
+			fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(g.Players[0].Discards, m.UnicodeTiles))+
+			renderHand(g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles)+
+			renderActionBar(m),
+		handPanelWidth(m),
+	)
+	return renderBoardFrame(
+		m,
+		styleMuted(fmt.Sprintf("Wall:%d  Events:%d  Turn:%s  Replay:ready", len(g.Wall), len(g.Events), g.Players[g.Current].Name)),
+		topSeat,
+		middle,
+		hand,
+		styleSectionTitle("Controls")+"\n"+styleMuted(tableControls(m)),
+	)
 }
 
 func renderOnlineTable(m Model) string {
@@ -88,26 +116,92 @@ func renderOnlineTable(m Model) string {
 	if len(snapshot.Players) == 0 {
 		return styleTitle("TERMINAL MAHJONG") + "\n" + styleMuted(renderNetworkStatus(m)) + "\nWaiting for online snapshot\n"
 	}
-	var out strings.Builder
-	out.WriteString(styleTitle("TERMINAL MAHJONG") + "\n")
-	out.WriteString(styleMuted(fmt.Sprintf("Room:%s  Seat:%d  Wall:%d  Events:%d", m.OnlineRoomCode, m.OnlineSeat+1, snapshot.WallCount, len(snapshot.Events))) + "\n")
-	out.WriteString(styleMuted(renderOnlineRoomState(m)) + "\n\n")
-	out.WriteString(styleMuted(renderNetworkStatus(m)) + "\n\n")
-	out.WriteString(styleSectionTitle("Opponents") + "\n")
-	out.WriteString(renderOnlineOpponents(m))
-	out.WriteString("\n" + styleSectionTitle("Table") + "\n")
-	out.WriteString(renderOnlineCenter(m))
-	out.WriteString("\n" + styleSectionTitle("You") + "\n")
-	out.WriteString(renderStatus(m))
-	out.WriteString(renderLastAction(m))
 	player := onlinePlayer(m, m.OnlineSeat)
-	out.WriteString(fmt.Sprintf("Melds: %s\n", meldSummary(player.Melds)))
-	out.WriteString(fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(player.Discards, m.UnicodeTiles)))
-	out.WriteString(renderHand(player.Hand, m.SelectedIndex, m.UnicodeTiles))
-	out.WriteString(renderOnlineActionBar(m))
-	out.WriteString("\n" + styleSectionTitle("Controls") + "\n")
-	out.WriteString(styleMuted(tableControls(m)) + "\n")
-	return out.String()
+	opposite := onlinePlayer(m, (m.OnlineSeat+2)%4)
+	left := onlinePlayer(m, (m.OnlineSeat+1)%4)
+	right := onlinePlayer(m, (m.OnlineSeat+3)%4)
+	topSeat := renderSeatPanel("Opposite:", opposite.Name, len(opposite.Hand), meldSummary(opposite.Melds), game.FormatTileLabels(recentTiles(opposite.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+2)%4)
+	leftSeat := renderSeatPanel("Left:", left.Name, len(left.Hand), meldSummary(left.Melds), game.FormatTileLabels(recentTiles(left.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+1)%4)
+	rightSeat := renderSeatPanel("Right:", right.Name, len(right.Hand), meldSummary(right.Melds), game.FormatTileLabels(recentTiles(right.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+3)%4)
+	center := stylePanelWidth("Table CENTER", renderOnlineCenter(m), 38)
+	middle := renderTableMiddle(m, leftSeat, center, rightSeat)
+	hand := stylePanelWidth(
+		"You - Hand Tray",
+		renderStatus(m)+
+			renderLastAction(m)+
+			fmt.Sprintf("Melds: %s\n", meldSummary(player.Melds))+
+			fmt.Sprintf("Discards: %s\n", game.FormatTileLabels(player.Discards, m.UnicodeTiles))+
+			renderHand(player.Hand, m.SelectedIndex, m.UnicodeTiles)+
+			renderOnlineActionBar(m),
+		handPanelWidth(m),
+	)
+	return renderBoardFrame(
+		m,
+		styleMuted(fmt.Sprintf("Room:%s  Seat:%d  Wall:%d  Events:%d\n%s", m.OnlineRoomCode, m.OnlineSeat+1, snapshot.WallCount, len(snapshot.Events), renderOnlineRoomState(m))),
+		topSeat,
+		middle,
+		hand,
+		styleSectionTitle("Controls")+"\n"+styleMuted(tableControls(m)),
+	)
+}
+
+func tableWidth(m Model) int {
+	width := m.Width
+	if width <= 0 {
+		width = 96
+	}
+	if width < 80 {
+		return width
+	}
+	if width > 120 {
+		return 120
+	}
+	return width
+}
+
+func centerLine(width int, text string) string {
+	return lipgloss.PlaceHorizontal(width, lipgloss.Center, text)
+}
+
+func handPanelWidth(m Model) int {
+	if tableWidth(m) < 80 {
+		return 74
+	}
+	return 92
+}
+
+func renderTableMiddle(m Model, leftSeat string, center string, rightSeat string) string {
+	if tableWidth(m) < 80 {
+		return lipgloss.JoinVertical(lipgloss.Center, leftSeat, center, rightSeat)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, leftSeat, "  ", center, "  ", rightSeat)
+}
+
+func renderBoardFrame(m Model, meta string, topSeat string, middle string, hand string, prompt string) string {
+	width := tableWidth(m)
+	sections := []string{
+		centerLine(width, styleTitle("TERMINAL MAHJONG")),
+		centerLine(width, meta),
+		centerLine(width, styleMuted(renderNetworkStatus(m))),
+		centerLine(width, styleSectionTitle("Opponents")),
+		centerLine(width, topSeat),
+		centerLine(width, middle),
+		centerLine(width, hand),
+		centerLine(width, prompt),
+	}
+	return lipgloss.PlaceHorizontal(width, lipgloss.Center, strings.Join(sections, "\n")) + "\n"
+}
+
+func renderSeatPanel(label string, name string, handCount int, melds string, discards string, active bool) string {
+	if discards == "" {
+		discards = "-"
+	}
+	title := fmt.Sprintf("%s %s", label, name)
+	if active {
+		title = "▶ " + title
+	}
+	body := fmt.Sprintf("hand:%02d  melds:%s\nlast:%s", handCount, melds, discards)
+	return stylePanelWidth(title, body, 24)
 }
 
 func renderOnlineRoomState(m Model) string {
@@ -235,11 +329,11 @@ func renderOnlineActionBar(m Model) string {
 	return actionBarLine(
 		"Actions:",
 		"[R] Ready",
+		winAction,
+		kongAction,
 		"[←/→] Select",
 		"[Enter/Space] Discard",
 		"[Click] Tile",
-		winAction,
-		kongAction,
 		"[Q] Menu",
 	) + "\n"
 }

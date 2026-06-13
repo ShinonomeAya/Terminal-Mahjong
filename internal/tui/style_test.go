@@ -36,3 +36,32 @@ func TestStyleMutedKeepsText(t *testing.T) {
 		t.Fatalf("styled muted text = %q, want text", styled)
 	}
 }
+
+func TestStylePanelKeepsContentVisible(t *testing.T) {
+	panel := stylePanel("Seat", "AI-1\nhand:13")
+
+	for _, want := range []string{"Seat", "AI-1", "hand:13"} {
+		if !strings.Contains(panel, want) {
+			t.Fatalf("panel missing %q:\n%s", want, panel)
+		}
+	}
+}
+
+func TestStylePanelRespectsVisibleWidth(t *testing.T) {
+	panel := stylePanel("Center", "Wall: 67")
+
+	if got := visibleWidth(panel); got > 40 {
+		t.Fatalf("panel width = %d, want <= 40:\n%s", got, panel)
+	}
+}
+
+func TestStyleTileFaceKeepsUnicodeTile(t *testing.T) {
+	tile := styleTileFace("🀇", true)
+
+	if !strings.Contains(tile, "🀇") {
+		t.Fatalf("tile face missing unicode tile: %q", tile)
+	}
+	if got := visibleWidth(tile); got > 6 {
+		t.Fatalf("tile face width = %d, want <= 6: %q", got, tile)
+	}
+}

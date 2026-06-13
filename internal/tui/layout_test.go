@@ -386,6 +386,56 @@ func TestRenderTableArrangesOpponentsAsSeats(t *testing.T) {
 	}
 }
 
+func TestRenderTableUsesReferenceInspiredTabletop(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.Width = 120
+
+	view := renderTable(model)
+
+	for _, want := range []string{"TERMINAL MAHJONG", "AI-2", "AI-1", "AI-3", "CENTER", "Hand Tray"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("view missing %q:\n%s", want, view)
+		}
+	}
+	if lineIndexContaining(view, "CENTER") <= lineIndexContaining(view, "AI-2") {
+		t.Fatalf("center should appear below opposite seat:\n%s", view)
+	}
+	if lineIndexContaining(view, "Hand Tray") <= lineIndexContaining(view, "CENTER") {
+		t.Fatalf("hand tray should appear below center table:\n%s", view)
+	}
+}
+
+func TestRenderTableCentersMainBoardWhenWide(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.Width = 120
+
+	view := renderTable(model)
+
+	line := firstLineContaining(view, "TERMINAL MAHJONG")
+	if !strings.HasPrefix(line, " ") {
+		t.Fatalf("wide title should be centered with leading space:\n%s", view)
+	}
+}
+
+func TestRenderTableKeepsReferenceInspiredWidth(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.Width = 120
+
+	view := renderTable(model)
+
+	for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
+		if visibleWidth(line) > 120 {
+			t.Fatalf("line too wide (%d cells):\n%s", visibleWidth(line), line)
+		}
+	}
+}
+
 func TestRenderTableSplitsFullHandIntoTwoRows(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
@@ -457,4 +507,13 @@ func lineIndexContaining(text string, part string) int {
 		}
 	}
 	return -1
+}
+
+func firstLineContaining(text string, part string) string {
+	for _, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
+		if strings.Contains(line, part) {
+			return line
+		}
+	}
+	return ""
 }
