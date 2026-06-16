@@ -21,7 +21,7 @@ type TileHitBox struct {
 const (
 	handStartX = 6
 	handRowY   = 30
-	handRowGap = 5
+	handRowGap = 3
 	handCellW  = 6
 	handCols   = 14
 )
@@ -33,7 +33,7 @@ func handHitBoxes(count int, startX int, y int) []TileHitBox {
 		row := i / handCols
 		x := startX + col*handCellW
 		faceY := y + row*handRowGap
-		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: faceY, Y1: faceY - 1, Y2: faceY + 3}
+		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: faceY, Y1: faceY - 1, Y2: faceY + 1}
 	}
 	return boxes
 }
@@ -534,31 +534,23 @@ func renderHand(hand []game.Tile, selected int, unicode bool) string {
 	out.WriteString("Focus: " + selectedHandText(hand, selected, unicode) + "\n")
 	for rowStart := 0; rowStart < len(hand); rowStart += handCols {
 		rowEnd := min(rowStart+handCols, len(hand))
-		lines := renderHandCardRow(hand[rowStart:rowEnd], selected-rowStart, unicode)
-		for lineIndex, line := range lines {
-			if lineIndex == 1 {
-				out.WriteString("Hand: " + line + "\n")
-				continue
-			}
-			out.WriteString("      " + line + "\n")
-		}
+		top, face, bottom := renderHandCardRow(hand[rowStart:rowEnd], selected-rowStart, unicode)
+		out.WriteString("      " + top + "\n")
+		out.WriteString("Hand: " + face + "\n")
+		out.WriteString("      " + bottom + "\n")
 	}
 	return out.String()
 }
 
-func renderHandCardRow(hand []game.Tile, selected int, unicode bool) []string {
-	lines := make([]strings.Builder, tileCardH)
+func renderHandCardRow(hand []game.Tile, selected int, unicode bool) (string, string, string) {
+	var top, face, bottom strings.Builder
 	for i, tile := range hand {
-		cardLines := renderTileCard(tile, i == selected, unicode)
-		for lineIndex, line := range cardLines {
-			lines[lineIndex].WriteString(line)
-		}
+		cardTop, cardFace, cardBottom := renderTileCard(tile, i == selected, unicode)
+		top.WriteString(cardTop)
+		face.WriteString(cardFace)
+		bottom.WriteString(cardBottom)
 	}
-	out := make([]string, len(lines))
-	for i := range lines {
-		out[i] = lines[i].String()
-	}
-	return out
+	return top.String(), face.String(), bottom.String()
 }
 
 func selectedHandText(hand []game.Tile, selected int, unicode bool) string {
@@ -569,63 +561,21 @@ func selectedHandText(hand []game.Tile, selected int, unicode bool) string {
 }
 
 func renderTileCell(index int, tile game.Tile, selected bool, unicode bool) string {
-	return renderTileCard(tile, selected, unicode)[1]
+	_, face, _ := renderTileCard(tile, selected, unicode)
+	return face
 }
 
-const tileCardH = 5
-
-func renderTileCard(tile game.Tile, selected bool, unicode bool) []string {
-	rank, suit := tileArtLabels(tile)
-	glyph := game.TileLabel(tile, unicode)
+func renderTileCard(tile game.Tile, selected bool, unicode bool) (string, string, string) {
+	label := game.TileLabel(tile, unicode)
+	content := centeredCardContent(label, 3)
 	if selected {
-		return []string{
-			styleSelectedTile("┏━━━┓ "),
-			styleSelectedTile("┃" + centeredCardContent(rank, 3) + "┃ "),
-			styleSelectedTile("┃" + centeredCardContent(suit, 3) + "┃ "),
-			styleSelectedTile("┃" + centeredCardContent(glyph, 3) + "┃ "),
-			styleSelectedTile("┗━━━┛ "),
-		}
+		return styleSelectedTile("┏━━━┓ "), styleSelectedTile("┃" + content + "┃ "), styleSelectedTile("┗━━━┛ ")
 	}
-	return []string{
-		"╭───╮ ",
-		"│" + styledCardContent(tile, rank, centeredCardContent(rank, 3)) + "│ ",
-		"│" + styledCardContent(tile, suit, centeredCardContent(suit, 3)) + "│ ",
-		"│" + styledCardContent(tile, glyph, centeredCardContent(glyph, 3)) + "│ ",
-		"╰───╯ ",
-	}
+	return "╭───╮ ", "│" + styledCardContent(tile, label, content) + "│ ", "╰───╯ "
 }
 
 func selectedTileText(index int, tile game.Tile, unicode bool) string {
 	return fmt.Sprintf("[%02d] %s (%s)", index+1, game.TileLabel(tile, unicode), tile.String())
-}
-
-func tileArtLabels(tile game.Tile) (string, string) {
-	switch {
-	case tile >= 0 && tile < 9:
-		return fmt.Sprintf("%d", tile.Rank()), "万"
-	case tile >= 9 && tile < 18:
-		return fmt.Sprintf("%d", tile.Rank()), "筒"
-	case tile >= 18 && tile < 27:
-		return fmt.Sprintf("%d", tile.Rank()), "条"
-	}
-	switch tile.String() {
-	case "E":
-		return "东", "风"
-	case "S":
-		return "南", "风"
-	case "W":
-		return "西", "风"
-	case "N":
-		return "北", "风"
-	case "Z":
-		return "红", "中"
-	case "F":
-		return "发", "财"
-	case "B":
-		return "白", "板"
-	default:
-		return "?", "?"
-	}
 }
 
 func centeredCardContent(label string, width int) string {
