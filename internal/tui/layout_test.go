@@ -7,33 +7,43 @@ import (
 	"mahjong/internal/game"
 )
 
-func TestTileCellRendersUnselectedUnicodeTile(t *testing.T) {
+func TestTileCardRendersLargeArtAndUnicodeAccent(t *testing.T) {
 	tile := mustUITiles(t, "2m")[0]
 
-	cell := renderTileCell(1, tile, false, true)
+	card := strings.Join(renderTileCard(tile, false, true), "\n")
 
-	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") {
-		t.Fatalf("cell = %q, want unicode glyph without visible index", cell)
+	for _, want := range []string{"╭───╮", "2", "万", "🀈", "╰───╯"} {
+		if !strings.Contains(card, want) {
+			t.Fatalf("card missing %q:\n%s", want, card)
+		}
+	}
+	if strings.Contains(card, "[02]") {
+		t.Fatalf("card should not show visible numeric index:\n%s", card)
 	}
 }
 
-func TestTileCellRendersSelectedUnicodeTile(t *testing.T) {
+func TestTileCardRendersSelectedLargeArt(t *testing.T) {
 	tile := mustUITiles(t, "2m")[0]
 
-	cell := renderTileCell(1, tile, true, true)
+	card := strings.Join(renderTileCard(tile, true, true), "\n")
 
-	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") {
-		t.Fatalf("selected cell = %q, want highlighted tile without visible index", cell)
+	for _, want := range []string{"┏━━━┓", "┃ 2 ┃", "万", "🀈", "┗━━━┛"} {
+		if !strings.Contains(card, want) {
+			t.Fatalf("selected card missing %q:\n%s", want, card)
+		}
+	}
+	if strings.Contains(card, "[02]") {
+		t.Fatalf("selected card should not show visible numeric index:\n%s", card)
 	}
 }
 
 func TestTileCellRendersFallbackNotation(t *testing.T) {
 	tile := mustUITiles(t, "2m")[0]
 
-	cell := renderTileCell(1, tile, false, false)
+	card := strings.Join(renderTileCard(tile, false, false), "\n")
 
-	if !strings.Contains(cell, "2m") {
-		t.Fatalf("fallback cell = %q, want 2m", cell)
+	if !strings.Contains(card, "2m") {
+		t.Fatalf("fallback card = %q, want 2m", card)
 	}
 }
 
@@ -63,7 +73,7 @@ func TestSelectedHandCardAlignsInFixedWidthRow(t *testing.T) {
 			break
 		}
 	}
-	if !strings.Contains(topLine, "┏━━━┓") || !strings.Contains(handLine, "┃ 🀈 ┃") {
+	if !strings.Contains(topLine, "┏━━━┓") || !strings.Contains(handLine, "┃ 2 ┃") {
 		t.Fatalf("selected card should use a heavy bordered tile:\n%s", view)
 	}
 	if got := visibleWidth(strings.TrimPrefix(handLine, "Hand: ")); got != len(hand)*handCellW {
@@ -93,8 +103,10 @@ func TestRenderHandShowsTilesInOneRowWithoutIndices(t *testing.T) {
 	if strings.Contains(view, "[01]") || strings.Contains(view, "[14]") {
 		t.Fatalf("hand should not show numeric tile prefixes:\n%s", view)
 	}
-	if strings.Count(view, "🀇") != 1 || !strings.Contains(view, "🀝") {
-		t.Fatalf("hand missing unicode mahjong tiles:\n%s", view)
+	for _, want := range []string{"万", "筒", "🀇", "🀝"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("hand missing large art marker %q:\n%s", want, view)
+		}
 	}
 	if strings.Count(view, "Hand:") != 1 {
 		t.Fatalf("hand should render as one row:\n%s", view)
@@ -266,7 +278,7 @@ func TestRenderTableShowsHandTrayFocus(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Hand Tray", "Focus: [02]", "┃ 🀈 ┃"} {
+	for _, text := range []string{"Hand Tray", "Focus: [02]", "┃ 2 ┃", "┃万 ┃"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing hand tray focus text %q:\n%s", text, view)
 		}
