@@ -20,12 +20,12 @@ func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyLeft:
 		if m.SelectedIndex > 0 {
 			m.SelectedIndex--
-			m.StatusLine = selectionStatus("Selected", m.SelectedIndex, m.Game.Players[0].Hand[m.SelectedIndex], m.UnicodeTiles)
+			m.StatusLine = selectionStatus(m, "Selected", m.SelectedIndex, m.Game.Players[0].Hand[m.SelectedIndex], m.UnicodeTiles)
 		}
 	case tea.KeyRight:
 		if handLen > 0 && m.SelectedIndex < handLen-1 {
 			m.SelectedIndex++
-			m.StatusLine = selectionStatus("Selected", m.SelectedIndex, m.Game.Players[0].Hand[m.SelectedIndex], m.UnicodeTiles)
+			m.StatusLine = selectionStatus(m, "Selected", m.SelectedIndex, m.Game.Players[0].Hand[m.SelectedIndex], m.UnicodeTiles)
 		}
 	case tea.KeyEnter:
 		return discardSelected(m)
@@ -47,12 +47,12 @@ func updateOnlineTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyLeft:
 		if m.SelectedIndex > 0 {
 			m.SelectedIndex--
-			m.StatusLine = selectionStatus("Selected", m.SelectedIndex, hand[m.SelectedIndex], m.UnicodeTiles)
+			m.StatusLine = selectionStatus(m, "Selected", m.SelectedIndex, hand[m.SelectedIndex], m.UnicodeTiles)
 		}
 	case tea.KeyRight:
 		if handLen > 0 && m.SelectedIndex < handLen-1 {
 			m.SelectedIndex++
-			m.StatusLine = selectionStatus("Selected", m.SelectedIndex, hand[m.SelectedIndex], m.UnicodeTiles)
+			m.StatusLine = selectionStatus(m, "Selected", m.SelectedIndex, hand[m.SelectedIndex], m.UnicodeTiles)
 		}
 	case tea.KeyEnter:
 		return discardOnlineSelected(m)
@@ -97,7 +97,7 @@ func discardOnlineSelected(m Model) (tea.Model, tea.Cmd) {
 	}
 	discardIndex := m.SelectedIndex
 	discardTile := hand[discardIndex]
-	m.StatusLine = selectionStatus("Discarding", discardIndex, discardTile, m.UnicodeTiles)
+	m.StatusLine = selectionStatus(m, "Discarding", discardIndex, discardTile, m.UnicodeTiles)
 	return m, sendOnlineDiscardCmd(m.OnlineClient, discardIndex)
 }
 
@@ -165,7 +165,7 @@ func discardSelected(m Model) (tea.Model, tea.Cmd) {
 	if _, err := m.Game.HumanDiscardSelected(m.SelectedIndex); err != nil {
 		return m, nil
 	}
-	m.StatusLine = selectionStatus("Discarded", discardIndex, discardTile, m.UnicodeTiles)
+	m.StatusLine = selectionStatus(m, "Discarded", discardIndex, discardTile, m.UnicodeTiles)
 	m.Game.AdvanceAIUntilHumanTurn()
 	if len(m.Game.Players[0].Hand) == 0 {
 		m.SelectedIndex = 0
@@ -197,7 +197,7 @@ func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return discardSelected(m)
 	}
 	m.SelectedIndex = index
-	m.StatusLine = selectionStatus("Mouse selected", index, m.Game.Players[0].Hand[index], m.UnicodeTiles)
+	m.StatusLine = selectionStatus(m, "Mouse selected", index, m.Game.Players[0].Hand[index], m.UnicodeTiles)
 	return m, nil
 }
 
@@ -215,12 +215,12 @@ func updateOnlineTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return discardOnlineSelected(m)
 	}
 	m.SelectedIndex = index
-	m.StatusLine = selectionStatus("Mouse selected", index, hand[index], m.UnicodeTiles)
+	m.StatusLine = selectionStatus(m, "Mouse selected", index, hand[index], m.UnicodeTiles)
 	return m, nil
 }
 
-func selectionStatus(action string, index int, tile game.Tile, unicode bool) string {
-	return fmt.Sprintf("%s [%02d] %s (%s)", action, index+1, game.TileLabel(tile, unicode), tile.String())
+func selectionStatus(m Model, action string, index int, tile game.Tile, unicode bool) string {
+	return fmt.Sprintf("%s [%02d] %s (%s)", actionVerb(m, action), index+1, game.TileLabel(tile, unicode), tile.String())
 }
 
 func updateGameOver(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {

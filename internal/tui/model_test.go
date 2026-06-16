@@ -49,9 +49,24 @@ func TestMenuEnterStartsSoloGame(t *testing.T) {
 
 func TestMenuViewContainsOptions(t *testing.T) {
 	view := NewModel().View()
-	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Create Online Room", "Browse Online Rooms", "Join Online Room", "Reconnect Online", "How to Play", "Quit"} {
+	for _, text := range []string{"终端麻将", "单机对局", "创建联网房间", "浏览联网房间", "加入联网房间", "断线重连", "玩法说明", "语言：中文", "退出"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing %q:\n%s", text, view)
+		}
+	}
+}
+
+func TestMenuLanguageToggleShowsEnglishMenu(t *testing.T) {
+	model := NewModel()
+	model.MenuIndex = 6
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	view := updated.View()
+	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Language: English", "Controls"} {
+		if !strings.Contains(view, text) {
+			t.Fatalf("english menu missing %q:\n%s", text, view)
 		}
 	}
 }
@@ -67,7 +82,7 @@ func TestMenuEnterJoinOnlineShowsRoomCodeInput(t *testing.T) {
 		t.Fatalf("screen = %v, want join online", updated.Screen)
 	}
 	view := updated.View()
-	for _, text := range []string{"JOIN ONLINE ROOM", "Room Code", "Enter join"} {
+	for _, text := range []string{"加入联网房间", "房间号", "回车加入"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("join screen missing %q:\n%s", text, view)
 		}
@@ -157,7 +172,7 @@ func TestOnlineConnectedMessageShowsSnapshotTable(t *testing.T) {
 		t.Fatalf("network status = %q, want your turn", updated.NetworkStatus)
 	}
 	view := updated.View()
-	for _, text := range []string{"Room:000123", "Network: your turn", "Hand Tray"} {
+	for _, text := range []string{"房间:000123", "网络：轮到你", "手牌托盘"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("online view missing %q:\n%s", text, view)
 		}
@@ -194,7 +209,7 @@ func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected online discard command")
 	}
-	if !strings.Contains(updated.StatusLine, "Discarding [01]") {
+	if !strings.Contains(updated.StatusLine, "正在打出 [01]") {
 		t.Fatalf("status line = %q", updated.StatusLine)
 	}
 
@@ -243,7 +258,7 @@ func TestOnlineMouseClickSelectsTile(t *testing.T) {
 	if updated.SelectedIndex != 2 {
 		t.Fatalf("selected index = %d, want 2", updated.SelectedIndex)
 	}
-	if !strings.Contains(updated.StatusLine, "Mouse selected [03]") {
+	if !strings.Contains(updated.StatusLine, "鼠标选中 [03]") {
 		t.Fatalf("status line = %q", updated.StatusLine)
 	}
 }
@@ -285,7 +300,7 @@ func TestOnlineSecondMouseClickSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected online mouse discard command")
 	}
-	if !strings.Contains(updated.StatusLine, "Discarding [03]") {
+	if !strings.Contains(updated.StatusLine, "正在打出 [03]") {
 		t.Fatalf("status line = %q", updated.StatusLine)
 	}
 
@@ -334,7 +349,7 @@ func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected ready command")
 	}
-	if !strings.Contains(updated.StatusLine, "Ready") {
+	if !strings.Contains(updated.StatusLine, "Ready") || !strings.Contains(localizeStatusLine(updated, updated.StatusLine), "已准备") {
 		t.Fatalf("status line = %q", updated.StatusLine)
 	}
 
@@ -349,7 +364,7 @@ func TestOnlineTableReadySendsReadyAndShowsRoomState(t *testing.T) {
 		t.Fatalf("ready seats = %#v", updated.OnlineReadySeats)
 	}
 	view := updated.View()
-	for _, text := range []string{"Ready: 1/2", "Press R ready", "Waiting for players"} {
+	for _, text := range []string{"准备：1/2", "按 R 准备", "等待玩家"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing %q:\n%s", text, view)
 		}
@@ -368,7 +383,7 @@ func TestOnlineRoomsMessageShowsRoomList(t *testing.T) {
 		t.Fatalf("screen = %v, want online rooms", updated.Screen)
 	}
 	view := updated.View()
-	for _, want := range []string{"ONLINE ROOMS", "000123", "players:1", "Enter join"} {
+	for _, want := range []string{"联网房间", "000123", "玩家:1", "回车加入"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("view missing %q:\n%s", want, view)
 		}
@@ -535,7 +550,7 @@ func TestOnlineActionBarShowsReadyWinAndKong(t *testing.T) {
 	)
 
 	view := model.View()
-	for _, text := range []string{"[H] Win", "[K] Kong"} {
+	for _, text := range []string{"[H] 胡", "[K] 杠"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("online action bar missing %q:\n%s", text, view)
 		}
@@ -563,7 +578,7 @@ func TestOnlineGameOverSnapshotShowsResultScreen(t *testing.T) {
 		t.Fatalf("screen = %v, want game over", updated.Screen)
 	}
 	view := updated.View()
-	for _, text := range []string{"GAME OVER", "Room: 000777", "Result: self-draw", "Winner: Seat 1", "Main Menu"} {
+	for _, text := range []string{"对局结束", "房间：000777", "结果：self-draw", "赢家：座位 1", "返回菜单"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("online game over missing %q:\n%s", text, view)
 		}
@@ -609,7 +624,7 @@ func TestOnlineReconnectAttemptMessageUpdatesNetworkStatus(t *testing.T) {
 	if updated.ReconnectAttempt != 2 || updated.ReconnectMax != 5 {
 		t.Fatalf("attempt = %d/%d, want 2/5", updated.ReconnectAttempt, updated.ReconnectMax)
 	}
-	if !strings.Contains(updated.View(), "Network: reconnecting 2/5") {
+	if !strings.Contains(updated.View(), "网络：重连中 2/5") {
 		t.Fatalf("view missing reconnecting status:\n%s", updated.View())
 	}
 }
@@ -631,7 +646,7 @@ func TestOnlineReconnectSuccessMessageUpdatesNetworkStatus(t *testing.T) {
 	if updated.NetworkStatus != NetworkReconnected {
 		t.Fatalf("network status = %q, want reconnected", updated.NetworkStatus)
 	}
-	if !strings.Contains(updated.View(), "Network: reconnected") {
+	if !strings.Contains(updated.View(), "网络：已重连") {
 		t.Fatalf("view missing reconnected status:\n%s", updated.View())
 	}
 }
@@ -704,7 +719,7 @@ func TestOnlineGameOverMainMenuClearsOnlineState(t *testing.T) {
 
 func TestMenuViewUsesReadableSections(t *testing.T) {
 	view := NewModel().View()
-	for _, text := range []string{"Menu", "Controls", "Up/Down choose"} {
+	for _, text := range []string{"开始菜单", "操作", "上下选择"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("menu missing %q:\n%s", text, view)
 		}
@@ -717,7 +732,7 @@ func TestHelpViewContainsKeyboardAndMouseControls(t *testing.T) {
 
 	view := model.View()
 
-	for _, text := range []string{"Keyboard", "Mouse", "Enter/Space", "Second click"} {
+	for _, text := range []string{"键盘", "鼠标", "回车/空格", "再次单击"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("help missing %q:\n%s", text, view)
 		}
@@ -793,7 +808,7 @@ func TestKeyboardDiscardShowsLastActionFeedback(t *testing.T) {
 
 	view := updated.View()
 
-	if !strings.Contains(view, "Last Action: Discarded [01]") {
+	if !strings.Contains(view, "上步：已打出 [01]") {
 		t.Fatalf("view missing discard feedback:\n%s", view)
 	}
 }
@@ -815,7 +830,7 @@ func TestMouseClickSelectsTile(t *testing.T) {
 	if updated.SelectedIndex != 2 {
 		t.Fatalf("selected index = %d, want 2", updated.SelectedIndex)
 	}
-	if !strings.Contains(updated.StatusLine, "Mouse selected [03]") {
+	if !strings.Contains(updated.StatusLine, "鼠标选中 [03]") {
 		t.Fatalf("status line = %q, want mouse selection feedback", updated.StatusLine)
 	}
 }
@@ -838,7 +853,7 @@ func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
 	if len(updated.Game.Players[0].Discards) != 1 {
 		t.Fatalf("discards = %d, want 1", len(updated.Game.Players[0].Discards))
 	}
-	if !strings.Contains(updated.StatusLine, "Discarded [03]") {
+	if !strings.Contains(updated.StatusLine, "已打出 [03]") {
 		t.Fatalf("status line = %q, want discard feedback", updated.StatusLine)
 	}
 }
@@ -860,7 +875,7 @@ func TestSecondMouseClickShowsLastActionFeedback(t *testing.T) {
 
 	view := updated.View()
 
-	if !strings.Contains(view, "Last Action: Discarded [03]") {
+	if !strings.Contains(view, "上步：已打出 [03]") {
 		t.Fatalf("view missing mouse discard feedback:\n%s", view)
 	}
 }
@@ -873,7 +888,7 @@ func TestKeyboardSelectionUpdatesStatusLine(t *testing.T) {
 	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyRight})
 	updated := next.(Model)
 
-	if !strings.Contains(updated.StatusLine, "Selected [02]") {
+	if !strings.Contains(updated.StatusLine, "选中 [02]") {
 		t.Fatalf("status line = %q, want keyboard selection feedback", updated.StatusLine)
 	}
 }
@@ -886,7 +901,7 @@ func TestTableViewIncludesStatusLine(t *testing.T) {
 
 	view := model.View()
 
-	if !strings.Contains(view, "Status: Mouse selected [04]") {
+	if !strings.Contains(view, "状态：鼠标选中 [04]") {
 		t.Fatalf("view missing status line:\n%s", view)
 	}
 }
@@ -929,7 +944,7 @@ func TestGameOverViewContainsChoicesAndControls(t *testing.T) {
 
 	view := model.View()
 
-	for _, text := range []string{"GAME OVER", "Restart", "Main Menu", "Quit", "Controls"} {
+	for _, text := range []string{"对局结束", "重新开始", "返回菜单", "退出", "操作"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("game over missing %q:\n%s", text, view)
 		}

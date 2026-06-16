@@ -27,6 +27,7 @@ type Model struct {
 	GameOverIndex       int
 	SelectedIndex       int
 	UnicodeTiles        bool
+	Language            Language
 	Game                *game.Game
 	Online              bool
 	OnlineClient        *online.Client
@@ -57,6 +58,7 @@ func NewModel() Model {
 	return Model{
 		Screen:          ScreenMenu,
 		UnicodeTiles:    true,
+		Language:        LanguageChinese,
 		OnlineServerURL: "ws://127.0.0.1:8080/ws",
 		OnlineName:      "Player",
 		OnlineSession:   ".mahjong-session.json",
@@ -134,7 +136,7 @@ func (m Model) View() string {
 	case ScreenOnlineRooms:
 		return renderOnlineRooms(m)
 	case ScreenHelp:
-		return renderHelp()
+		return renderHelp(m)
 	case ScreenTable:
 		return renderTable(m)
 	case ScreenGameOver:

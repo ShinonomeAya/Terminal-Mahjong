@@ -50,11 +50,11 @@ func TestTileCellStaysWithinWidthBudget(t *testing.T) {
 func TestSelectedHandTileAlignsInFixedWidthRow(t *testing.T) {
 	hand := mustUITiles(t, "1m", "2m", "3m")
 
-	view := renderHand(hand, 1, true)
+	view := renderHand(NewModel(), hand, 1, true)
 	lines := strings.Split(strings.TrimRight(view, "\n"), "\n")
 	handLine := ""
 	for _, line := range lines {
-		if strings.Contains(line, "Hand:") {
+		if strings.Contains(line, "手牌：") {
 			handLine = line
 			break
 		}
@@ -62,7 +62,7 @@ func TestSelectedHandTileAlignsInFixedWidthRow(t *testing.T) {
 	if containsTileFrame(view) {
 		t.Fatalf("bare hand should not render tile frames:\n%s", view)
 	}
-	if got := visibleWidth(strings.TrimPrefix(handLine, "Hand: ")); got != len(hand)*handCellW {
+	if got := visibleWidth(strings.TrimPrefix(handLine, "手牌：")); got != len(hand)*handCellW {
 		t.Fatalf("hand row width = %d, want %d:\n%s", got, len(hand)*handCellW, view)
 	}
 }
@@ -84,7 +84,7 @@ func TestRenderTableAddsChineseLabels(t *testing.T) {
 func TestRenderHandShowsTilesInOneRowWithoutIndices(t *testing.T) {
 	hand := mustUITiles(t, "1m", "2m", "3m", "4m", "5m", "6m", "7m", "8m", "9m", "1p", "2p", "3p", "4p", "5p")
 
-	view := renderHand(hand, 1, true)
+	view := renderHand(NewModel(), hand, 1, true)
 
 	if strings.Contains(view, "[01]") || strings.Contains(view, "[14]") {
 		t.Fatalf("hand should not show numeric tile prefixes:\n%s", view)
@@ -92,7 +92,7 @@ func TestRenderHandShowsTilesInOneRowWithoutIndices(t *testing.T) {
 	if strings.Count(view, "🀇") != 1 || !strings.Contains(view, "🀝") {
 		t.Fatalf("hand missing unicode mahjong tiles:\n%s", view)
 	}
-	if strings.Count(view, "Hand:") != 1 {
+	if strings.Count(view, "手牌：") != 1 {
 		t.Fatalf("hand should render as one row:\n%s", view)
 	}
 }
@@ -138,7 +138,7 @@ func TestRenderTableIncludesRecentEventsPanel(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Recent Events", "01. You draw 1m", "04. AI-1 discard 2m"} {
+	for _, text := range []string{"最近事件", "01. 你 摸牌 1m", "04. 电脑1 打出 2m"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing recent event text %q:\n%s", text, view)
 		}
@@ -158,7 +158,7 @@ func TestRenderTableUsesUnicodeInRecentEvents(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "01. You discard 🀇") {
+	if !strings.Contains(view, "01. 你 打出 🀇") {
 		t.Fatalf("view missing unicode event tile:\n%s", view)
 	}
 }
@@ -172,7 +172,7 @@ func TestRenderTableIncludesRoundStatusPanel(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Round Status", "Wall:", "Turn: You", "Events: 1"} {
+	for _, text := range []string{"局况", "牌墙:", "轮到: 你", "事件: 1"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing round status text %q:\n%s", text, view)
 		}
@@ -189,7 +189,7 @@ func TestRenderTableShowsNetworkStatus(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "Network: reconnecting 2/5") {
+	if !strings.Contains(view, "网络：重连中 2/5") {
 		t.Fatalf("view missing reconnecting status:\n%s", view)
 	}
 }
@@ -201,7 +201,7 @@ func TestRenderTableDefaultsToLocalNetworkStatus(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "Network: local") {
+	if !strings.Contains(view, "网络：本地") {
 		t.Fatalf("view missing local network status:\n%s", view)
 	}
 }
@@ -218,10 +218,10 @@ func TestRenderTableLimitsRecentEventsPanel(t *testing.T) {
 
 	view := renderTable(model)
 
-	if strings.Contains(view, "01. You discard 1m") {
+	if strings.Contains(view, "01. 你 打出 1m") {
 		t.Fatalf("view should trim oldest event from compact event panel:\n%s", view)
 	}
-	if !strings.Contains(view, "02. You discard 2m") || !strings.Contains(view, "05. You discard 5m") {
+	if !strings.Contains(view, "02. 你 打出 2m") || !strings.Contains(view, "05. 你 打出 5m") {
 		t.Fatalf("view missing recent tail events:\n%s", view)
 	}
 }
@@ -234,7 +234,7 @@ func TestRenderTableMarksSelectedTile(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "Focus:") {
+	if !strings.Contains(view, "焦点：") {
 		t.Fatalf("view missing focus marker:\n%s", view)
 	}
 }
@@ -248,7 +248,7 @@ func TestRenderTableShowsSelectedTileInHandRow(t *testing.T) {
 
 	view := renderTable(model)
 
-	if strings.Contains(view, "▶ [02]") || !strings.Contains(view, "Focus: [02]") {
+	if strings.Contains(view, "▶ [02]") || !strings.Contains(view, "焦点：[02]") {
 		t.Fatalf("view does not clearly show selected tile:\n%s", view)
 	}
 }
@@ -262,7 +262,7 @@ func TestRenderTableShowsHandTrayFocus(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Hand Tray", "Focus: [02]", "🀈"} {
+	for _, text := range []string{"手牌", "焦点：[02]", "🀈"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing hand tray focus text %q:\n%s", text, view)
 		}
@@ -276,25 +276,25 @@ func TestRenderTableShowsWaitingActionFeedback(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "Last Action: Waiting for input") {
+	if !strings.Contains(view, "上步：等待操作") {
 		t.Fatalf("view missing waiting action feedback:\n%s", view)
 	}
 }
 
-func TestRenderTableShowsActionBarNearHandTray(t *testing.T) {
+func TestRenderTableMergesActionsIntoBottomControls(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()
 	model.Screen = ScreenTable
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Actions:", "[Enter/Space] Discard", "[Click] Tile", "[H] Win:off", "[K] Kong:off", "[Q] Quit"} {
+	for _, text := range []string{"操作", "回车/空格打出", "单击选牌", "[H] 胡:不可用", "[K] 杠:不可用", "Q 退出"} {
 		if !strings.Contains(view, text) {
-			t.Fatalf("view missing action bar text %q:\n%s", text, view)
+			t.Fatalf("view missing controls text %q:\n%s", text, view)
 		}
 	}
-	if lineIndexContaining(view, "Actions:") <= lineIndexContaining(view, "Hand:") {
-		t.Fatalf("action bar should sit below the hand tray:\n%s", view)
+	if strings.Contains(view, "Actions:") {
+		t.Fatalf("hand panel should not contain duplicated Actions line:\n%s", view)
 	}
 }
 
@@ -312,7 +312,7 @@ func TestRenderTableHighlightsReadyWinAction(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "[H] Win:READY") {
+	if !strings.Contains(view, "[H] 胡:可用") {
 		t.Fatalf("view missing ready win action:\n%s", view)
 	}
 }
@@ -325,7 +325,7 @@ func TestRenderTableHighlightsReadyKongAction(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "[K] Kong:READY") {
+	if !strings.Contains(view, "[K] 杠:可用") {
 		t.Fatalf("view missing ready kong action:\n%s", view)
 	}
 }
@@ -349,11 +349,11 @@ func TestRenderTableUsesCompactActionBarForNarrowWidth(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "[Enter] Discard") || strings.Contains(view, "[Enter/Space] Discard") {
+	if !strings.Contains(view, "回车打出") || strings.Contains(view, "回车/空格打出") {
 		t.Fatalf("view should use compact action bar:\n%s", view)
 	}
 	for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
-		if strings.Contains(line, "Actions:") && visibleWidth(line) > 80 {
+		if strings.Contains(line, "操作") && visibleWidth(line) > 80 {
 			t.Fatalf("compact action bar too wide (%d cells):\n%s", visibleWidth(line), line)
 		}
 	}
@@ -381,7 +381,7 @@ func TestRenderTableUsesCompactControlsForNarrowWidth(t *testing.T) {
 
 	view := renderTable(model)
 
-	if !strings.Contains(view, "Arrows select | Enter discard | Click tile | Q quit") {
+	if !strings.Contains(view, "方向键选牌") || !strings.Contains(view, "回车打出") || !strings.Contains(view, "Q 退出") {
 		t.Fatalf("view missing compact controls:\n%s", view)
 	}
 	for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
@@ -398,7 +398,7 @@ func TestRenderTableUsesClientSections(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"TERMINAL MAHJONG", "Opponents", "Table", "You", "Controls"} {
+	for _, text := range []string{"终端麻将", "对手", "牌桌", "你", "操作"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing section %q:\n%s", text, view)
 		}
@@ -412,7 +412,7 @@ func TestRenderTableShowsAllOpponentsByName(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"AI-1", "AI-2", "AI-3"} {
+	for _, text := range []string{"电脑1", "电脑2", "电脑3"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing opponent %q:\n%s", text, view)
 		}
@@ -426,12 +426,12 @@ func TestRenderTableArrangesOpponentsAsSeats(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Opposite: AI-2", "Left: AI-1", "Right: AI-3"} {
+	for _, text := range []string{"对家: 电脑2", "左家: 电脑1", "右家: 电脑3"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing seat label %q:\n%s", text, view)
 		}
 	}
-	if !lineContainsAll(view, "Left: AI-1", "Right: AI-3") {
+	if !lineContainsAll(view, "左家: 电脑1", "右家: 电脑3") {
 		t.Fatalf("left and right seats should share a table row:\n%s", view)
 	}
 }
@@ -444,15 +444,15 @@ func TestRenderTableUsesReferenceInspiredTabletop(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, want := range []string{"TERMINAL MAHJONG", "AI-2", "AI-1", "AI-3", "CENTER", "Hand Tray"} {
+	for _, want := range []string{"终端麻将", "电脑2", "电脑1", "电脑3", "牌桌", "手牌托盘"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("view missing %q:\n%s", want, view)
 		}
 	}
-	if lineIndexContaining(view, "CENTER") <= lineIndexContaining(view, "AI-2") {
+	if lineIndexContaining(view, "牌桌") <= lineIndexContaining(view, "电脑2") {
 		t.Fatalf("center should appear below opposite seat:\n%s", view)
 	}
-	if lineIndexContaining(view, "Hand Tray") <= lineIndexContaining(view, "CENTER") {
+	if lineIndexContaining(view, "手牌托盘") <= lineIndexContaining(view, "牌桌") {
 		t.Fatalf("hand tray should appear below center table:\n%s", view)
 	}
 }
@@ -465,7 +465,7 @@ func TestRenderTableCentersMainBoardWhenWide(t *testing.T) {
 
 	view := renderTable(model)
 
-	line := firstLineContaining(view, "TERMINAL MAHJONG")
+	line := firstLineContaining(view, "终端麻将")
 	if !strings.HasPrefix(line, " ") {
 		t.Fatalf("wide title should be centered with leading space:\n%s", view)
 	}
@@ -493,7 +493,7 @@ func TestRenderTableSplitsFullHandIntoTwoRows(t *testing.T) {
 
 	view := renderTable(model)
 
-	if strings.Count(view, "Hand:") != 1 {
+	if strings.Count(view, "手牌：") != 1 {
 		t.Fatalf("view should keep one stable hand row:\n%s", view)
 	}
 }
@@ -556,7 +556,7 @@ func TestDefaultHandHitBoxesMatchRenderedHandStartLine(t *testing.T) {
 
 	view := renderTable(model)
 
-	if got := lineIndexContaining(view, "Hand:"); got != handRowY {
+	if got := lineIndexContaining(view, "手牌："); got != handRowY {
 		t.Fatalf("rendered hand row = %d, want hitbox row %d:\n%s", got, handRowY, view)
 	}
 }

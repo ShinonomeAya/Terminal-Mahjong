@@ -14,6 +14,22 @@ const (
 )
 
 func renderNetworkStatus(m Model) string {
+	if m.chinese() {
+		switch m.NetworkStatus {
+		case NetworkOffline:
+			return "网络：离线"
+		case NetworkReconnecting:
+			return fmt.Sprintf("网络：重连中 %d/%d", m.ReconnectAttempt, m.ReconnectMax)
+		case NetworkReconnected:
+			return "网络：已重连"
+		case NetworkWaiting:
+			return "网络：等待玩家"
+		case NetworkYourTurn:
+			return "网络：轮到你"
+		default:
+			return "网络：本地"
+		}
+	}
 	switch m.NetworkStatus {
 	case NetworkOffline:
 		return "Network: offline"
