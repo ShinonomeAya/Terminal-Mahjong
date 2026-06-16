@@ -20,9 +20,9 @@ type TileHitBox struct {
 
 const (
 	handStartX = 6
-	handRowY   = 30
-	handRowGap = 3
-	handCellW  = 6
+	handRowY   = 29
+	handRowGap = 1
+	handCellW  = 4
 	handCols   = 14
 )
 
@@ -33,7 +33,7 @@ func handHitBoxes(count int, startX int, y int) []TileHitBox {
 		row := i / handCols
 		x := startX + col*handCellW
 		faceY := y + row*handRowGap
-		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: faceY, Y1: faceY - 1, Y2: faceY + 1}
+		boxes[i] = TileHitBox{Index: i, X1: x, X2: x + handCellW - 1, Y: faceY, Y1: faceY, Y2: faceY}
 	}
 	return boxes
 }
@@ -534,23 +534,20 @@ func renderHand(hand []game.Tile, selected int, unicode bool) string {
 	out.WriteString("Focus: " + selectedHandText(hand, selected, unicode) + "\n")
 	for rowStart := 0; rowStart < len(hand); rowStart += handCols {
 		rowEnd := min(rowStart+handCols, len(hand))
-		top, face, bottom := renderHandCardRow(hand[rowStart:rowEnd], selected-rowStart, unicode)
-		out.WriteString("      " + top + "\n")
-		out.WriteString("Hand: " + face + "\n")
-		out.WriteString("      " + bottom + "\n")
+		out.WriteString("Hand: ")
+		out.WriteString(renderHandTileRow(hand[rowStart:rowEnd], selected-rowStart, unicode))
+		out.WriteString("\n")
 	}
+	out.WriteString("\n")
 	return out.String()
 }
 
-func renderHandCardRow(hand []game.Tile, selected int, unicode bool) (string, string, string) {
-	var top, face, bottom strings.Builder
+func renderHandTileRow(hand []game.Tile, selected int, unicode bool) string {
+	var out strings.Builder
 	for i, tile := range hand {
-		cardTop, cardFace, cardBottom := renderTileCard(tile, i == selected, unicode)
-		top.WriteString(cardTop)
-		face.WriteString(cardFace)
-		bottom.WriteString(cardBottom)
+		out.WriteString(renderTileCell(i, tile, i == selected, unicode))
 	}
-	return top.String(), face.String(), bottom.String()
+	return out.String()
 }
 
 func selectedHandText(hand []game.Tile, selected int, unicode bool) string {
@@ -561,17 +558,12 @@ func selectedHandText(hand []game.Tile, selected int, unicode bool) string {
 }
 
 func renderTileCell(index int, tile game.Tile, selected bool, unicode bool) string {
-	_, face, _ := renderTileCard(tile, selected, unicode)
-	return face
-}
-
-func renderTileCard(tile game.Tile, selected bool, unicode bool) (string, string, string) {
 	label := game.TileLabel(tile, unicode)
-	content := centeredCardContent(label, 3)
+	content := centeredCardContent(label, handCellW)
 	if selected {
-		return styleSelectedTile("┏━━━┓ "), styleSelectedTile("┃" + content + "┃ "), styleSelectedTile("┗━━━┛ ")
+		return styleSelectedTile(content)
 	}
-	return "╭───╮ ", "│" + styledCardContent(tile, label, content) + "│ ", "╰───╯ "
+	return styledCardContent(tile, label, content)
 }
 
 func selectedTileText(index int, tile game.Tile, unicode bool) string {

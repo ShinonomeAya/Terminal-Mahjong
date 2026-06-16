@@ -12,8 +12,8 @@ func TestTileCellRendersUnselectedUnicodeTile(t *testing.T) {
 
 	cell := renderTileCell(1, tile, false, true)
 
-	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") {
-		t.Fatalf("cell = %q, want unicode glyph without visible index", cell)
+	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") || containsTileFrame(cell) {
+		t.Fatalf("cell = %q, want bare unicode glyph without visible index or frame", cell)
 	}
 }
 
@@ -22,8 +22,8 @@ func TestTileCellRendersSelectedUnicodeTile(t *testing.T) {
 
 	cell := renderTileCell(1, tile, true, true)
 
-	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") {
-		t.Fatalf("selected cell = %q, want highlighted tile without visible index", cell)
+	if strings.Contains(cell, "[02]") || !strings.Contains(cell, "🀈") || containsTileFrame(cell) {
+		t.Fatalf("selected cell = %q, want highlighted bare tile without visible index or frame", cell)
 	}
 }
 
@@ -47,24 +47,20 @@ func TestTileCellStaysWithinWidthBudget(t *testing.T) {
 	}
 }
 
-func TestSelectedHandCardAlignsInFixedWidthRow(t *testing.T) {
+func TestSelectedHandTileAlignsInFixedWidthRow(t *testing.T) {
 	hand := mustUITiles(t, "1m", "2m", "3m")
 
 	view := renderHand(hand, 1, true)
 	lines := strings.Split(strings.TrimRight(view, "\n"), "\n")
-	topLine := ""
 	handLine := ""
-	for index, line := range lines {
+	for _, line := range lines {
 		if strings.Contains(line, "Hand:") {
-			if index > 0 {
-				topLine = lines[index-1]
-			}
 			handLine = line
 			break
 		}
 	}
-	if !strings.Contains(topLine, "┏━━━┓") || !strings.Contains(handLine, "┃ 🀈 ┃") {
-		t.Fatalf("selected card should use a heavy bordered tile:\n%s", view)
+	if containsTileFrame(view) {
+		t.Fatalf("bare hand should not render tile frames:\n%s", view)
 	}
 	if got := visibleWidth(strings.TrimPrefix(handLine, "Hand: ")); got != len(hand)*handCellW {
 		t.Fatalf("hand row width = %d, want %d:\n%s", got, len(hand)*handCellW, view)
@@ -266,7 +262,7 @@ func TestRenderTableShowsHandTrayFocus(t *testing.T) {
 
 	view := renderTable(model)
 
-	for _, text := range []string{"Hand Tray", "Focus: [02]", "┃ 🀈 ┃"} {
+	for _, text := range []string{"Hand Tray", "Focus: [02]", "🀈"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing hand tray focus text %q:\n%s", text, view)
 		}
@@ -581,4 +577,8 @@ func firstLineContaining(text string, part string) string {
 		}
 	}
 	return ""
+}
+
+func containsTileFrame(text string) bool {
+	return strings.ContainsAny(text, "╭╮╰╯│┏┓┗┛┃━")
 }
