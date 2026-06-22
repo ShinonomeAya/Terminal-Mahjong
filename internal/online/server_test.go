@@ -276,6 +276,95 @@ func TestWebSocketServerReconnectsWithToken(t *testing.T) {
 	}
 }
 
+func TestWebSocketServerBroadcastsAndReconnectsPendingHumanClaim(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	first := dialTestClient(t, url)
+	defer first.Close()
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgCreateRoom, Name: "first"})
+	created := readUntil(t, first, protocol.MsgRoomCreated)
+
+	second := dialTestClient(t, url)
+	sendMessage(t, second, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode, Name: "second"})
+	joined := readUntil(t, second, protocol.MsgRoomJoined)
+	_ = readUntil(t, first, protocol.MsgRoomState)
+
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntil(t, first, protocol.MsgRoomState)
+	sendMessage(t, second, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntil(t, second, protocol.MsgRoomState)
+	_ = readUntil(t, first, protocol.MsgRoomState)
+
+	setPendingPongFixture(t, server, created.RoomCode)
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandDiscard, TileIndex: 0}})
+	update := readUntil(t, second, protocol.MsgGameSnapshot)
+	if update.Snapshot.Phase != game.PhaseAwaitingClaim || update.Snapshot.Current != 1 || update.Snapshot.PendingClaim == nil {
+		t.Fatalf("pending claim snapshot = %#v", update.Snapshot)
+	}
+
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandPass}})
+	errMsg := readUntil(t, first, protocol.MsgError)
+	if !strings.Contains(errMsg.Error, "not the current player") {
+		t.Fatalf("wrong-seat error = %#v", errMsg)
+	}
+
+	second.Close()
+	reconnectedClient := dialTestClient(t, url)
+	defer reconnectedClient.Close()
+	sendMessage(t, reconnectedClient, protocol.Message{
+		Type:           protocol.MsgReconnect,
+		PlayerID:       joined.PlayerID,
+		ReconnectToken: joined.ReconnectToken,
+	})
+	reconnected := readUntil(t, reconnectedClient, protocol.MsgReconnected)
+	if reconnected.Snapshot.Phase != game.PhaseAwaitingClaim || reconnected.Snapshot.PendingClaim == nil {
+		t.Fatalf("reconnected pending claim = %#v", reconnected.Snapshot)
+	}
+
+	sendMessage(t, reconnectedClient, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandPass}})
+	resolved := readUntil(t, reconnectedClient, protocol.MsgGameSnapshot)
+	if resolved.Snapshot.Phase != game.PhaseAwaitingDiscard || resolved.Snapshot.PendingClaim != nil || resolved.Snapshot.Current != 1 {
+		t.Fatalf("resolved snapshot = %#v", resolved.Snapshot)
+	}
+}
+
+func setPendingPongFixture(t *testing.T, server *Server, roomCode string) {
+	t.Helper()
+	server.mu.Lock()
+	defer server.mu.Unlock()
+	room := server.rooms[roomCode]
+	if room == nil {
+		t.Fatalf("room %s not found", roomCode)
+	}
+	room.game.Current = 0
+	room.game.Phase = game.PhaseAwaitingDiscard
+	room.game.PendingClaim = nil
+	room.game.Over = false
+	room.game.Events = nil
+	room.game.Players[0].Hand = mustOnlineTiles(t, "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "N", "N")
+	room.game.Players[0].Discards = nil
+	room.game.Players[1].Hand = mustOnlineTiles(t, "3m", "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "N")
+	room.game.Players[1].Melds = nil
+	room.game.Players[2].Hand = mustOnlineTiles(t, "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "8s", "N")
+	room.game.Players[3].Hand = mustOnlineTiles(t, "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "8s", "S")
+}
+
+func mustOnlineTiles(t *testing.T, texts ...string) []game.Tile {
+	t.Helper()
+	tiles := make([]game.Tile, 0, len(texts))
+	for _, text := range texts {
+		tile, ok := game.ParseTile(text)
+		if !ok {
+			t.Fatalf("bad tile: %s", text)
+		}
+		tiles = append(tiles, tile)
+	}
+	game.SortTiles(tiles)
+	return tiles
+}
+
 func TestWebSocketServerRejectsReconnectAfterConfiguredWindow(t *testing.T) {
 	server := NewServerWithOptions(ServerOptions{ReconnectWindow: time.Nanosecond})
 	url, closeServer := startTestServer(t, server)
