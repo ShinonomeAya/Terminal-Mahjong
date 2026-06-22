@@ -12,16 +12,18 @@ type PlayerView struct {
 }
 
 type GameSnapshot struct {
-	Seed         int64        `json:"seed"`
-	RNGMode      RNGMode      `json:"rng_mode"`
-	ShuffleProof ShuffleProof `json:"shuffle_proof"`
-	Players      []PlayerView `json:"players"`
-	WallCount    int          `json:"wall_count"`
-	Current      int          `json:"current"`
-	Winner       int          `json:"winner"`
-	Reason       string       `json:"reason"`
-	Over         bool         `json:"over"`
-	Events       []GameEvent  `json:"events"`
+	Seed         int64         `json:"seed"`
+	RNGMode      RNGMode       `json:"rng_mode"`
+	ShuffleProof ShuffleProof  `json:"shuffle_proof"`
+	Players      []PlayerView  `json:"players"`
+	WallCount    int           `json:"wall_count"`
+	Current      int           `json:"current"`
+	Winner       int           `json:"winner"`
+	Reason       string        `json:"reason"`
+	Over         bool          `json:"over"`
+	Events       []GameEvent   `json:"events"`
+	Phase        TurnPhase     `json:"phase"`
+	PendingClaim *PendingClaim `json:"pending_claim,omitempty"`
 }
 
 type CommandKind string
@@ -71,6 +73,8 @@ func (g *Game) Snapshot() GameSnapshot {
 		Reason:       g.Reason,
 		Over:         g.Over,
 		Events:       append([]GameEvent(nil), g.Events...),
+		Phase:        g.Phase,
+		PendingClaim: copyPendingClaim(g.PendingClaim),
 	}
 }
 

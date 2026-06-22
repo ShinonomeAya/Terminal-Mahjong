@@ -118,3 +118,64 @@ func TestApplyGameCommandWinsWhenHandIsComplete(t *testing.T) {
 		t.Fatalf("result = %#v winner=%d over=%v", result, g.Winner, g.Over)
 	}
 }
+
+func TestBuildPendingClaimOrdersWinBeforePongBeforeChow(t *testing.T) {
+	g := NewGame(9)
+	discard := mustTile(t, "3m")
+	g.Players[1].Hand = mustTiles(t,
+		"1m", "2m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+	g.Players[2].Hand = mustTiles(t,
+		"3m", "3m", "1p", "2p", "4p", "5p", "7p",
+		"1s", "2s", "4s", "5s", "7s", "N",
+	)
+	g.Players[3].Hand = mustTiles(t,
+		"1p", "2p", "4p", "5p", "7p", "8p", "1s",
+		"2s", "4s", "5s", "7s", "8s", "N",
+	)
+
+	pending := g.buildPendingClaim(0, discard)
+
+	if pending == nil || len(pending.Options) < 3 {
+		t.Fatalf("pending = %#v, want win, pong, and chow options", pending)
+	}
+	if pending.Options[0].Kind != ClaimWin || pending.Options[0].Player != 1 {
+		t.Fatalf("first option = %#v, want player 1 win", pending.Options[0])
+	}
+	if pending.Options[1].Kind != ClaimPong || pending.Options[1].Player != 2 {
+		t.Fatalf("second option = %#v, want player 2 pong", pending.Options[1])
+	}
+	for _, option := range pending.Options[2:] {
+		if option.Kind != ClaimChow || option.Player != 1 {
+			t.Fatalf("lower-priority option = %#v, want player 1 chow", option)
+		}
+	}
+}
+
+func TestSnapshotCopiesPendingClaim(t *testing.T) {
+	g := NewGame(9)
+	g.Phase = PhaseAwaitingClaim
+	g.PendingClaim = &PendingClaim{
+		Discarder: 0,
+		Tile:      mustTile(t, "3m"),
+		Options: []ClaimOption{{
+			Kind:     ClaimChow,
+			Player:   1,
+			Consumed: mustTiles(t, "1m", "2m"),
+		}},
+	}
+
+	snapshot := g.Snapshot()
+
+	if snapshot.Phase != PhaseAwaitingClaim || snapshot.PendingClaim == nil {
+		t.Fatalf("snapshot phase/pending = %q/%#v", snapshot.Phase, snapshot.PendingClaim)
+	}
+	snapshot.PendingClaim.Options[0].Consumed[0] = mustTile(t, "9p")
+	if g.PendingClaim.Options[0].Consumed[0] == mustTile(t, "9p") {
+		t.Fatal("snapshot pending claim should not alias game state")
+	}
+}

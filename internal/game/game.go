@@ -34,6 +34,8 @@ type Game struct {
 	WinType      WinType
 	Over         bool
 	Events       []GameEvent
+	Phase        TurnPhase
+	PendingClaim *PendingClaim
 	rng          *rand.Rand
 }
 
@@ -63,6 +65,7 @@ func NewGame(seed int64) *Game {
 		RNGMode:      mode,
 		ShuffleProof: proof,
 		Winner:       -1,
+		Phase:        PhaseAwaitingDiscard,
 		rng:          rng,
 	}
 }
