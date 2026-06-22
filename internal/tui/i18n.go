@@ -119,6 +119,14 @@ func localizeStatusLine(m Model, text string) string {
 		"Refreshing rooms...", "正在刷新房间...",
 		"Room code is required", "请输入房间号",
 		"No waiting rooms", "没有等待中的房间",
+		"Passed claim", "已过",
+		"Passing claim", "正在过",
+		"Claimed win", "已胡",
+		"Claimed pong", "已碰",
+		"Claimed chow", "已吃",
+		"Claiming win", "正在胡",
+		"Claiming pong", "正在碰",
+		"Claiming chow", "正在吃",
 	)
 	if strings.HasPrefix(text, "Joining room ") {
 		return strings.Replace(text, "Joining room ", "正在加入房间 ", 1)
@@ -180,6 +188,10 @@ func eventKindText(m Model, kind string) string {
 		return "胡牌"
 	case "kong":
 		return "杠"
+	case "pong":
+		return "碰"
+	case "chow":
+		return "吃"
 	default:
 		return kind
 	}

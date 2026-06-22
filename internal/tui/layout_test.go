@@ -206,6 +206,31 @@ func TestRenderTableDefaultsToLocalNetworkStatus(t *testing.T) {
 	}
 }
 
+func TestRenderTableLocalizesPendingClaimPrompt(t *testing.T) {
+	model := localClaimModel(t, game.ClaimPong,
+		game.ClaimOption{Kind: game.ClaimPong, Player: 0, Consumed: mustUITiles(t, "3m", "3m")},
+	)
+	model.UnicodeTiles = false
+
+	chinese := renderTable(model)
+	for _, want := range []string{"响应 3m", "[P] 碰", "空格/Esc 过"} {
+		if !strings.Contains(chinese, want) {
+			t.Fatalf("Chinese claim view missing %q:\n%s", want, chinese)
+		}
+	}
+
+	model.Language = LanguageEnglish
+	english := renderTable(model)
+	for _, want := range []string{"Respond to 3m", "[P] Pong", "Space/Esc Pass"} {
+		if !strings.Contains(english, want) {
+			t.Fatalf("English claim view missing %q:\n%s", want, english)
+		}
+	}
+	if strings.Contains(english, "响应") {
+		t.Fatalf("English claim view contains Chinese prompt:\n%s", english)
+	}
+}
+
 func TestRenderTableLimitsRecentEventsPanel(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()

@@ -26,6 +26,7 @@ type Model struct {
 	MenuIndex           int
 	GameOverIndex       int
 	SelectedIndex       int
+	ClaimOptionIndex    int
 	UnicodeTiles        bool
 	Language            Language
 	Game                *game.Game

@@ -226,8 +226,12 @@ func TestOnlineTableEnterSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	if updated.OnlineSnapshot.Current != 0 {
 		t.Fatalf("current = %d, want 0 after bot turns", updated.OnlineSnapshot.Current)
 	}
-	if len(updated.OnlineSnapshot.Players[0].Hand) != 14 {
-		t.Fatalf("human hand = %d, want 14 after bot turns", len(updated.OnlineSnapshot.Players[0].Hand))
+	wantHand := 14
+	if updated.OnlineSnapshot.Phase == game.PhaseAwaitingClaim {
+		wantHand = 13
+	}
+	if len(updated.OnlineSnapshot.Players[0].Hand) != wantHand {
+		t.Fatalf("human hand = %d, want %d in phase %s", len(updated.OnlineSnapshot.Players[0].Hand), wantHand, updated.OnlineSnapshot.Phase)
 	}
 	if updated.NetworkStatus != NetworkYourTurn {
 		t.Fatalf("network status = %q, want your turn", updated.NetworkStatus)
@@ -317,8 +321,12 @@ func TestOnlineSecondMouseClickSendsDiscardAndAppliesSnapshot(t *testing.T) {
 	if updated.OnlineSnapshot.Current != 0 {
 		t.Fatalf("current = %d, want 0 after bot turns", updated.OnlineSnapshot.Current)
 	}
-	if len(updated.OnlineSnapshot.Players[0].Hand) != 14 {
-		t.Fatalf("human hand = %d, want 14 after bot turns", len(updated.OnlineSnapshot.Players[0].Hand))
+	wantHand := 14
+	if updated.OnlineSnapshot.Phase == game.PhaseAwaitingClaim {
+		wantHand = 13
+	}
+	if len(updated.OnlineSnapshot.Players[0].Hand) != wantHand {
+		t.Fatalf("human hand = %d, want %d in phase %s", len(updated.OnlineSnapshot.Players[0].Hand), wantHand, updated.OnlineSnapshot.Phase)
 	}
 }
 
@@ -786,8 +794,8 @@ func TestTableEnterDiscardsSelectedTile(t *testing.T) {
 	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	updated := next.(Model)
 
-	if len(updated.Game.Players[0].Discards) != 1 {
-		t.Fatalf("discards = %d, want 1", len(updated.Game.Players[0].Discards))
+	if !hasDiscardEventSince(updated.Game.Events, startEvents, 0) {
+		t.Fatalf("events = %#v, want human discard after event %d", updated.Game.Events, startEvents)
 	}
 	if len(updated.Game.Events) <= startEvents+1 {
 		t.Fatalf("events = %d, want AI turns after human discard", len(updated.Game.Events))
@@ -799,7 +807,8 @@ func TestTableEnterDiscardsSelectedTile(t *testing.T) {
 
 func TestKeyboardDiscardShowsLastActionFeedback(t *testing.T) {
 	model := NewModel()
-	model.Game = newStartedGame()
+	model.Game = game.NewGame(1)
+	model.Game.StartHumanTurn()
 	model.Screen = ScreenTable
 	model.SelectedIndex = 0
 
@@ -841,6 +850,7 @@ func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
 	model.Screen = ScreenTable
 	model.SelectedIndex = 2
 	model.HandHitBoxes = handHitBoxes(len(model.Game.Players[0].Hand), 2, 10)
+	startEvents := len(model.Game.Events)
 
 	next, _ := model.Update(tea.MouseMsg{
 		Action: tea.MouseActionPress,
@@ -850,8 +860,8 @@ func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
 	})
 	updated := next.(Model)
 
-	if len(updated.Game.Players[0].Discards) != 1 {
-		t.Fatalf("discards = %d, want 1", len(updated.Game.Players[0].Discards))
+	if !hasDiscardEventSince(updated.Game.Events, startEvents, 0) {
+		t.Fatalf("events = %#v, want human discard after event %d", updated.Game.Events, startEvents)
 	}
 	if !strings.Contains(updated.StatusLine, "已打出 [03]") {
 		t.Fatalf("status line = %q, want discard feedback", updated.StatusLine)
@@ -860,7 +870,8 @@ func TestSecondMouseClickDiscardsSelectedTile(t *testing.T) {
 
 func TestSecondMouseClickShowsLastActionFeedback(t *testing.T) {
 	model := NewModel()
-	model.Game = newStartedGame()
+	model.Game = game.NewGame(1)
+	model.Game.StartHumanTurn()
 	model.Screen = ScreenTable
 	model.SelectedIndex = 2
 	model.HandHitBoxes = handHitBoxes(len(model.Game.Players[0].Hand), 2, 10)
@@ -904,6 +915,125 @@ func TestTableViewIncludesStatusLine(t *testing.T) {
 	if !strings.Contains(view, "状态：鼠标选中 [04]") {
 		t.Fatalf("view missing status line:\n%s", view)
 	}
+}
+
+func TestLocalClaimPongKeyAppliesMeld(t *testing.T) {
+	model := localClaimModel(t, game.ClaimPong,
+		game.ClaimOption{Kind: game.ClaimPong, Player: 0, Consumed: mustUITiles(t, "3m", "3m")},
+	)
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	updated := next.(Model)
+
+	if len(updated.Game.Players[0].Melds) != 1 || updated.Game.Players[0].Melds[0].Kind != game.MeldPong {
+		t.Fatalf("melds = %#v, want pong", updated.Game.Players[0].Melds)
+	}
+	if updated.Game.Phase != game.PhaseAwaitingDiscard || updated.Game.PendingClaim != nil {
+		t.Fatalf("phase/pending = %q/%#v", updated.Game.Phase, updated.Game.PendingClaim)
+	}
+}
+
+func TestLocalClaimSpacePasses(t *testing.T) {
+	model := localClaimModel(t, game.ClaimPong,
+		game.ClaimOption{Kind: game.ClaimPong, Player: 0, Consumed: mustUITiles(t, "3m", "3m")},
+	)
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated := next.(Model)
+
+	if updated.Game.PendingClaim != nil || updated.Game.Phase != game.PhaseAwaitingDiscard {
+		t.Fatalf("phase/pending = %q/%#v", updated.Game.Phase, updated.Game.PendingClaim)
+	}
+	if !strings.Contains(localizeStatusLine(updated, updated.StatusLine), "已过") {
+		t.Fatalf("status = %q", updated.StatusLine)
+	}
+}
+
+func TestClaimResponseDisablesNormalDiscard(t *testing.T) {
+	model := localClaimModel(t, game.ClaimPong,
+		game.ClaimOption{Kind: game.ClaimPong, Player: 0, Consumed: mustUITiles(t, "3m", "3m")},
+	)
+	startHand := len(model.Game.Players[0].Hand)
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if len(updated.Game.Players[0].Hand) != startHand || updated.Game.PendingClaim == nil {
+		t.Fatalf("enter changed claim state: hand=%d pending=%#v", len(updated.Game.Players[0].Hand), updated.Game.PendingClaim)
+	}
+}
+
+func TestClaimChowArrowsSelectCombination(t *testing.T) {
+	model := localClaimModel(t, game.ClaimChow,
+		game.ClaimOption{Kind: game.ClaimChow, Player: 0, Consumed: mustUITiles(t, "1m", "2m")},
+		game.ClaimOption{Kind: game.ClaimChow, Player: 0, Consumed: mustUITiles(t, "2m", "4m")},
+	)
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyRight})
+	updated := next.(Model)
+
+	if updated.ClaimOptionIndex != 1 {
+		t.Fatalf("claim option index = %d, want 1", updated.ClaimOptionIndex)
+	}
+}
+
+func TestOnlineClaimKeyBuildsPongCommand(t *testing.T) {
+	model := localClaimModel(t, game.ClaimPong,
+		game.ClaimOption{Kind: game.ClaimPong, Player: 0, Consumed: mustUITiles(t, "3m", "3m")},
+	)
+	model.Online = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = model.Game.Snapshot()
+	model.Game = nil
+
+	command, ok := claimCommandForKey(model, "p")
+
+	if !ok || command.Kind != game.CommandPong {
+		t.Fatalf("command/ok = %#v/%v, want pong", command, ok)
+	}
+}
+
+func TestOnlineSnapshotResetsClaimOptionSelection(t *testing.T) {
+	model := localClaimModel(t, game.ClaimChow,
+		game.ClaimOption{Kind: game.ClaimChow, Player: 0, Consumed: mustUITiles(t, "1m", "2m")},
+	)
+	model.Online = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = model.Game.Snapshot()
+	model.Game = nil
+	model.ClaimOptionIndex = 1
+
+	updated := applyOnlineSnapshot(model, protocol.Message{Type: protocol.MsgGameSnapshot, Snapshot: model.OnlineSnapshot})
+
+	if updated.ClaimOptionIndex != 0 {
+		t.Fatalf("claim option index = %d, want reset to 0", updated.ClaimOptionIndex)
+	}
+}
+
+func localClaimModel(t *testing.T, kind game.ClaimKind, options ...game.ClaimOption) Model {
+	t.Helper()
+	model := NewModel()
+	model.Screen = ScreenTable
+	model.Game = game.NewGame(5)
+	model.Game.Players[0].Hand = mustUITiles(t, "1m", "2m", "3m", "3m", "4m", "5m", "1p", "2p", "4p", "5p", "1s", "2s", "N")
+	discard := mustUITiles(t, "3m")[0]
+	model.Game.Players[3].Discards = []game.Tile{discard}
+	model.Game.Current = 0
+	model.Game.Phase = game.PhaseAwaitingClaim
+	model.Game.PendingClaim = &game.PendingClaim{Discarder: 3, Tile: discard, Options: options}
+	if len(options) == 0 || options[0].Kind != kind {
+		t.Fatalf("bad claim fixture: %#v", options)
+	}
+	return model
+}
+
+func hasDiscardEventSince(events []game.GameEvent, start int, player int) bool {
+	for _, event := range events[start:] {
+		if event.Kind == game.EventDiscard && event.Player == player {
+			return true
+		}
+	}
+	return false
 }
 
 func TestGameOverEnterMainMenuReturnsToMenu(t *testing.T) {

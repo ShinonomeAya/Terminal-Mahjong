@@ -357,6 +357,9 @@ func meldSummary(melds []game.Meld) string {
 }
 
 func tableControls(m Model) string {
+	if controls := claimControls(m); controls != "" {
+		return controls
+	}
 	if m.chinese() {
 		if m.Online {
 			if m.Width > 0 && m.Width < 80 {
@@ -379,6 +382,61 @@ func tableControls(m Model) string {
 		return strings.Join([]string{"Arrows select", "Enter discard", "Click tile", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), "Q quit"}, " | ")
 	}
 	return strings.Join([]string{"Left/Right select", "Enter/Space discard", "click select", "second click discard", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), "Q quit"}, " | ")
+}
+
+func claimControls(m Model) string {
+	if !isClaimResponse(m) {
+		return ""
+	}
+	options := activeClaimOptions(m)
+	if len(options) == 0 {
+		return ""
+	}
+	var pending *game.PendingClaim
+	if m.Online {
+		pending = m.OnlineSnapshot.PendingClaim
+	} else {
+		pending = m.Game.PendingClaim
+	}
+	tile := game.TileLabel(pending.Tile, m.UnicodeTiles)
+	if m.chinese() {
+		prefix := "响应 " + tile + "："
+		switch options[0].Kind {
+		case game.ClaimWin:
+			return strings.Join([]string{prefix, "[H] 胡", "空格/Esc 过", "Q 菜单"}, " | ")
+		case game.ClaimPong:
+			return strings.Join([]string{prefix, "[P] 碰", "空格/Esc 过", "Q 菜单"}, " | ")
+		case game.ClaimChow:
+			return strings.Join([]string{prefix, "[C] 吃", "←/→ 组合 " + selectedChowText(m, options), "空格/Esc 过", "Q 菜单"}, " | ")
+		}
+	}
+	prefix := "Respond to " + tile + ":"
+	switch options[0].Kind {
+	case game.ClaimWin:
+		return strings.Join([]string{prefix, "[H] Win", "Space/Esc Pass", "Q menu"}, " | ")
+	case game.ClaimPong:
+		return strings.Join([]string{prefix, "[P] Pong", "Space/Esc Pass", "Q menu"}, " | ")
+	case game.ClaimChow:
+		return strings.Join([]string{prefix, "[C] Chow", "Left/Right option " + selectedChowText(m, options), "Space/Esc Pass", "Q menu"}, " | ")
+	}
+	return ""
+}
+
+func selectedChowText(m Model, options []game.ClaimOption) string {
+	index := m.ClaimOptionIndex
+	if index < 0 || index >= len(options) {
+		index = 0
+	}
+	var pending *game.PendingClaim
+	if m.Online {
+		pending = m.OnlineSnapshot.PendingClaim
+	} else {
+		pending = m.Game.PendingClaim
+	}
+	tiles := append([]game.Tile(nil), options[index].Consumed...)
+	tiles = append(tiles, pending.Tile)
+	game.SortTiles(tiles)
+	return fmt.Sprintf("%d/%d [%s]", index+1, len(options), game.FormatTileLabels(tiles, m.UnicodeTiles))
 }
 
 func renderActionBar(m Model) string {

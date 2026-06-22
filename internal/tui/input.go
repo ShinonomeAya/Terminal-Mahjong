@@ -15,6 +15,9 @@ func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.Game == nil {
 		return m, nil
 	}
+	if isClaimResponse(m) {
+		return updateClaimResponse(m, key)
+	}
 	handLen := len(m.Game.Players[0].Hand)
 	switch key.Type {
 	case tea.KeyLeft:
@@ -41,6 +44,9 @@ func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func updateOnlineTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if isClaimResponse(m) {
+		return updateClaimResponse(m, key)
+	}
 	hand := onlineHand(m)
 	handLen := len(hand)
 	switch key.Type {
@@ -185,6 +191,9 @@ func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if m.Online {
 		return updateOnlineTableMouse(m, msg)
 	}
+	if isClaimResponse(m) {
+		return m, nil
+	}
 	if m.Game == nil {
 		return m, nil
 	}
@@ -202,6 +211,9 @@ func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 }
 
 func updateOnlineTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if isClaimResponse(m) {
+		return m, nil
+	}
 	hand := onlineHand(m)
 	if len(hand) == 0 {
 		return m, nil
@@ -217,6 +229,140 @@ func updateOnlineTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	m.SelectedIndex = index
 	m.StatusLine = selectionStatus(m, "Mouse selected", index, hand[index], m.UnicodeTiles)
 	return m, nil
+}
+
+func updateClaimResponse(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	options := activeClaimOptions(m)
+	if len(options) == 0 {
+		return m, nil
+	}
+	if options[0].Kind == game.ClaimChow {
+		switch key.Type {
+		case tea.KeyLeft:
+			if m.ClaimOptionIndex > 0 {
+				m.ClaimOptionIndex--
+			}
+			return m, nil
+		case tea.KeyRight:
+			if m.ClaimOptionIndex < len(options)-1 {
+				m.ClaimOptionIndex++
+			}
+			return m, nil
+		}
+	}
+	if key.String() == "q" {
+		if m.Online {
+			return clearOnlineStateForMenu(m), nil
+		}
+		m.Game.Quit("quit")
+		m.Screen = ScreenGameOver
+		return m, nil
+	}
+	command, ok := claimCommandForKey(m, key.String())
+	if !ok {
+		return m, nil
+	}
+	if m.Online {
+		if m.OnlineClient == nil {
+			m.StatusLine = "Online room is not ready"
+			return m, nil
+		}
+		m.StatusLine = claimStatus(command, true)
+		return m, sendOnlineGameCommandCmd(m.OnlineClient, command)
+	}
+	command.PlayerID = "0"
+	result := m.Game.ApplyCommand(command)
+	if !result.OK {
+		m.StatusLine = result.Error
+		return m, nil
+	}
+	m.StatusLine = claimStatus(command, false)
+	m.ClaimOptionIndex = 0
+	m.Game.AdvanceAIUntilHumanTurn()
+	if m.Game.Over {
+		m.Screen = ScreenGameOver
+	}
+	return m, nil
+}
+
+func claimCommandForKey(m Model, key string) (game.GameCommand, bool) {
+	options := activeClaimOptions(m)
+	if len(options) == 0 {
+		return game.GameCommand{}, false
+	}
+	command := game.GameCommand{Kind: game.CommandPass}
+	switch key {
+	case " ", "esc":
+		return command, true
+	case "h":
+		if options[0].Kind == game.ClaimWin {
+			command.Kind = game.CommandClaimWin
+			return command, true
+		}
+	case "p":
+		if options[0].Kind == game.ClaimPong {
+			command.Kind = game.CommandPong
+			return command, true
+		}
+	case "c":
+		if options[0].Kind == game.ClaimChow && m.ClaimOptionIndex >= 0 && m.ClaimOptionIndex < len(options) {
+			command.Kind = game.CommandChow
+			command.TileIndex = m.ClaimOptionIndex
+			return command, true
+		}
+	}
+	return game.GameCommand{}, false
+}
+
+func isClaimResponse(m Model) bool {
+	if m.Online {
+		return m.OnlineSnapshot.Phase == game.PhaseAwaitingClaim && m.OnlineSnapshot.Current == m.OnlineSeat && m.OnlineSnapshot.PendingClaim != nil
+	}
+	return m.Game != nil && m.Game.Phase == game.PhaseAwaitingClaim && m.Game.Current == 0 && m.Game.PendingClaim != nil
+}
+
+func activeClaimOptions(m Model) []game.ClaimOption {
+	var pending *game.PendingClaim
+	if m.Online {
+		pending = m.OnlineSnapshot.PendingClaim
+	} else if m.Game != nil {
+		pending = m.Game.PendingClaim
+	}
+	if pending == nil || pending.Active < 0 || pending.Active >= len(pending.Options) {
+		return nil
+	}
+	first := pending.Options[pending.Active]
+	end := pending.Active + 1
+	for end < len(pending.Options) {
+		option := pending.Options[end]
+		if option.Player != first.Player || option.Kind != first.Kind {
+			break
+		}
+		end++
+	}
+	return pending.Options[pending.Active:end]
+}
+
+func claimStatus(command game.GameCommand, sending bool) string {
+	prefix := "Claimed "
+	if sending {
+		prefix = "Claiming "
+	}
+	switch command.Kind {
+	case game.CommandPass:
+		if sending {
+			return "Passing claim"
+		}
+		return "Passed claim"
+	case game.CommandClaimWin:
+		return prefix + "win"
+	case game.CommandPong:
+		return prefix + "pong"
+	case game.CommandChow:
+		return prefix + "chow"
+	default:
+		return ""
+	}
 }
 
 func selectionStatus(m Model, action string, index int, tile game.Tile, unicode bool) string {
