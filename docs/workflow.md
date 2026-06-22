@@ -138,3 +138,9 @@ Stage review:
 - Step reviews confirm style helpers, ANSI-safe visible-width checks, styled table sections, styled selected tiles, and styled menu/game-over screens.
 - Stage reviews compare the visual skin against the total goal of an attractive but readable terminal-first Mahjong client.
 - Verification commands: `go test ./...`, `go test ./... -cover`, `go build ./cmd/mahjong`, and one manual TUI smoke run.
+
+## Phase 11 Review Checklist
+
+- Step reviews confirm explicit pending-claim state, deterministic priority, bot legality, online recovery, and localized TUI controls.
+- Stage review compares interactive win, pong, chow, and pass responses against the total goal of a complete terminal-first Mahjong client.
+- Verification commands: `go vet ./...`, `go test ./...`, `go test -race ./...`, all command builds, one WebSocket reconnect smoke run, and Chinese/English TUI screenshots.

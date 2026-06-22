@@ -25,6 +25,8 @@ A small, complete terminal Mahjong game written in Go.
 - Mouse click: select a hand tile when the terminal supports mouse events.
 - Second click on the selected hand tile: discard it.
 - `Space`: discard the selected tile.
+- When responding to an opponent discard, `H` wins, `P` pongs, `C` chows, and `Space` or `Esc` passes.
+- If more than one chow is legal, use `Left` / `Right` before pressing `C`.
 - `Q`: quit the current game.
 
 The client renders Mahjong tiles with Unicode glyphs by default and keeps text labels available for fallback rendering in tests and future configuration.
@@ -91,6 +93,8 @@ The TUI start menu supports local play plus online room actions:
 - Online tables support mouse tile selection and second-click discard, using the same server snapshot sync as keyboard discards.
 - Online rounds draw for the current seat when the room starts and after each accepted discard.
 - Online rooms can start with fewer than four humans; empty seats are advanced by the built-in heuristic bot.
+- Discard responses use deterministic priority: discard-win, then pong, then chow by the next seat.
+- Pending responses are part of the synchronized snapshot, so reconnecting restores the same win, pong, chow, or pass decision.
 - Rooms reject new joins after they have started; disconnected players should use reconnect instead.
 - Online game-over snapshots show a result screen with room, winner, result, and a main-menu return path.
 

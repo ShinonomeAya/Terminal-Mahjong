@@ -301,25 +301,6 @@ func renderOnlineRoomState(m Model) string {
 	return roomStateText(m, len(m.OnlineReadySeats), total, m.OnlineStarted)
 }
 
-func renderOnlineOpponents(m Model) string {
-	opposite := onlinePlayer(m, (m.OnlineSeat+2)%4)
-	left := onlinePlayer(m, (m.OnlineSeat+1)%4)
-	right := onlinePlayer(m, (m.OnlineSeat+3)%4)
-	var out strings.Builder
-	out.WriteString("                 " + renderOnlineSeat("Opposite", opposite, m.UnicodeTiles) + "\n")
-	out.WriteString(padRightVisible(renderOnlineSeat("Left", left, m.UnicodeTiles), 44))
-	out.WriteString(renderOnlineSeat("Right", right, m.UnicodeTiles) + "\n")
-	return out.String()
-}
-
-func renderOnlineSeat(seat string, player game.PlayerView, unicode bool) string {
-	discards := game.FormatTileLabels(recentTiles(player.Discards, 4), unicode)
-	if discards == "" {
-		discards = "-"
-	}
-	return fmt.Sprintf("%s: %s hand:%02d melds:%s last:%s", seat, player.Name, len(player.Hand), meldSummary(player.Melds), discards)
-}
-
 func renderOnlineCenter(m Model) string {
 	var out strings.Builder
 	snapshot := m.OnlineSnapshot
@@ -439,72 +420,7 @@ func selectedChowText(m Model, options []game.ClaimOption) string {
 	return fmt.Sprintf("%d/%d [%s]", index+1, len(options), game.FormatTileLabels(tiles, m.UnicodeTiles))
 }
 
-func renderActionBar(m Model) string {
-	winReady := canHumanWin(m)
-	kongReady := canHumanKong(m)
-	winAction := actionState("[H] Win", winReady)
-	kongAction := actionState("[K] Kong", kongReady)
-	if m.Width > 0 && m.Width < 80 {
-		return actionBarLine(
-			"Actions:",
-			"[Enter] Discard",
-			"[Click] Tile",
-			compactActionState("[H]Win", winReady),
-			compactActionState("[K]Kong", kongReady),
-			"[Q] Quit",
-		) + "\n"
-	}
-	return actionBarLine(
-		"Actions:",
-		"[←/→] Select",
-		"[Enter/Space] Discard",
-		"[Click] Tile",
-		winAction,
-		kongAction,
-		"[Q] Quit",
-	) + "\n"
-}
-
-func renderOnlineActionBar(m Model) string {
-	winReady := canOnlineWin(m)
-	kongReady := canOnlineKong(m)
-	winAction := actionState("[H] Win", winReady)
-	kongAction := actionState("[K] Kong", kongReady)
-	if m.Width > 0 && m.Width < 80 {
-		return actionBarLine(
-			"Actions:",
-			"[R]Ready",
-			"[Enter] Discard",
-			"[Click] Tile",
-			compactActionState("[H]Win", winReady),
-			compactActionState("[K]Kong", kongReady),
-			"[Q] Menu",
-		) + "\n"
-	}
-	return actionBarLine(
-		"Actions:",
-		"[R] Ready",
-		winAction,
-		kongAction,
-		"[←/→] Select",
-		"[Enter/Space] Discard",
-		"[Click] Tile",
-		"[Q] Menu",
-	) + "\n"
-}
-
-func actionBarLine(parts ...string) string {
-	return styleMuted(strings.Join(parts, " "))
-}
-
 func actionState(label string, ready bool) string {
-	if ready {
-		return styleSelectedTile(label + ":READY")
-	}
-	return label + ":off"
-}
-
-func compactActionState(label string, ready bool) string {
 	if ready {
 		return styleSelectedTile(label + ":READY")
 	}
@@ -574,22 +490,6 @@ func renderLastAction(m Model) string {
 	return styleStatus(lastActionText(m)) + "\n"
 }
 
-func renderOpponents(g *game.Game, unicode bool) string {
-	var out strings.Builder
-	out.WriteString("                 " + renderOpponentSeat("Opposite", g.Players[2], unicode) + "\n")
-	out.WriteString(padRightVisible(renderOpponentSeat("Left", g.Players[1], unicode), 44))
-	out.WriteString(renderOpponentSeat("Right", g.Players[3], unicode) + "\n")
-	return out.String()
-}
-
-func renderOpponentSeat(seat string, player game.Player, unicode bool) string {
-	discards := game.FormatTileLabels(recentTiles(player.Discards, 4), unicode)
-	if discards == "" {
-		discards = "-"
-	}
-	return fmt.Sprintf("%s: %s hand:%02d melds:%s last:%s", seat, player.Name, len(player.Hand), player.MeldSummary(), discards)
-}
-
 func recentTiles(tiles []game.Tile, limit int) []game.Tile {
 	if limit <= 0 || len(tiles) == 0 {
 		return nil
@@ -598,13 +498,6 @@ func recentTiles(tiles []game.Tile, limit int) []game.Tile {
 		return tiles
 	}
 	return tiles[len(tiles)-limit:]
-}
-
-func padRightVisible(text string, width int) string {
-	if visibleWidth(text) >= width {
-		return text + "  "
-	}
-	return text + strings.Repeat(" ", width-visibleWidth(text))
 }
 
 func renderCenter(m Model, g *game.Game, unicode bool) string {
