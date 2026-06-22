@@ -56,6 +56,69 @@ func TestHeuristicBotRejectsUnknownPlayer(t *testing.T) {
 	}
 }
 
+func TestHeuristicBotAcceptsActiveDiscardWin(t *testing.T) {
+	snapshot := snapshotWithHand(t,
+		"1m", "2m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+	snapshot.Phase = game.PhaseAwaitingClaim
+	snapshot.Current = 0
+	snapshot.PendingClaim = &game.PendingClaim{
+		Discarder: 3,
+		Tile:      mustBotTiles(t, "3m")[0],
+		Options:   []game.ClaimOption{{Kind: game.ClaimWin, Player: 0}},
+	}
+
+	command := NewHeuristicBot().Decide(context.Background(), snapshot, "0")
+
+	if command.Kind != game.CommandClaimWin {
+		t.Fatalf("command = %#v, want discard win", command)
+	}
+}
+
+func TestHeuristicBotReturnsLegalActivePongCommand(t *testing.T) {
+	snapshot := snapshotWithHand(t, "3m", "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "N")
+	snapshot.Phase = game.PhaseAwaitingClaim
+	snapshot.Current = 0
+	snapshot.PendingClaim = &game.PendingClaim{
+		Discarder: 3,
+		Tile:      mustBotTiles(t, "3m")[0],
+		Options:   []game.ClaimOption{{Kind: game.ClaimPong, Player: 0, Consumed: mustBotTiles(t, "3m", "3m")}},
+	}
+
+	command := NewHeuristicBot().Decide(context.Background(), snapshot, "0")
+
+	if command.Kind != game.CommandPong && command.Kind != game.CommandPass {
+		t.Fatalf("command = %#v, want legal pong or pass", command)
+	}
+}
+
+func TestHeuristicBotReturnsLegalActiveChowCommand(t *testing.T) {
+	snapshot := snapshotWithHand(t, "1m", "2m", "2m", "4m", "1p", "2p", "4p", "5p", "7p", "1s", "2s", "4s", "N")
+	snapshot.Phase = game.PhaseAwaitingClaim
+	snapshot.Current = 0
+	snapshot.PendingClaim = &game.PendingClaim{
+		Discarder: 3,
+		Tile:      mustBotTiles(t, "3m")[0],
+		Options: []game.ClaimOption{
+			{Kind: game.ClaimChow, Player: 0, Consumed: mustBotTiles(t, "1m", "2m")},
+			{Kind: game.ClaimChow, Player: 0, Consumed: mustBotTiles(t, "2m", "4m")},
+		},
+	}
+
+	command := NewHeuristicBot().Decide(context.Background(), snapshot, "0")
+
+	if command.Kind == game.CommandPass {
+		return
+	}
+	if command.Kind != game.CommandChow || command.TileIndex < 0 || command.TileIndex >= 2 {
+		t.Fatalf("command = %#v, want legal chow option or pass", command)
+	}
+}
+
 func snapshotWithHand(t *testing.T, texts ...string) game.GameSnapshot {
 	t.Helper()
 	g := game.NewGame(5)
