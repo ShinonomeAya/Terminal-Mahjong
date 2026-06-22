@@ -179,3 +179,127 @@ func TestSnapshotCopiesPendingClaim(t *testing.T) {
 		t.Fatal("snapshot pending claim should not alias game state")
 	}
 }
+
+func TestDiscardCommandEntersPendingClaimState(t *testing.T) {
+	g := NewGame(9)
+	g.Current = 0
+	g.Players[0].Hand = mustTiles(t, "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "N", "N")
+	g.Players[1].Hand = mustTiles(t, "3m", "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "N")
+
+	result := g.ApplyCommand(GameCommand{PlayerID: "0", Kind: CommandDiscard, TileIndex: 0})
+
+	if !result.OK {
+		t.Fatalf("discard failed: %s", result.Error)
+	}
+	if g.Phase != PhaseAwaitingClaim || g.PendingClaim == nil {
+		t.Fatalf("phase/pending = %q/%#v", g.Phase, g.PendingClaim)
+	}
+	if g.Current != 1 || g.PendingClaim.Options[g.PendingClaim.Active].Kind != ClaimPong {
+		t.Fatalf("current/pending = %d/%#v", g.Current, g.PendingClaim)
+	}
+}
+
+func TestPassCompletesClaimWindowAndAdvancesTurn(t *testing.T) {
+	g := gameWithPendingPong(t)
+
+	result := g.ApplyCommand(GameCommand{PlayerID: "1", Kind: CommandPass})
+
+	if !result.OK {
+		t.Fatalf("pass failed: %s", result.Error)
+	}
+	if g.Phase != PhaseAwaitingDiscard || g.PendingClaim != nil || g.Current != 1 {
+		t.Fatalf("phase/pending/current = %q/%#v/%d", g.Phase, g.PendingClaim, g.Current)
+	}
+	startWall := len(g.Wall)
+	if _, ok := g.EnsureCurrentTurnDraw(); !ok || len(g.Wall) != startWall-1 {
+		t.Fatal("next player should draw after all claims pass")
+	}
+}
+
+func TestPongCommandClaimsDiscardWithoutDrawing(t *testing.T) {
+	g := gameWithPendingPong(t)
+	startWall := len(g.Wall)
+
+	result := g.ApplyCommand(GameCommand{PlayerID: "1", Kind: CommandPong})
+
+	if !result.OK {
+		t.Fatalf("pong failed: %s", result.Error)
+	}
+	if g.Phase != PhaseAwaitingDiscard || g.Current != 1 || g.PendingClaim != nil {
+		t.Fatalf("phase/current/pending = %q/%d/%#v", g.Phase, g.Current, g.PendingClaim)
+	}
+	if len(g.Players[1].Melds) != 1 || g.Players[1].Melds[0].Kind != MeldPong {
+		t.Fatalf("melds = %#v", g.Players[1].Melds)
+	}
+	if len(g.Players[0].Discards) != 0 || len(g.Wall) != startWall {
+		t.Fatalf("discard/wall = %v/%d, want claimed discard and no draw", g.Players[0].Discards, len(g.Wall))
+	}
+}
+
+func TestClaimWinCommandFinishesOnDiscard(t *testing.T) {
+	g := NewGame(9)
+	discard := mustTile(t, "3m")
+	g.Players[0].Discards = []Tile{discard}
+	g.Phase = PhaseAwaitingClaim
+	g.Current = 1
+	g.PendingClaim = &PendingClaim{Discarder: 0, Tile: discard, Options: []ClaimOption{{Kind: ClaimWin, Player: 1}}}
+
+	result := g.ApplyCommand(GameCommand{PlayerID: "1", Kind: CommandClaimWin})
+
+	if !result.OK || !g.Over || g.Winner != 1 || g.WinType != WinDiscard || g.Phase != PhaseRoundOver {
+		t.Fatalf("result=%#v winner=%d type=%q phase=%q", result, g.Winner, g.WinType, g.Phase)
+	}
+}
+
+func TestChowCommandSelectsActiveCombination(t *testing.T) {
+	g := NewGame(9)
+	discard := mustTile(t, "3m")
+	g.Players[0].Discards = []Tile{discard}
+	g.Players[1].Hand = mustTiles(t, "1m", "2m", "2m", "4m", "1p", "2p", "4p", "5p", "7p", "1s", "2s", "4s", "N")
+	g.Phase = PhaseAwaitingClaim
+	g.Current = 1
+	g.PendingClaim = &PendingClaim{
+		Discarder: 0,
+		Tile:      discard,
+		Options: []ClaimOption{
+			{Kind: ClaimChow, Player: 1, Consumed: mustTiles(t, "1m", "2m")},
+			{Kind: ClaimChow, Player: 1, Consumed: mustTiles(t, "2m", "4m")},
+		},
+	}
+
+	result := g.ApplyCommand(GameCommand{PlayerID: "1", Kind: CommandChow, TileIndex: 1})
+
+	if !result.OK {
+		t.Fatalf("chow failed: %s", result.Error)
+	}
+	if got := FormatTiles(g.Players[1].Melds[0].Tiles); got != "2m 3m 4m" {
+		t.Fatalf("chow meld = %s", got)
+	}
+	if g.Players[1].Count(mustTile(t, "1m")) != 1 || g.Players[1].Count(mustTile(t, "2m")) != 1 {
+		t.Fatalf("wrong chow tiles removed: %s", FormatTiles(g.Players[1].Hand))
+	}
+}
+
+func TestClaimStateRejectsDiscardAndWrongPlayer(t *testing.T) {
+	g := gameWithPendingPong(t)
+
+	if result := g.ApplyCommand(GameCommand{PlayerID: "1", Kind: CommandDiscard, TileIndex: 0}); result.OK {
+		t.Fatal("discard should be rejected during a claim response")
+	}
+	if result := g.ApplyCommand(GameCommand{PlayerID: "2", Kind: CommandPass}); result.OK {
+		t.Fatal("non-active player pass should be rejected")
+	}
+}
+
+func gameWithPendingPong(t *testing.T) *Game {
+	t.Helper()
+	g := NewGame(9)
+	g.Current = 0
+	g.Players[0].Hand = mustTiles(t, "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "N", "N")
+	g.Players[1].Hand = mustTiles(t, "3m", "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "N")
+	result := g.ApplyCommand(GameCommand{PlayerID: "0", Kind: CommandDiscard, TileIndex: 0})
+	if !result.OK || g.PendingClaim == nil {
+		t.Fatalf("setup discard failed: %#v pending=%#v", result, g.PendingClaim)
+	}
+	return g
+}

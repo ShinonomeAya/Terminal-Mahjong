@@ -83,3 +83,117 @@ func copyPendingClaim(pending *PendingClaim) *PendingClaim {
 	}
 	return copyValue
 }
+
+func (g *Game) beginDiscardClaims(discarder int, discard Tile) {
+	g.PendingClaim = g.buildPendingClaim(discarder, discard)
+	if g.PendingClaim == nil {
+		g.completeUnclaimedDiscard(discarder)
+		return
+	}
+	g.Phase = PhaseAwaitingClaim
+	g.Current = g.PendingClaim.Options[0].Player
+}
+
+func (g *Game) applyClaimCommand(command GameCommand) CommandResult {
+	options := g.activeClaimOptions()
+	if len(options) == 0 {
+		return g.commandError(command, "no active claim")
+	}
+	if command.Kind == CommandPass {
+		g.passActiveClaim(len(options))
+		return g.commandOK(command, "")
+	}
+
+	wanted := claimKindForCommand(command.Kind)
+	if wanted == "" || wanted != options[0].Kind {
+		return g.commandError(command, "claim is not available")
+	}
+	optionIndex := 0
+	if wanted == ClaimChow {
+		optionIndex = command.TileIndex
+	}
+	if optionIndex < 0 || optionIndex >= len(options) {
+		return g.commandError(command, "claim option is not available")
+	}
+	option := options[optionIndex]
+	switch option.Kind {
+	case ClaimWin:
+		g.finish(option.Player, "discard-win", WinDiscard)
+	case ClaimPong:
+		g.removeClaimedDiscard()
+		g.claimPong(option.Player, g.PendingClaim.Tile)
+		g.completeAcceptedClaim(option.Player)
+	case ClaimChow:
+		g.removeClaimedDiscard()
+		meld := append([]Tile(nil), option.Consumed...)
+		meld = append(meld, g.PendingClaim.Tile)
+		SortTiles(meld)
+		g.claimChow(option.Player, g.PendingClaim.Tile, meld)
+		g.completeAcceptedClaim(option.Player)
+	}
+	return g.commandOK(command, "")
+}
+
+func (g *Game) activeClaimOptions() []ClaimOption {
+	if g.PendingClaim == nil || g.PendingClaim.Active < 0 || g.PendingClaim.Active >= len(g.PendingClaim.Options) {
+		return nil
+	}
+	first := g.PendingClaim.Options[g.PendingClaim.Active]
+	end := g.PendingClaim.Active + 1
+	for end < len(g.PendingClaim.Options) {
+		option := g.PendingClaim.Options[end]
+		if option.Player != first.Player || option.Kind != first.Kind {
+			break
+		}
+		end++
+	}
+	return g.PendingClaim.Options[g.PendingClaim.Active:end]
+}
+
+func (g *Game) passActiveClaim(activeCount int) {
+	g.PendingClaim.Active += activeCount
+	if g.PendingClaim.Active >= len(g.PendingClaim.Options) {
+		discarder := g.PendingClaim.Discarder
+		g.completeUnclaimedDiscard(discarder)
+		return
+	}
+	g.Current = g.PendingClaim.Options[g.PendingClaim.Active].Player
+}
+
+func (g *Game) completeUnclaimedDiscard(discarder int) {
+	g.PendingClaim = nil
+	g.Phase = PhaseAwaitingDiscard
+	g.Current = (discarder + 1) % len(g.Players)
+}
+
+func (g *Game) completeAcceptedClaim(player int) {
+	g.PendingClaim = nil
+	g.Phase = PhaseAwaitingDiscard
+	g.Current = player
+}
+
+func (g *Game) removeClaimedDiscard() {
+	if g.PendingClaim == nil {
+		return
+	}
+	discards := g.Players[g.PendingClaim.Discarder].Discards
+	for i := len(discards) - 1; i >= 0; i-- {
+		if discards[i] == g.PendingClaim.Tile {
+			g.Players[g.PendingClaim.Discarder].Discards = append(discards[:i], discards[i+1:]...)
+			return
+		}
+	}
+}
+
+func claimKindForCommand(command CommandKind) ClaimKind {
+	switch command {
+	case CommandClaimWin:
+		return ClaimWin
+	case CommandPong:
+		return ClaimPong
+	case CommandChow:
+		return ClaimChow
+	default:
+		return ""
+	}
+}

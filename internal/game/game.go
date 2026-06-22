@@ -265,6 +265,8 @@ func (g *Game) finish(winner int, reason string, winType WinType) {
 	g.Reason = reason
 	g.WinType = winType
 	g.Over = true
+	g.Phase = PhaseRoundOver
+	g.PendingClaim = nil
 	g.RecordEvent(EventWin, winner, -1, reason)
 }
 

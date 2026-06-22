@@ -29,10 +29,14 @@ type GameSnapshot struct {
 type CommandKind string
 
 const (
-	CommandDiscard CommandKind = "discard"
-	CommandWin     CommandKind = "win"
-	CommandKong    CommandKind = "kong"
-	CommandQuit    CommandKind = "quit"
+	CommandDiscard  CommandKind = "discard"
+	CommandWin      CommandKind = "win"
+	CommandKong     CommandKind = "kong"
+	CommandQuit     CommandKind = "quit"
+	CommandPass     CommandKind = "pass"
+	CommandClaimWin CommandKind = "claim_win"
+	CommandPong     CommandKind = "pong"
+	CommandChow     CommandKind = "chow"
 )
 
 type GameCommand struct {
@@ -79,8 +83,14 @@ func (g *Game) Snapshot() GameSnapshot {
 }
 
 func (g *Game) ApplyCommand(command GameCommand) CommandResult {
+	if g.Over || g.Phase == PhaseRoundOver {
+		return g.commandError(command, "game is over")
+	}
 	if command.PlayerID != playerID(g.Current) {
 		return g.commandError(command, "not the current player")
+	}
+	if g.Phase == PhaseAwaitingClaim {
+		return g.applyClaimCommand(command)
 	}
 	switch command.Kind {
 	case CommandDiscard:
@@ -109,7 +119,7 @@ func (g *Game) ApplyCommand(command GameCommand) CommandResult {
 }
 
 func (g *Game) EnsureCurrentTurnDraw() (Tile, bool) {
-	if g.Over || g.Current < 0 || g.Current >= len(g.Players) {
+	if g.Over || g.Phase != PhaseAwaitingDiscard || g.Current < 0 || g.Current >= len(g.Players) {
 		return -1, false
 	}
 	if len(g.Players[g.Current].Hand)%3 != 1 {
@@ -134,7 +144,7 @@ func (g *Game) discardCurrent(index int) (Tile, error) {
 	}
 	g.Players[g.Current].Discards = append(g.Players[g.Current].Discards, discard)
 	g.RecordEvent(EventDiscard, g.Current, discard, "")
-	g.Current = (g.Current + 1) % len(g.Players)
+	g.beginDiscardClaims(g.Current, discard)
 	return discard, nil
 }
 
