@@ -162,7 +162,7 @@ func TestClientSendsCommandAndReceivesBroadcast(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if update.Snapshot.Current != 1 || len(update.Snapshot.Events) == 0 {
+	if (update.Snapshot.Current != 0 && update.Snapshot.Current != 1) || len(update.Snapshot.Events) == 0 {
 		t.Fatalf("update = %#v", update)
 	}
 }

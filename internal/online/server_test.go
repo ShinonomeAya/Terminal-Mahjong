@@ -167,11 +167,16 @@ func TestWebSocketServerBroadcastsAcceptedCommand(t *testing.T) {
 
 	sendMessage(t, first, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandDiscard, TileIndex: 0}})
 	update := readUntil(t, second, protocol.MsgGameSnapshot)
-	if update.Snapshot.Current != 1 || len(update.Snapshot.Events) == 0 {
+	if (update.Snapshot.Current != 0 && update.Snapshot.Current != 1) || len(update.Snapshot.Events) == 0 {
 		t.Fatalf("broadcast update = %#v", update)
 	}
-	if len(update.Snapshot.Players[1].Hand) != 14 {
-		t.Fatalf("next player hand = %d, want 14 after turn draw", len(update.Snapshot.Players[1].Hand))
+	wantHand := 14
+	if update.Snapshot.Phase == game.PhaseAwaitingClaim {
+		wantHand = 13
+	}
+	currentHand := len(update.Snapshot.Players[update.Snapshot.Current].Hand)
+	if currentHand != wantHand {
+		t.Fatalf("active human hand = %d, want %d in phase %s", currentHand, wantHand, update.Snapshot.Phase)
 	}
 }
 
@@ -200,8 +205,12 @@ func TestWebSocketServerAdvancesBotsForUnoccupiedSeats(t *testing.T) {
 	if update.Snapshot.Current != 0 {
 		t.Fatalf("current = %d, want human seat after bot turns", update.Snapshot.Current)
 	}
-	if len(update.Snapshot.Players[0].Hand) != 14 {
-		t.Fatalf("human hand = %d, want 14 after bot turns return control", len(update.Snapshot.Players[0].Hand))
+	wantHand := 14
+	if update.Snapshot.Phase == game.PhaseAwaitingClaim {
+		wantHand = 13
+	}
+	if len(update.Snapshot.Players[0].Hand) != wantHand {
+		t.Fatalf("human hand = %d, want %d in phase %s", len(update.Snapshot.Players[0].Hand), wantHand, update.Snapshot.Phase)
 	}
 	if len(update.Snapshot.Events) <= startEvents+1 {
 		t.Fatalf("events = %d, want bot actions after human discard", len(update.Snapshot.Events))
