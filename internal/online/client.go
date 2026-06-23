@@ -61,10 +61,14 @@ func (c *Client) Session() ClientSession {
 }
 
 func (c *Client) CreateRoom(ctx context.Context) (protocol.Message, error) {
+	return c.CreateRoomWithRules(ctx, game.ModeCompatibility, game.RuleConfig{})
+}
+
+func (c *Client) CreateRoomWithRules(ctx context.Context, mode game.RuleMode, config game.RuleConfig) (protocol.Message, error) {
 	if err := c.connect(ctx); err != nil {
 		return protocol.Message{}, err
 	}
-	if err := c.write(protocol.Message{Type: protocol.MsgCreateRoom, Name: c.name}); err != nil {
+	if err := c.write(protocol.Message{Type: protocol.MsgCreateRoom, Name: c.name, Mode: mode, RuleConfig: config}); err != nil {
 		return protocol.Message{}, err
 	}
 	message, err := c.ReadUntil(ctx, 2*time.Second, protocol.MsgRoomCreated, protocol.MsgError)

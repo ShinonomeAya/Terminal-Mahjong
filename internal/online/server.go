@@ -28,7 +28,7 @@ type Server struct {
 
 type room struct {
 	code      string
-	game      *game.Game
+	match     *game.Match
 	seats     [4]string
 	ready     map[string]bool
 	started   bool
@@ -96,8 +96,12 @@ func (s *Server) handleConn(conn *websocket.Conn) {
 func (s *Server) handleMessage(conn *websocket.Conn, current *session, message protocol.Message) *session {
 	switch message.Type {
 	case protocol.MsgCreateRoom:
-		session, created := s.createRoom(conn, message.Name)
-		writeJSON(conn, protocol.Message{
+		session, created, err := s.createRoom(conn, message.Name, message.Mode, message.RuleConfig)
+		if err != nil {
+			writeError(conn, err.Error())
+			return current
+		}
+		writeJSON(conn, stateMessageForSession(created, session, protocol.Message{
 			Type:           protocol.MsgRoomCreated,
 			PlayerID:       session.playerID,
 			ReconnectToken: session.reconnectToken,
@@ -106,16 +110,15 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			ReadySeats:     readySeats(created),
 			Started:        created.started,
 			OccupiedSeats:  occupiedSeats(created),
-			Snapshot:       created.game.Snapshot(),
-		})
+		}))
 		return session
 	case protocol.MsgJoinRoom:
-		session, joined, err := s.joinRoom(conn, message.RoomCode, message.Name)
+		session, joined, err := s.joinRoom(conn, message.RoomCode, message.Name, message.Mode, message.RuleConfig)
 		if err != nil {
 			writeError(conn, err.Error())
 			return current
 		}
-		writeJSON(conn, protocol.Message{
+		writeJSON(conn, stateMessageForSession(joined, session, protocol.Message{
 			Type:           protocol.MsgRoomJoined,
 			PlayerID:       session.playerID,
 			ReconnectToken: session.reconnectToken,
@@ -124,8 +127,7 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			ReadySeats:     readySeats(joined),
 			Started:        joined.started,
 			OccupiedSeats:  occupiedSeats(joined),
-			Snapshot:       joined.game.Snapshot(),
-		})
+		}))
 		s.broadcastRoomStateExcept(joined, session.playerID)
 		return session
 	case protocol.MsgListRooms:
@@ -138,12 +140,12 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 	case protocol.MsgPlayCommand:
 		s.playCommand(conn, current, message.Command)
 	case protocol.MsgReconnect:
-		session, room, snapshot, err := s.reconnect(conn, message.PlayerID, message.ReconnectToken)
+		session, room, err := s.reconnect(conn, message.PlayerID, message.ReconnectToken)
 		if err != nil {
 			writeError(conn, err.Error())
 			return current
 		}
-		writeJSON(conn, protocol.Message{
+		writeJSON(conn, stateMessageForSession(room, session, protocol.Message{
 			Type:           protocol.MsgReconnected,
 			PlayerID:       session.playerID,
 			ReconnectToken: session.reconnectToken,
@@ -152,8 +154,7 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			ReadySeats:     readySeats(room),
 			Started:        room.started,
 			OccupiedSeats:  occupiedSeats(room),
-			Snapshot:       snapshot,
-		})
+		}))
 		return session
 	default:
 		writeError(conn, "unknown message")
@@ -172,25 +173,34 @@ func (s *Server) roomSummaries() []protocol.RoomSummary {
 			continue
 		}
 		rooms = append(rooms, protocol.RoomSummary{
-			Code:     room.code,
-			Occupied: len(occupiedSeats(room)),
-			Ready:    len(readySeats(room)),
-			Started:  room.started,
-			Wall:     room.game.Snapshot().WallCount,
+			Code:       room.code,
+			Occupied:   len(occupiedSeats(room)),
+			Ready:      len(readySeats(room)),
+			Started:    room.started,
+			Wall:       room.match.Round.Snapshot().WallCount,
+			Mode:       room.match.Mode,
+			RuleConfig: room.match.RuleConfig,
 		})
 	}
 	return rooms
 }
 
-func (s *Server) createRoom(conn *websocket.Conn, name string) (*session, *room) {
+func (s *Server) createRoom(conn *websocket.Conn, name string, mode game.RuleMode, config game.RuleConfig) (*session, *room, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if mode == "" {
+		mode = game.ModeCompatibility
+	}
+	match, err := game.NewMatch(0, game.NewCompatibilityRuleSet(mode, config))
+	if err != nil {
+		return nil, nil, err
+	}
 	s.nextRoom++
 	code := fmt.Sprintf("%06d", s.nextRoom)
 	created := &room{
 		code:      code,
-		game:      game.NewGame(0),
+		match:     match,
 		ready:     make(map[string]bool),
 		updatedAt: time.Now(),
 	}
@@ -198,10 +208,10 @@ func (s *Server) createRoom(conn *websocket.Conn, name string) (*session, *room)
 	created.seats[0] = session.playerID
 	s.rooms[code] = created
 	s.sessions[session.playerID] = session
-	return session, created
+	return session, created, nil
 }
 
-func (s *Server) joinRoom(conn *websocket.Conn, code string, name string) (*session, *room, error) {
+func (s *Server) joinRoom(conn *websocket.Conn, code string, name string, mode game.RuleMode, config game.RuleConfig) (*session, *room, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -211,6 +221,12 @@ func (s *Server) joinRoom(conn *websocket.Conn, code string, name string) (*sess
 	}
 	if joined.started {
 		return nil, nil, fmt.Errorf("room already started")
+	}
+	if mode != "" && mode != joined.match.Mode {
+		return nil, nil, fmt.Errorf("rule mode does not match room")
+	}
+	if mode != "" && config != joined.match.RuleConfig {
+		return nil, nil, fmt.Errorf("rule configuration does not match room")
 	}
 	seat := firstOpenSeat(joined)
 	if seat < 0 {
@@ -235,9 +251,9 @@ func (s *Server) setReady(session *session) {
 		room.started = allOccupiedReady(room)
 		s.touchRoomLocked(room)
 		if room.started && !wasStarted {
-			room.game.EnsureCurrentTurnDraw()
+			room.match.EnsureCurrentTurnDraw()
 		}
-		s.broadcastRoomLocked(room, roomStateMessage(room))
+		s.broadcastRoomStateLocked(room, "")
 	}
 }
 
@@ -259,7 +275,7 @@ func (s *Server) playCommand(conn *websocket.Conn, session *session, command gam
 		return
 	}
 	command.PlayerID = fmt.Sprintf("%d", session.seat)
-	result := room.game.ApplyCommand(command)
+	result := room.match.ApplyCommand(command)
 	if !result.OK {
 		s.mu.Unlock()
 		writeError(conn, result.Error)
@@ -267,50 +283,49 @@ func (s *Server) playCommand(conn *websocket.Conn, session *session, command gam
 	}
 	s.touchRoomLocked(room)
 	s.advanceUnoccupiedBotsLocked(room)
-	result.Snapshot = room.game.Snapshot()
-	s.broadcastRoomLocked(room, protocol.Message{Type: protocol.MsgGameSnapshot, Result: result, Snapshot: result.Snapshot})
+	s.broadcastGameSnapshotLocked(room, result)
 	s.mu.Unlock()
 }
 
 func (s *Server) advanceUnoccupiedBotsLocked(room *room) {
 	const maxBotActions = 200
-	for actions := 0; actions < maxBotActions && !room.game.Over; actions++ {
-		current := room.game.Current
+	for actions := 0; actions < maxBotActions && !room.match.Round.Over; actions++ {
+		current := room.match.Round.Current
 		if current < 0 || current >= len(room.seats) || room.seats[current] != "" {
-			room.game.EnsureCurrentTurnDraw()
+			room.match.EnsureCurrentTurnDraw()
 			return
 		}
-		room.game.EnsureCurrentTurnDraw()
-		command := s.bots.Decide(context.Background(), room.game.Snapshot(), fmt.Sprintf("%d", current))
+		room.match.EnsureCurrentTurnDraw()
+		command := s.bots.Decide(context.Background(), room.match.Round.Snapshot(), fmt.Sprintf("%d", current))
 		command.PlayerID = fmt.Sprintf("%d", current)
-		result := room.game.ApplyCommand(command)
+		result := room.match.ApplyCommand(command)
 		if !result.OK {
 			fallback := game.GameCommand{PlayerID: fmt.Sprintf("%d", current), Kind: game.CommandDiscard, TileIndex: 0}
-			if fallbackResult := room.game.ApplyCommand(fallback); !fallbackResult.OK {
+			if fallbackResult := room.match.ApplyCommand(fallback); !fallbackResult.OK {
 				return
 			}
 		}
 	}
 }
 
-func (s *Server) reconnect(conn *websocket.Conn, playerID string, token string) (*session, *room, game.GameSnapshot, error) {
+func (s *Server) reconnect(conn *websocket.Conn, playerID string, token string) (*session, *room, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	session := s.sessions[playerID]
 	if session == nil || session.reconnectToken != token {
-		return nil, nil, game.GameSnapshot{}, fmt.Errorf("invalid reconnect token")
+		return nil, nil, fmt.Errorf("invalid reconnect token")
 	}
 	if !session.offlineAt.IsZero() && time.Since(session.offlineAt) > s.options.ReconnectWindow {
-		return nil, nil, game.GameSnapshot{}, fmt.Errorf("reconnect window expired")
+		return nil, nil, fmt.Errorf("reconnect window expired")
 	}
 	session.conn = conn
 	session.offlineAt = time.Time{}
 	room := s.rooms[session.roomCode]
 	if room == nil {
-		return nil, nil, game.GameSnapshot{}, fmt.Errorf("room not found")
+		return nil, nil, fmt.Errorf("room not found")
 	}
-	return session, room, room.game.Snapshot(), nil
+	return session, room, nil
 }
 
 func (s *Server) touchRoomLocked(room *room) {
@@ -348,33 +363,37 @@ func (s *Server) markOffline(session *session) {
 	}
 }
 
-func (s *Server) broadcastRoomLocked(room *room, message protocol.Message) {
-	for _, playerID := range room.seats {
-		if playerID == "" {
-			continue
-		}
-		session := s.sessions[playerID]
-		if session != nil && session.conn != nil {
-			writeJSON(session.conn, message)
-		}
-	}
-}
-
 func (s *Server) broadcastRoomStateExcept(room *room, excludedPlayerID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.broadcastRoomLockedExcept(room, roomStateMessage(room), excludedPlayerID)
+	s.broadcastRoomStateLocked(room, excludedPlayerID)
 }
 
-func (s *Server) broadcastRoomLockedExcept(room *room, message protocol.Message, excludedPlayerID string) {
+func (s *Server) broadcastRoomStateLocked(room *room, excludedPlayerID string) {
 	for _, playerID := range room.seats {
 		if playerID == "" || playerID == excludedPlayerID {
 			continue
 		}
 		session := s.sessions[playerID]
 		if session != nil && session.conn != nil {
-			writeJSON(session.conn, message)
+			writeJSON(session.conn, roomStateMessage(room, session))
 		}
+	}
+}
+
+func (s *Server) broadcastGameSnapshotLocked(room *room, result game.CommandResult) {
+	for _, playerID := range room.seats {
+		if playerID == "" {
+			continue
+		}
+		session := s.sessions[playerID]
+		if session == nil || session.conn == nil {
+			continue
+		}
+		message := stateMessageForSession(room, session, protocol.Message{Type: protocol.MsgGameSnapshot})
+		result.Snapshot = message.Snapshot
+		message.Result = result
+		writeJSON(session.conn, message)
 	}
 }
 
@@ -387,15 +406,23 @@ func firstOpenSeat(room *room) int {
 	return -1
 }
 
-func roomStateMessage(room *room) protocol.Message {
-	return protocol.Message{
+func roomStateMessage(room *room, session *session) protocol.Message {
+	return stateMessageForSession(room, session, protocol.Message{
 		Type:          protocol.MsgRoomState,
 		RoomCode:      room.code,
 		ReadySeats:    readySeats(room),
 		Started:       room.started,
 		OccupiedSeats: occupiedSeats(room),
-		Snapshot:      room.game.Snapshot(),
-	}
+	})
+}
+
+func stateMessageForSession(room *room, session *session, message protocol.Message) protocol.Message {
+	id := fmt.Sprintf("%d", session.seat)
+	message.Mode = room.match.Mode
+	message.RuleConfig = room.match.RuleConfig
+	message.Snapshot = room.match.Round.SnapshotFor(id)
+	message.Match = room.match.SnapshotFor(id)
+	return message
 }
 
 func readySeats(room *room) []int {

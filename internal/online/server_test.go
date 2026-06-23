@@ -43,6 +43,67 @@ func TestWebSocketServerCreatesAndJoinsRoom(t *testing.T) {
 	}
 }
 
+func TestWebSocketServerSendsRecipientPrivateMatchSnapshots(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+	config := game.DefaultRuleConfig(game.ModeMCR)
+
+	first := dialTestClient(t, url)
+	defer first.Close()
+	sendMessage(t, first, protocol.Message{Type: protocol.MsgCreateRoom, Name: "first", Mode: game.ModeMCR, RuleConfig: config})
+	created := readUntil(t, first, protocol.MsgRoomCreated)
+	assertPrivateSnapshot(t, created.Snapshot, 0)
+	assertPrivateSnapshot(t, created.Match.Round, 0)
+	if created.Match.Mode != game.ModeMCR || created.Match.RuleConfig != config {
+		t.Fatalf("created match = %#v", created.Match)
+	}
+
+	second := dialTestClient(t, url)
+	defer second.Close()
+	sendMessage(t, second, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode, Name: "second"})
+	joined := readUntil(t, second, protocol.MsgRoomJoined)
+	assertPrivateSnapshot(t, joined.Snapshot, 1)
+	assertPrivateSnapshot(t, joined.Match.Round, 1)
+	if joined.Match.Mode != game.ModeMCR {
+		t.Fatalf("joined match mode = %q", joined.Match.Mode)
+	}
+
+	state := readUntil(t, first, protocol.MsgRoomState)
+	assertPrivateSnapshot(t, state.Snapshot, 0)
+	if state.Match.Mode != game.ModeMCR {
+		t.Fatalf("room state match mode = %q", state.Match.Mode)
+	}
+}
+
+func TestWebSocketServerRejectsConflictingJoinMode(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	host := dialTestClient(t, url)
+	defer host.Close()
+	sendMessage(t, host, protocol.Message{
+		Type:       protocol.MsgCreateRoom,
+		Mode:       game.ModeMCR,
+		RuleConfig: game.DefaultRuleConfig(game.ModeMCR),
+	})
+	created := readUntil(t, host, protocol.MsgRoomCreated)
+
+	joining := dialTestClient(t, url)
+	defer joining.Close()
+	sendMessage(t, joining, protocol.Message{
+		Type:       protocol.MsgJoinRoom,
+		RoomCode:   created.RoomCode,
+		Mode:       game.ModeRiichi,
+		RuleConfig: game.DefaultRuleConfig(game.ModeRiichi),
+	})
+	errMsg := readUntil(t, joining, protocol.MsgError)
+	if !strings.Contains(errMsg.Error, "rule mode") {
+		t.Fatalf("error = %#v, want rule mode conflict", errMsg)
+	}
+}
+
 func TestWebSocketServerListsWaitingRooms(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)
@@ -64,6 +125,9 @@ func TestWebSocketServerListsWaitingRooms(t *testing.T) {
 	room := list.Rooms[0]
 	if room.Code != created.RoomCode || room.Occupied != 1 || room.Ready != 0 || room.Started {
 		t.Fatalf("room = %#v, created = %#v", room, created)
+	}
+	if room.Mode != game.ModeCompatibility || room.RuleConfig != (game.RuleConfig{}) {
+		t.Fatalf("room rules = %q/%#v", room.Mode, room.RuleConfig)
 	}
 }
 
@@ -166,7 +230,12 @@ func TestWebSocketServerBroadcastsAcceptedCommand(t *testing.T) {
 	_ = readUntil(t, second, protocol.MsgRoomState)
 
 	sendMessage(t, first, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandDiscard, TileIndex: 0}})
+	firstUpdate := readUntil(t, first, protocol.MsgGameSnapshot)
 	update := readUntil(t, second, protocol.MsgGameSnapshot)
+	assertPrivateSnapshot(t, firstUpdate.Snapshot, 0)
+	assertPrivateSnapshot(t, update.Snapshot, 1)
+	assertPrivateSnapshot(t, firstUpdate.Result.Snapshot, 0)
+	assertPrivateSnapshot(t, update.Result.Snapshot, 1)
 	if (update.Snapshot.Current != 0 && update.Snapshot.Current != 1) || len(update.Snapshot.Events) == 0 {
 		t.Fatalf("broadcast update = %#v", update)
 	}
@@ -280,8 +349,9 @@ func TestWebSocketServerReconnectsWithToken(t *testing.T) {
 	if reconnected.PlayerID != created.PlayerID || reconnected.RoomCode != created.RoomCode {
 		t.Fatalf("reconnected = %#v created = %#v", reconnected, created)
 	}
-	if reconnected.Snapshot.Seed == 0 {
-		t.Fatalf("missing snapshot after reconnect: %#v", reconnected)
+	assertPrivateSnapshot(t, reconnected.Snapshot, 0)
+	if reconnected.Match.Mode != game.ModeCompatibility {
+		t.Fatalf("missing match after reconnect: %#v", reconnected.Match)
 	}
 }
 
@@ -347,17 +417,18 @@ func setPendingPongFixture(t *testing.T, server *Server, roomCode string) {
 	if room == nil {
 		t.Fatalf("room %s not found", roomCode)
 	}
-	room.game.Current = 0
-	room.game.Phase = game.PhaseAwaitingDiscard
-	room.game.PendingClaim = nil
-	room.game.Over = false
-	room.game.Events = nil
-	room.game.Players[0].Hand = mustOnlineTiles(t, "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "N", "N")
-	room.game.Players[0].Discards = nil
-	room.game.Players[1].Hand = mustOnlineTiles(t, "3m", "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "N")
-	room.game.Players[1].Melds = nil
-	room.game.Players[2].Hand = mustOnlineTiles(t, "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "8s", "N")
-	room.game.Players[3].Hand = mustOnlineTiles(t, "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "8s", "S")
+	round := room.match.Round
+	round.Current = 0
+	round.Phase = game.PhaseAwaitingDiscard
+	round.PendingClaim = nil
+	round.Over = false
+	round.Events = nil
+	round.Players[0].Hand = mustOnlineTiles(t, "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "N", "N")
+	round.Players[0].Discards = nil
+	round.Players[1].Hand = mustOnlineTiles(t, "3m", "3m", "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "N")
+	round.Players[1].Melds = nil
+	round.Players[2].Hand = mustOnlineTiles(t, "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "8s", "N")
+	round.Players[3].Hand = mustOnlineTiles(t, "1p", "2p", "4p", "5p", "7p", "8p", "1s", "2s", "4s", "5s", "7s", "8s", "S")
 }
 
 func mustOnlineTiles(t *testing.T, texts ...string) []game.Tile {
@@ -372,6 +443,24 @@ func mustOnlineTiles(t *testing.T, texts ...string) []game.Tile {
 	}
 	game.SortTiles(tiles)
 	return tiles
+}
+
+func assertPrivateSnapshot(t *testing.T, snapshot game.GameSnapshot, seat int) {
+	t.Helper()
+	if snapshot.Seed != 0 || snapshot.ShuffleProof.Seed != 0 {
+		t.Fatalf("live snapshot leaked seed: %#v", snapshot)
+	}
+	for index, player := range snapshot.Players {
+		if player.HandCount == 0 {
+			t.Fatalf("player %d missing hand count: %#v", index, player)
+		}
+		if index == seat && len(player.Hand) != player.HandCount {
+			t.Fatalf("seat %d hand/count = %d/%d", seat, len(player.Hand), player.HandCount)
+		}
+		if index != seat && player.Hand != nil {
+			t.Fatalf("seat %d received opponent %d hand: %v", seat, index, player.Hand)
+		}
+	}
 }
 
 func TestWebSocketServerRejectsReconnectAfterConfiguredWindow(t *testing.T) {

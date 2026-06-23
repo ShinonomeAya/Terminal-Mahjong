@@ -22,11 +22,13 @@ const (
 )
 
 type RoomSummary struct {
-	Code     string `json:"code"`
-	Occupied int    `json:"occupied"`
-	Ready    int    `json:"ready"`
-	Started  bool   `json:"started"`
-	Wall     int    `json:"wall"`
+	Code       string          `json:"code"`
+	Occupied   int             `json:"occupied"`
+	Ready      int             `json:"ready"`
+	Started    bool            `json:"started"`
+	Wall       int             `json:"wall"`
+	Mode       game.RuleMode   `json:"mode"`
+	RuleConfig game.RuleConfig `json:"rule_config"`
 }
 
 type Message struct {
@@ -42,6 +44,9 @@ type Message struct {
 	Command        game.GameCommand   `json:"command,omitempty"`
 	Result         game.CommandResult `json:"result,omitempty"`
 	Snapshot       game.GameSnapshot  `json:"snapshot,omitempty"`
+	Mode           game.RuleMode      `json:"mode,omitempty"`
+	RuleConfig     game.RuleConfig    `json:"rule_config,omitempty"`
+	Match          game.MatchSnapshot `json:"match,omitempty"`
 	Rooms          []RoomSummary      `json:"rooms,omitempty"`
 	Error          string             `json:"error,omitempty"`
 }

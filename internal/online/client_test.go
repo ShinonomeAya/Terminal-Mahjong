@@ -43,6 +43,27 @@ func TestClientCreatesRoomAndPersistsSession(t *testing.T) {
 	}
 }
 
+func TestClientCreatesRoomWithRules(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	client := NewClient(url+"/ws", "first")
+	defer client.Close()
+	config := game.DefaultRuleConfig(game.ModeRiichi)
+
+	created, err := client.CreateRoomWithRules(context.Background(), game.ModeRiichi, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Mode != game.ModeRiichi || created.RuleConfig != config {
+		t.Fatalf("created rules = %q/%#v, want %q/%#v", created.Mode, created.RuleConfig, game.ModeRiichi, config)
+	}
+	if created.Match.Mode != game.ModeRiichi || created.Match.RuleConfig != config {
+		t.Fatalf("created match = %#v", created.Match)
+	}
+}
+
 func TestClientReconnectsFromSavedSession(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)
