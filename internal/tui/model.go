@@ -33,6 +33,7 @@ type Model struct {
 	Online              bool
 	OnlineClient        *online.Client
 	OnlineSnapshot      game.GameSnapshot
+	OnlineMatch         game.MatchSnapshot
 	OnlinePlayerID      string
 	OnlineRoomCode      string
 	OnlineSeat          int

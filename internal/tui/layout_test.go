@@ -586,6 +586,32 @@ func TestDefaultHandHitBoxesMatchRenderedHandStartLine(t *testing.T) {
 	}
 }
 
+func TestOnlineTableRendersPrivateHandCountsAndMatchMode(t *testing.T) {
+	round := game.NewGame(13).SnapshotFor("0")
+	model := NewModel()
+	model.Screen = ScreenTable
+	model.Language = LanguageEnglish
+	model.Width = 120
+	model.Online = true
+	model.OnlineSeat = 0
+	model.OnlineRoomCode = "123456"
+	model.OnlineSnapshot = round
+	model.OnlineMatch = game.MatchSnapshot{
+		Mode:       game.ModeRiichi,
+		RuleConfig: game.DefaultRuleConfig(game.ModeRiichi),
+		Round:      round,
+	}
+
+	view := renderOnlineTable(model)
+
+	if !strings.Contains(view, "Riichi") {
+		t.Fatalf("online table missing match mode:\n%s", view)
+	}
+	if got := strings.Count(view, "hand:13"); got != 3 {
+		t.Fatalf("opponent hand counts = %d, want 3:\n%s", got, view)
+	}
+}
+
 func lineIndexContaining(text string, part string) int {
 	for index, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
 		if strings.Contains(line, part) {

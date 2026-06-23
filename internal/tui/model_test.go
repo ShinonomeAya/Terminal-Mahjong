@@ -1080,3 +1080,20 @@ func TestGameOverViewContainsChoicesAndControls(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyOnlineSnapshotRetainsMatchSnapshot(t *testing.T) {
+	round := game.NewGame(13).SnapshotFor("0")
+	match := game.MatchSnapshot{
+		Mode:        game.ModeRiichi,
+		RuleConfig:  game.DefaultRuleConfig(game.ModeRiichi),
+		Points:      [4]int{25000, 25000, 25000, 25000},
+		RoundNumber: 1,
+		Round:       round,
+	}
+
+	updated := applyOnlineSnapshot(NewModel(), protocol.Message{Type: protocol.MsgGameSnapshot, Snapshot: round, Match: match})
+
+	if updated.OnlineMatch.Mode != game.ModeRiichi || updated.OnlineMatch.RuleConfig != match.RuleConfig || updated.OnlineMatch.Points != match.Points {
+		t.Fatalf("online match = %#v, want %#v", updated.OnlineMatch, match)
+	}
+}

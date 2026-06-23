@@ -129,9 +129,9 @@ func renderOnlineTable(m Model) string {
 	opposite := onlinePlayer(m, (m.OnlineSeat+2)%4)
 	left := onlinePlayer(m, (m.OnlineSeat+1)%4)
 	right := onlinePlayer(m, (m.OnlineSeat+3)%4)
-	topSeat := renderSeatPanel(m, seatLabel(m, "Opposite"), opposite.Name, len(opposite.Hand), meldSummary(opposite.Melds), game.FormatTileLabels(recentTiles(opposite.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+2)%4)
-	leftSeat := renderSeatPanel(m, seatLabel(m, "Left"), left.Name, len(left.Hand), meldSummary(left.Melds), game.FormatTileLabels(recentTiles(left.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+1)%4)
-	rightSeat := renderSeatPanel(m, seatLabel(m, "Right"), right.Name, len(right.Hand), meldSummary(right.Melds), game.FormatTileLabels(recentTiles(right.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+3)%4)
+	topSeat := renderSeatPanel(m, seatLabel(m, "Opposite"), opposite.Name, playerHandCount(opposite), meldSummary(opposite.Melds), game.FormatTileLabels(recentTiles(opposite.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+2)%4)
+	leftSeat := renderSeatPanel(m, seatLabel(m, "Left"), left.Name, playerHandCount(left), meldSummary(left.Melds), game.FormatTileLabels(recentTiles(left.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+1)%4)
+	rightSeat := renderSeatPanel(m, seatLabel(m, "Right"), right.Name, playerHandCount(right), meldSummary(right.Melds), game.FormatTileLabels(recentTiles(right.Discards, 4), m.UnicodeTiles), snapshot.Current == (m.OnlineSeat+3)%4)
 	center := stylePanelWidth(tableTitle(m), renderOnlineCenter(m), 38)
 	middle := renderTableMiddle(m, leftSeat, center, rightSeat)
 	hand := stylePanelWidth(
@@ -237,9 +237,29 @@ func tableMeta(m Model, wall int, events int, turn string, prefix string) string
 
 func onlineMeta(m Model, wall int, events int) string {
 	if m.chinese() {
-		return fmt.Sprintf("房间:%s  座位:%d  牌墙:%d  事件:%d\n%s", m.OnlineRoomCode, m.OnlineSeat+1, wall, events, renderOnlineRoomState(m))
+		return fmt.Sprintf("模式:%s  房间:%s  座位:%d  牌墙:%d  事件:%d\n%s", matchModeLabel(m), m.OnlineRoomCode, m.OnlineSeat+1, wall, events, renderOnlineRoomState(m))
 	}
-	return fmt.Sprintf("Room:%s  Seat:%d  Wall:%d  Events:%d\n%s", m.OnlineRoomCode, m.OnlineSeat+1, wall, events, renderOnlineRoomState(m))
+	return fmt.Sprintf("Mode:%s  Room:%s  Seat:%d  Wall:%d  Events:%d\n%s", matchModeLabel(m), m.OnlineRoomCode, m.OnlineSeat+1, wall, events, renderOnlineRoomState(m))
+}
+
+func matchModeLabel(m Model) string {
+	switch m.OnlineMatch.Mode {
+	case game.ModeMCR:
+		if m.chinese() {
+			return "国标"
+		}
+		return "MCR"
+	case game.ModeRiichi:
+		if m.chinese() {
+			return "日麻"
+		}
+		return "Riichi"
+	default:
+		if m.chinese() {
+			return "兼容"
+		}
+		return "Compatibility"
+	}
 }
 
 func meldsLine(m Model, value string) string {
@@ -324,6 +344,13 @@ func onlinePlayer(m Model, seat int) game.PlayerView {
 		return m.OnlineSnapshot.Players[seat]
 	}
 	return game.PlayerView{Name: "-"}
+}
+
+func playerHandCount(player game.PlayerView) int {
+	if player.HandCount > 0 {
+		return player.HandCount
+	}
+	return len(player.Hand)
 }
 
 func meldSummary(melds []game.Meld) string {

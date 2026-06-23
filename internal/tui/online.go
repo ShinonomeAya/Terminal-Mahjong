@@ -217,6 +217,7 @@ func applyOnlineConnected(m Model, msg onlineConnectedMsg) Model {
 		m.OnlineEvents = make(chan tea.Msg, 8)
 	}
 	m.OnlineSnapshot = msg.Message.Snapshot
+	m.OnlineMatch = msg.Message.Match
 	m.ClaimOptionIndex = 0
 	m.Game = nil
 	m.StatusLine = fmt.Sprintf("Room:%s Seat:%d", m.OnlineRoomCode, m.OnlineSeat+1)
@@ -248,6 +249,9 @@ func applyOnlineSnapshot(m Model, message protocol.Message) Model {
 	if len(message.Snapshot.Players) > 0 {
 		m.OnlineSnapshot = message.Snapshot
 		m.ClaimOptionIndex = 0
+	}
+	if message.Match.Mode != "" {
+		m.OnlineMatch = message.Match
 	}
 	m.NetworkStatus = networkStatusForOnlineSnapshot(m)
 	if m.OnlineSnapshot.Over {
