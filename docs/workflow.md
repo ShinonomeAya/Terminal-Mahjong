@@ -144,3 +144,11 @@ Stage review:
 - Step reviews confirm explicit pending-claim state, deterministic priority, bot legality, online recovery, and localized TUI controls.
 - Stage review compares interactive win, pong, chow, and pass responses against the total goal of a complete terminal-first Mahjong client.
 - Verification commands: `go vet ./...`, `go test ./...`, `go test -race ./...`, all command builds, one WebSocket reconnect smoke run, and Chinese/English TUI screenshots.
+
+### Phase 12A Review
+
+- Stage goal: establish mode-neutral match and privacy foundations before implementing either complete rule set.
+- Completed: validated configurations, compatibility RuleSet, Match coordinator, legal actions, private snapshots, mode-aware protocol, TUI hand counts, and replay metadata.
+- Evidence: `go vet ./...`, full tests, race tests, game/online/TUI tests repeated 20 times, all command builds, and a real WebSocket create/ready/discard/reconnect privacy smoke.
+- Total-goal review: the architecture can host MCR and Riichi without duplicating networking or leaking live concealed information.
+- Remaining risk: MCR and Riichi still use compatibility mechanics until Phases 12B and 12C replace them.
