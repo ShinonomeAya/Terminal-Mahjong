@@ -6,13 +6,18 @@ import (
 	"strings"
 )
 
+const ReplaySchemaVersion = 2
+
 type ReplayLog struct {
-	Seed         int64        `json:"seed"`
-	ShuffleProof ShuffleProof `json:"shuffle_proof"`
-	Winner       string       `json:"winner"`
-	Result       string       `json:"result"`
-	Score        string       `json:"score"`
-	Events       []GameEvent  `json:"events"`
+	SchemaVersion int          `json:"schema_version"`
+	Mode          RuleMode     `json:"mode"`
+	RuleConfig    RuleConfig   `json:"rule_config"`
+	Seed          int64        `json:"seed"`
+	ShuffleProof  ShuffleProof `json:"shuffle_proof"`
+	Winner        string       `json:"winner"`
+	Result        string       `json:"result"`
+	Score         string       `json:"score"`
+	Events        []GameEvent  `json:"events"`
 }
 
 func (g *Game) ReplayLog() ReplayLog {
@@ -28,12 +33,15 @@ func (g *Game) ReplayLog() ReplayLog {
 		scoreLabel = score.Label
 	}
 	return ReplayLog{
-		Seed:         g.Seed,
-		ShuffleProof: g.ShuffleProof,
-		Winner:       winner,
-		Result:       g.Reason,
-		Score:        scoreLabel,
-		Events:       append([]GameEvent(nil), g.Events...),
+		SchemaVersion: ReplaySchemaVersion,
+		Mode:          g.Mode,
+		RuleConfig:    g.RuleConfig,
+		Seed:          g.Seed,
+		ShuffleProof:  g.ShuffleProof,
+		Winner:        winner,
+		Result:        g.Reason,
+		Score:         scoreLabel,
+		Events:        append([]GameEvent(nil), g.Events...),
 	}
 }
 
@@ -44,6 +52,7 @@ func (r ReplayLog) ToJSON() ([]byte, error) {
 func ReplaySummary(log ReplayLog) string {
 	lines := []string{
 		"Replay",
+		fmt.Sprintf("Mode: %s", log.Mode),
 		fmt.Sprintf("Seed: %d", log.Seed),
 		fmt.Sprintf("Wall Hash: %s", emptyDash(log.ShuffleProof.WallHash)),
 		fmt.Sprintf("Winner: %s", emptyDash(log.Winner)),

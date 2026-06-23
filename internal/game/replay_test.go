@@ -18,6 +18,30 @@ func TestReplayLogCapturesGameMetadata(t *testing.T) {
 	}
 }
 
+func TestReplayLogCapturesSchemaModeAndRuleConfig(t *testing.T) {
+	config := DefaultRuleConfig(ModeRiichi)
+	game, err := NewGameWithRules(7, NewCompatibilityRuleSet(ModeRiichi, config))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log := game.ReplayLog()
+
+	if ReplaySchemaVersion != 2 {
+		t.Fatalf("ReplaySchemaVersion = %d", ReplaySchemaVersion)
+	}
+	if log.SchemaVersion != ReplaySchemaVersion {
+		t.Fatalf("log schema version = %d", log.SchemaVersion)
+	}
+	if log.Mode != ModeRiichi || log.RuleConfig != config {
+		t.Fatalf("replay rules = %q/%#v, want %q/%#v", log.Mode, log.RuleConfig, ModeRiichi, config)
+	}
+	log.RuleConfig.Riichi.StartingPoints = 1000
+	if game.RuleConfig.Riichi.StartingPoints != 25000 {
+		t.Fatal("replay config should not mutate game config")
+	}
+}
+
 func TestReplayLogToJSON(t *testing.T) {
 	game := NewGame(7)
 	game.RecordEvent(EventDiscard, 0, mustTile(t, "1m"), "")
@@ -26,7 +50,7 @@ func TestReplayLogToJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(data)
-	for _, want := range []string{`"seed": 7`, `"shuffle_proof"`, `"wall_hash"`, `"events"`, `"discard"`} {
+	for _, want := range []string{`"schema_version": 2`, `"mode": "compatibility"`, `"rule_config"`, `"seed": 7`, `"shuffle_proof"`, `"wall_hash"`, `"events"`, `"discard"`} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("json missing %s:\n%s", want, text)
 		}
@@ -38,7 +62,7 @@ func TestReplaySummaryIncludesResultAndEvents(t *testing.T) {
 	game.RecordEvent(EventDiscard, 0, mustTile(t, "1m"), "")
 	game.finish(0, "self-draw", WinSelfDraw)
 	summary := ReplaySummary(game.ReplayLog())
-	for _, want := range []string{"Replay", "Seed: 7", "Wall Hash:", "Winner: You", "Events: 2"} {
+	for _, want := range []string{"Replay", "Mode: compatibility", "Seed: 7", "Wall Hash:", "Winner: You", "Events: 2"} {
 		if !strings.Contains(summary, want) {
 			t.Fatalf("summary missing %q:\n%s", want, summary)
 		}
