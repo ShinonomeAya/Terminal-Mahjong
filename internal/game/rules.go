@@ -43,6 +43,8 @@ type RuleSet interface {
 	InitialPoints() [4]int
 	LegalActions(round *Game, playerID string) []LegalAction
 	Allows(round *Game, command GameCommand) bool
+	BuildWall() []Tile
+	Deal(round *Game) error
 }
 
 type CompatibilityRuleSet struct {
@@ -68,6 +70,25 @@ func (rules *CompatibilityRuleSet) InitialPoints() [4]int {
 		return [4]int{points, points, points, points}
 	}
 	return [4]int{}
+}
+
+func (rules *CompatibilityRuleSet) BuildWall() []Tile {
+	return BuildWall()
+}
+
+func (rules *CompatibilityRuleSet) Deal(round *Game) error {
+	const tilesPerPlayer = 13
+	required := len(round.Players) * tilesPerPlayer
+	if len(round.Wall) < required {
+		return fmt.Errorf("wall has %d tiles, need %d to deal", len(round.Wall), required)
+	}
+	for dealt := 0; dealt < tilesPerPlayer; dealt++ {
+		for player := range round.Players {
+			round.Players[player].AddTile(round.Wall[0])
+			round.Wall = round.Wall[1:]
+		}
+	}
+	return nil
 }
 
 func (rules *CompatibilityRuleSet) LegalActions(round *Game, id string) []LegalAction {

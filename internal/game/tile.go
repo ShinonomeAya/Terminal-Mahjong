@@ -9,7 +9,21 @@ import (
 
 type Tile int
 
-const TileTypeCount = 34
+const (
+	BaseTileTypeCount = 34
+	TileTypeCount     = BaseTileTypeCount
+)
+
+const (
+	FlowerPlum Tile = BaseTileTypeCount + iota
+	FlowerOrchid
+	FlowerChrysanthemum
+	FlowerBamboo
+	FlowerSpring
+	FlowerSummer
+	FlowerAutumn
+	FlowerWinter
+)
 
 var honorNames = []string{"E", "S", "W", "N", "Z", "F", "B"}
 
@@ -19,6 +33,14 @@ func BuildWall() []Tile {
 		for copy := 0; copy < 4; copy++ {
 			wall = append(wall, Tile(tile))
 		}
+	}
+	return wall
+}
+
+func BuildMCRWall() []Tile {
+	wall := BuildWall()
+	for tile := FlowerPlum; tile <= FlowerWinter; tile++ {
+		wall = append(wall, tile)
 	}
 	return wall
 }
@@ -52,6 +74,24 @@ func (t Tile) String() string {
 	if t >= 27 && t < 34 {
 		return honorNames[int(t)-27]
 	}
+	switch t {
+	case FlowerPlum:
+		return "P1"
+	case FlowerOrchid:
+		return "P2"
+	case FlowerChrysanthemum:
+		return "P3"
+	case FlowerBamboo:
+		return "P4"
+	case FlowerSpring:
+		return "S1"
+	case FlowerSummer:
+		return "S2"
+	case FlowerAutumn:
+		return "S3"
+	case FlowerWinter:
+		return "S4"
+	}
 	return "?"
 }
 
@@ -64,6 +104,10 @@ func (t Tile) Rank() int {
 		return 0
 	}
 	return int(t)%9 + 1
+}
+
+func (t Tile) IsFlower() bool {
+	return t >= FlowerPlum && t <= FlowerWinter
 }
 
 func ParseTile(text string) (Tile, bool) {
@@ -99,6 +143,22 @@ func ParseTile(text string) (Tile, bool) {
 		return Tile(32), true
 	case "B":
 		return Tile(33), true
+	case "P1":
+		return FlowerPlum, true
+	case "P2":
+		return FlowerOrchid, true
+	case "P3":
+		return FlowerChrysanthemum, true
+	case "P4":
+		return FlowerBamboo, true
+	case "S1":
+		return FlowerSpring, true
+	case "S2":
+		return FlowerSummer, true
+	case "S3":
+		return FlowerAutumn, true
+	case "S4":
+		return FlowerWinter, true
 	default:
 		return 0, false
 	}

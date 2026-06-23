@@ -63,20 +63,16 @@ func NewGameWithRules(seed int64, rules RuleSet) (*Game, error) {
 		mode = CryptoSeeded
 	}
 	rng := rand.New(rand.NewSource(seed))
-	wall := BuildWall()
+	wall := append([]Tile(nil), rules.BuildWall()...)
+	if len(wall) == 0 {
+		return nil, fmt.Errorf("rule set returned an empty wall")
+	}
 	rng.Shuffle(len(wall), func(i, j int) {
 		wall[i], wall[j] = wall[j], wall[i]
 	})
 	proof := ShuffleProof{Seed: seed, WallHash: wallHash(wall)}
-	players := NewPlayers()
-	for round := 0; round < 13; round++ {
-		for i := range players {
-			players[i].AddTile(wall[0])
-			wall = wall[1:]
-		}
-	}
-	return &Game{
-		Players:      players,
+	game := &Game{
+		Players:      NewPlayers(),
 		Wall:         wall,
 		Mode:         rules.Mode(),
 		RuleConfig:   rules.Config(),
@@ -87,7 +83,11 @@ func NewGameWithRules(seed int64, rules RuleSet) (*Game, error) {
 		Phase:        PhaseAwaitingDiscard,
 		rules:        rules,
 		rng:          rng,
-	}, nil
+	}
+	if err := rules.Deal(game); err != nil {
+		return nil, err
+	}
+	return game, nil
 }
 
 func cryptoSeed() int64 {

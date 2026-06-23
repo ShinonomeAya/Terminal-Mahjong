@@ -138,6 +138,17 @@ func TestCompatibilityRuleRejectsIllegalCommandWithoutMutation(t *testing.T) {
 	}
 }
 
+func TestCompatibilitySetupRemainsDeterministic(t *testing.T) {
+	before := NewGame(31)
+	after, err := NewGameWithRules(31, NewCompatibilityRuleSet(ModeCompatibility, RuleConfig{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.ShuffleProof != after.ShuffleProof || FormatTiles(before.Players[0].Hand) != FormatTiles(after.Players[0].Hand) {
+		t.Fatalf("compatibility setup changed: before=%#v after=%#v", before.ShuffleProof, after.ShuffleProof)
+	}
+}
+
 func hasLegalAction(actions []LegalAction, kind CommandKind, tile string) bool {
 	for _, action := range actions {
 		if action.Kind == kind && action.Tile == tile {
