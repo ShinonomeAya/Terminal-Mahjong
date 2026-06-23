@@ -26,6 +26,16 @@ This matrix freezes the rule sources and project defaults before complete rule i
 - `RiichiConfig.RedFives` accepts `0` or `3`, defaulting to `3`.
 - A new variant requires a named configuration field, source note, validation rule, and at least one golden fixture.
 
+## Chinese Official Project Decisions
+
+- A match is four rounds of four hands. The dealer advances after every completed hand; there are no dealer repeats.
+- The 144-tile wall contains the 136 suited/honor tiles plus eight unique flowers.
+- Flowers are exposed and replaced automatically from the back of the live wall until a non-flower tile is drawn.
+- Flower points are added after the hand reaches the eight-point non-flower minimum; flowers cannot make a sub-eight-point hand legal.
+- Claim priority is win, exposed kong/pong, then chow by the next seat. Among simultaneous winning claims, the nearest eligible player after the discarder wins.
+- On self-draw, each opponent pays `8 + total fan`. On discard win, the discarder pays `8 + total fan` and each other opponent pays `8`.
+- Drawn hands advance the dealer without a point transfer.
+
 ## Fixture Rules
 
 - `source` identifies a standard section, official example, or published governing-body example.
@@ -38,9 +48,8 @@ This matrix freezes the rule sources and project defaults before complete rule i
 
 | Subphase | Status |
 | --- | --- |
-| 12A shared match/rule/privacy foundation | In progress |
-| 12B complete Chinese Official rules | Not started |
+| 12A shared match/rule/privacy foundation | Complete |
+| 12B complete Chinese Official rules | In progress |
 | 12C complete Riichi rules | Not started |
 | 12D client/server/bot integration | Not started |
 | 12E dual-mode acceptance | Not started |
-
