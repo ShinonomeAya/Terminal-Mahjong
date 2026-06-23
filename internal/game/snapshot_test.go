@@ -36,6 +36,81 @@ func TestSnapshotCopiesSlices(t *testing.T) {
 	}
 }
 
+func TestSnapshotForRedactsLiveHiddenInformation(t *testing.T) {
+	g := NewGame(9)
+	g.RecordEvent(EventDraw, 0, mustTile(t, "1m"), "")
+	g.RecordEvent(EventDraw, 1, mustTile(t, "2m"), "")
+
+	snapshot := g.SnapshotFor("0")
+
+	if snapshot.Seed != 0 || snapshot.ShuffleProof.Seed != 0 {
+		t.Fatalf("live proof leaked seeds: seed=%d proof=%#v", snapshot.Seed, snapshot.ShuffleProof)
+	}
+	for index, player := range snapshot.Players {
+		if player.HandCount != len(g.Players[index].Hand) {
+			t.Fatalf("player %d hand count = %d, want %d", index, player.HandCount, len(g.Players[index].Hand))
+		}
+		if index == 0 && len(player.Hand) != len(g.Players[index].Hand) {
+			t.Fatalf("viewer hand length = %d", len(player.Hand))
+		}
+		if index != 0 && player.Hand != nil {
+			t.Fatalf("opponent %d hand leaked: %v", index, player.Hand)
+		}
+	}
+	if snapshot.Events[0].Tile < 0 || snapshot.Events[1].Tile != -1 {
+		t.Fatalf("draw events = %#v, want own tile and redacted opponent tile", snapshot.Events)
+	}
+	if len(snapshot.LegalActions) == 0 {
+		t.Fatal("current viewer should receive legal actions")
+	}
+	if authoritative := g.Snapshot(); authoritative.Seed != 9 || len(authoritative.Players[1].Hand) == 0 || authoritative.Events[1].Tile < 0 {
+		t.Fatalf("private snapshot mutated authoritative state: %#v", authoritative)
+	}
+}
+
+func TestSnapshotForHidesInactiveClaimAndUnknownViewerActions(t *testing.T) {
+	g := gameWithPendingPong(t)
+
+	inactive := g.SnapshotFor("0")
+	if inactive.PendingClaim != nil || len(inactive.LegalActions) != 0 {
+		t.Fatalf("inactive viewer received claim data: pending=%#v actions=%#v", inactive.PendingClaim, inactive.LegalActions)
+	}
+	active := g.SnapshotFor("1")
+	if active.PendingClaim == nil || len(active.LegalActions) != 2 {
+		t.Fatalf("active viewer missing claim data: pending=%#v actions=%#v", active.PendingClaim, active.LegalActions)
+	}
+	unknown := g.SnapshotFor("missing")
+	if len(unknown.LegalActions) != 0 {
+		t.Fatalf("unknown viewer actions = %#v", unknown.LegalActions)
+	}
+	for _, player := range unknown.Players {
+		if player.Hand != nil {
+			t.Fatalf("unknown viewer received concealed hand: %#v", player)
+		}
+	}
+}
+
+func TestSnapshotForRevealsFullStateAfterRoundOver(t *testing.T) {
+	g := NewGame(9)
+	g.RecordEvent(EventDraw, 1, mustTile(t, "2m"), "")
+	g.PendingClaim = &PendingClaim{
+		Discarder: 0,
+		Tile:      mustTile(t, "3m"),
+		Options:   []ClaimOption{{Kind: ClaimPong, Player: 1, Consumed: mustTiles(t, "3m", "3m")}},
+	}
+	g.Over = true
+	g.Phase = PhaseRoundOver
+
+	snapshot := g.SnapshotFor("0")
+
+	if snapshot.Seed != 9 || snapshot.ShuffleProof.Seed != 9 || snapshot.Events[0].Tile != mustTile(t, "2m") {
+		t.Fatalf("completed snapshot remains redacted: %#v", snapshot)
+	}
+	if snapshot.PendingClaim == nil || len(snapshot.Players[1].Hand) != len(g.Players[1].Hand) {
+		t.Fatalf("completed snapshot did not reveal state: %#v", snapshot)
+	}
+}
+
 func TestApplyGameCommandDiscardsSelectedTile(t *testing.T) {
 	g := NewGame(9)
 	g.Current = 0

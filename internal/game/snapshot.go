@@ -3,12 +3,13 @@ package game
 import "io"
 
 type PlayerView struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Human    bool   `json:"human"`
-	Hand     []Tile `json:"hand"`
-	Melds    []Meld `json:"melds"`
-	Discards []Tile `json:"discards"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Human     bool   `json:"human"`
+	Hand      []Tile `json:"hand"`
+	HandCount int    `json:"hand_count"`
+	Melds     []Meld `json:"melds"`
+	Discards  []Tile `json:"discards"`
 }
 
 type GameSnapshot struct {
@@ -59,12 +60,13 @@ func (g *Game) Snapshot() GameSnapshot {
 	players := make([]PlayerView, len(g.Players))
 	for i, player := range g.Players {
 		players[i] = PlayerView{
-			ID:       playerID(i),
-			Name:     player.Name,
-			Human:    player.Human,
-			Hand:     append([]Tile(nil), player.Hand...),
-			Melds:    copyMelds(player.Melds),
-			Discards: append([]Tile(nil), player.Discards...),
+			ID:        playerID(i),
+			Name:      player.Name,
+			Human:     player.Human,
+			Hand:      append([]Tile(nil), player.Hand...),
+			HandCount: len(player.Hand),
+			Melds:     copyMelds(player.Melds),
+			Discards:  append([]Tile(nil), player.Discards...),
 		}
 	}
 	return GameSnapshot{
@@ -82,6 +84,34 @@ func (g *Game) Snapshot() GameSnapshot {
 		PendingClaim: copyPendingClaim(g.PendingClaim),
 		LegalActions: copyLegalActions(g.rules.LegalActions(g, playerID(g.Current))),
 	}
+}
+
+func (g *Game) SnapshotFor(id string) GameSnapshot {
+	snapshot := g.Snapshot()
+	if g.Over || g.Phase == PhaseRoundOver {
+		return snapshot
+	}
+
+	snapshot.Seed = 0
+	snapshot.ShuffleProof.Seed = 0
+	viewer := -1
+	for index := range snapshot.Players {
+		if snapshot.Players[index].ID == id {
+			viewer = index
+		} else {
+			snapshot.Players[index].Hand = nil
+		}
+	}
+	for index := range snapshot.Events {
+		if snapshot.Events[index].Kind == EventDraw && snapshot.Events[index].Player != viewer {
+			snapshot.Events[index].Tile = -1
+		}
+	}
+	if viewer != snapshot.Current {
+		snapshot.PendingClaim = nil
+		snapshot.LegalActions = nil
+	}
+	return snapshot
 }
 
 func (g *Game) ApplyCommand(command GameCommand) CommandResult {

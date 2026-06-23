@@ -46,7 +46,7 @@ func (match *Match) Snapshot() MatchSnapshot {
 }
 
 func (match *Match) SnapshotFor(playerID string) MatchSnapshot {
-	return match.snapshotWithRound(match.Round.Snapshot())
+	return match.snapshotWithRound(match.Round.SnapshotFor(playerID))
 }
 
 func (match *Match) ApplyCommand(command GameCommand) CommandResult {
