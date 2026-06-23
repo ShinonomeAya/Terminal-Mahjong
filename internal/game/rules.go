@@ -30,6 +30,119 @@ type RuleConfig struct {
 	Riichi RiichiConfig `json:"riichi,omitempty"`
 }
 
+type LegalAction struct {
+	Kind      CommandKind `json:"kind"`
+	TileIndex int         `json:"tile_index,omitempty"`
+	Tile      string      `json:"tile,omitempty"`
+	Consumed  []Tile      `json:"consumed,omitempty"`
+}
+
+type RuleSet interface {
+	Mode() RuleMode
+	Config() RuleConfig
+	InitialPoints() [4]int
+	LegalActions(round *Game, playerID string) []LegalAction
+	Allows(round *Game, command GameCommand) bool
+}
+
+type CompatibilityRuleSet struct {
+	mode   RuleMode
+	config RuleConfig
+}
+
+func NewCompatibilityRuleSet(mode RuleMode, config RuleConfig) *CompatibilityRuleSet {
+	return &CompatibilityRuleSet{mode: mode, config: config}
+}
+
+func (rules *CompatibilityRuleSet) Mode() RuleMode {
+	return rules.mode
+}
+
+func (rules *CompatibilityRuleSet) Config() RuleConfig {
+	return rules.config
+}
+
+func (rules *CompatibilityRuleSet) InitialPoints() [4]int {
+	if rules.mode == ModeRiichi {
+		points := rules.config.Riichi.StartingPoints
+		return [4]int{points, points, points, points}
+	}
+	return [4]int{}
+}
+
+func (rules *CompatibilityRuleSet) LegalActions(round *Game, id string) []LegalAction {
+	if round == nil || round.Over || round.Phase == PhaseRoundOver || id != playerID(round.Current) {
+		return nil
+	}
+	if round.Phase == PhaseAwaitingClaim {
+		options := round.activeClaimOptions()
+		if len(options) == 0 {
+			return nil
+		}
+		actions := []LegalAction{{Kind: CommandPass}}
+		for index, option := range options {
+			action := LegalAction{Kind: commandKindForClaim(option.Kind), Consumed: append([]Tile(nil), option.Consumed...)}
+			if option.Kind == ClaimChow {
+				action.TileIndex = index
+			}
+			actions = append(actions, action)
+		}
+		return actions
+	}
+	if round.Phase != PhaseAwaitingDiscard {
+		return nil
+	}
+
+	player := round.Players[round.Current]
+	actions := make([]LegalAction, 0, len(player.Hand)+3)
+	for index := range player.Hand {
+		actions = append(actions, LegalAction{Kind: CommandDiscard, TileIndex: index})
+	}
+	if CanWin(player.Hand) {
+		actions = append(actions, LegalAction{Kind: CommandWin})
+	}
+	counts := TileCounts(player.Hand)
+	for tile, count := range counts {
+		if count == 4 {
+			actions = append(actions, LegalAction{Kind: CommandKong, Tile: Tile(tile).String()})
+		}
+	}
+	return append(actions, LegalAction{Kind: CommandQuit})
+}
+
+func (rules *CompatibilityRuleSet) Allows(round *Game, command GameCommand) bool {
+	for _, action := range rules.LegalActions(round, command.PlayerID) {
+		if action.Kind != command.Kind {
+			continue
+		}
+		switch action.Kind {
+		case CommandDiscard, CommandChow:
+			if action.TileIndex != command.TileIndex {
+				continue
+			}
+		case CommandKong:
+			if action.Tile != command.Tile {
+				continue
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func commandKindForClaim(kind ClaimKind) CommandKind {
+	switch kind {
+	case ClaimWin:
+		return CommandClaimWin
+	case ClaimPong:
+		return CommandPong
+	case ClaimChow:
+		return CommandChow
+	default:
+		return ""
+	}
+}
+
 func DefaultRuleConfig(mode RuleMode) RuleConfig {
 	switch mode {
 	case ModeMCR:

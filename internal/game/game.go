@@ -26,6 +26,8 @@ type Game struct {
 	Players      []Player
 	Wall         []Tile
 	Current      int
+	Mode         RuleMode
+	RuleConfig   RuleConfig
 	Seed         int64
 	RNGMode      RNGMode
 	ShuffleProof ShuffleProof
@@ -36,10 +38,25 @@ type Game struct {
 	Events       []GameEvent
 	Phase        TurnPhase
 	PendingClaim *PendingClaim
+	rules        RuleSet
 	rng          *rand.Rand
 }
 
 func NewGame(seed int64) *Game {
+	game, err := NewGameWithRules(seed, NewCompatibilityRuleSet(ModeCompatibility, RuleConfig{}))
+	if err != nil {
+		panic(err)
+	}
+	return game
+}
+
+func NewGameWithRules(seed int64, rules RuleSet) (*Game, error) {
+	if rules == nil {
+		return nil, fmt.Errorf("rule set is required")
+	}
+	if err := rules.Config().Validate(rules.Mode()); err != nil {
+		return nil, err
+	}
 	mode := FixedSeed
 	if seed == 0 {
 		seed = cryptoSeed()
@@ -61,13 +78,16 @@ func NewGame(seed int64) *Game {
 	return &Game{
 		Players:      players,
 		Wall:         wall,
+		Mode:         rules.Mode(),
+		RuleConfig:   rules.Config(),
 		Seed:         seed,
 		RNGMode:      mode,
 		ShuffleProof: proof,
 		Winner:       -1,
 		Phase:        PhaseAwaitingDiscard,
+		rules:        rules,
 		rng:          rng,
-	}
+	}, nil
 }
 
 func cryptoSeed() int64 {

@@ -24,6 +24,7 @@ type GameSnapshot struct {
 	Events       []GameEvent   `json:"events"`
 	Phase        TurnPhase     `json:"phase"`
 	PendingClaim *PendingClaim `json:"pending_claim,omitempty"`
+	LegalActions []LegalAction `json:"legal_actions,omitempty"`
 }
 
 type CommandKind string
@@ -79,6 +80,7 @@ func (g *Game) Snapshot() GameSnapshot {
 		Events:       append([]GameEvent(nil), g.Events...),
 		Phase:        g.Phase,
 		PendingClaim: copyPendingClaim(g.PendingClaim),
+		LegalActions: copyLegalActions(g.rules.LegalActions(g, playerID(g.Current))),
 	}
 }
 
@@ -88,6 +90,9 @@ func (g *Game) ApplyCommand(command GameCommand) CommandResult {
 	}
 	if command.PlayerID != playerID(g.Current) {
 		return g.commandError(command, "not the current player")
+	}
+	if !g.rules.Allows(g, command) {
+		return g.commandError(command, "command is not legal")
 	}
 	if g.Phase == PhaseAwaitingClaim {
 		return g.applyClaimCommand(command)
@@ -179,6 +184,15 @@ func copyMelds(melds []Meld) []Meld {
 	out := make([]Meld, len(melds))
 	for i, meld := range melds {
 		out[i] = Meld{Kind: meld.Kind, Tiles: append([]Tile(nil), meld.Tiles...)}
+	}
+	return out
+}
+
+func copyLegalActions(actions []LegalAction) []LegalAction {
+	out := make([]LegalAction, len(actions))
+	for i, action := range actions {
+		out[i] = action
+		out[i].Consumed = append([]Tile(nil), action.Consumed...)
 	}
 	return out
 }
