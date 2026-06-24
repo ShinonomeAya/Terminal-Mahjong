@@ -45,7 +45,7 @@ func MCRDecompose(hand []Tile, declared []Meld, winningTile Tile) []MCRDecomposi
 	tiles := append([]Tile(nil), hand...)
 	tiles = append(tiles, winningTile)
 	SortTiles(tiles)
-	if containsFlower(tiles) {
+	if hasFlowerTile(tiles) {
 		return nil
 	}
 
@@ -55,6 +55,15 @@ func MCRDecompose(hand []Tile, declared []Meld, winningTile Tile) []MCRDecomposi
 	}
 	result = append(result, knittedStraightDecompositions(tiles, declared)...)
 	return uniqueMCRDecompositions(result)
+}
+
+func hasFlowerTile(tiles []Tile) bool {
+	for _, tile := range tiles {
+		if tile.IsFlower() {
+			return true
+		}
+	}
+	return false
 }
 
 func standardMCRDecompositions(tiles []Tile, declared []Meld) []MCRDecomposition {

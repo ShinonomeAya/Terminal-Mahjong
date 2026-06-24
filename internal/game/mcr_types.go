@@ -12,6 +12,29 @@ type MCRRuleSet struct {
 	compatibility *CompatibilityRuleSet
 }
 
+type FanID string
+
+type MCRFanContext struct {
+	Decomposition   MCRDecomposition
+	WinningTile     Tile
+	WinType         WinType
+	SeatWind        Tile
+	PrevalentWind   Tile
+	Flowers         []Tile
+	LastTileDraw    bool
+	LastTileClaim   bool
+	LastOfKind      bool
+	ReplacementDraw bool
+	RobbingKong     bool
+}
+
+type MCRFanOccurrence struct {
+	ID     FanID `json:"id"`
+	Points int   `json:"points"`
+	Count  int   `json:"count"`
+	Groups []int `json:"groups,omitempty"`
+}
+
 func NewMCRRuleSet(config MCRConfig) *MCRRuleSet {
 	ruleConfig := RuleConfig{MCR: config}
 	return &MCRRuleSet{
