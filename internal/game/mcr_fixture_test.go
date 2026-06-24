@@ -17,6 +17,12 @@ type mcrCatalogEntry struct {
 	Source     string   `json:"source"`
 }
 
+type mcrFanCoverageEntry struct {
+	ID       string `json:"id"`
+	Positive string `json:"positive"`
+	NearMiss string `json:"near_miss"`
+}
+
 func TestMCRFanCatalogIsComplete(t *testing.T) {
 	catalog := loadMCRCatalog(t, "../../testdata/rules/mcr/catalog.json")
 	if len(catalog) != 81 {
@@ -26,6 +32,36 @@ func TestMCRFanCatalogIsComplete(t *testing.T) {
 	assertMCRPointBands(t, catalog, wantBands)
 	assertUniqueFanIDsAndNames(t, catalog)
 	assertCatalogExclusionsResolve(t, catalog)
+}
+
+func TestEveryMCRFanHasGoldenCoverage(t *testing.T) {
+	catalog := loadMCRCatalog(t, "../../testdata/rules/mcr/catalog.json")
+	file, err := os.Open("../../testdata/rules/mcr/fans/coverage.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	decoder.DisallowUnknownFields()
+	var coverage []mcrFanCoverageEntry
+	if err := decoder.Decode(&coverage); err != nil {
+		t.Fatal(err)
+	}
+	if len(coverage) != len(catalog) {
+		t.Fatalf("coverage entries = %d, want %d", len(coverage), len(catalog))
+	}
+	covered := make(map[string]bool, len(coverage))
+	for _, fixture := range coverage {
+		if fixture.ID == "" || fixture.Positive == "" || fixture.NearMiss == "" || covered[fixture.ID] {
+			t.Fatalf("invalid fan coverage: %#v", fixture)
+		}
+		covered[fixture.ID] = true
+	}
+	for _, fan := range catalog {
+		if !covered[fan.ID] {
+			t.Errorf("%s has no positive and near-miss coverage", fan.ID)
+		}
+	}
 }
 
 func loadMCRCatalog(t *testing.T, path string) []mcrCatalogEntry {

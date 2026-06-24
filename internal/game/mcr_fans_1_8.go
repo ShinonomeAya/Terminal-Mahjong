@@ -39,6 +39,7 @@ func DetectMCRFans(context MCRFanContext) []MCRFanOccurrence {
 	result = append(result, detectMixedShiftedPungs(context)...)
 	result = append(result, detectTwoConcealedKongs(context)...)
 	result = append(result, detectWinCircumstances(context)...)
+	result = append(result, detectMCRHighFans(context)...)
 	return result
 }
 
