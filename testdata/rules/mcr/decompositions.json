@@ -1,0 +1,10 @@
+[
+  {"id":"standard","source":"GB/T 34708-2017 basic winning shapes","hand":["1m","2m","3m","4m","5m","6m","2p","3p","4p","7s","7s","7s","E"],"winning_tile":"E","expected_kind":"standard"},
+  {"id":"seven-pairs","source":"GB/T 34708-2017 scoring table item 55","hand":["1m","1m","2m","2m","3p","3p","4p","4p","5s","5s","6s","6s","E"],"winning_tile":"E","expected_kind":"seven_pairs"},
+  {"id":"seven-shifted-pairs","source":"GB/T 34708-2017 scoring table item 80","hand":["1m","1m","2m","2m","3m","3m","4m","4m","5m","5m","6m","6m","7m"],"winning_tile":"7m","expected_kind":"seven_shifted_pairs"},
+  {"id":"thirteen-orphans","source":"GB/T 34708-2017 scoring table item 81","hand":["1m","9m","1p","9p","1s","9s","E","S","W","N","Z","F","B"],"winning_tile":"1m","expected_kind":"thirteen_orphans"},
+  {"id":"greater-honors-knitted","source":"GB/T 34708-2017 scoring table item 56","hand":["1m","4m","7m","2p","5p","8p","3s","E","S","W","N","Z","F"],"winning_tile":"B","expected_kind":"greater_honors_knitted"},
+  {"id":"lesser-honors-knitted","source":"GB/T 34708-2017 scoring table item 44","hand":["1m","4m","7m","2p","5p","8p","3s","6s","9s","E","S","W","Z"],"winning_tile":"F","expected_kind":"lesser_honors_knitted"},
+  {"id":"knitted-straight","source":"GB/T 34708-2017 scoring table item 45","hand":["1m","4m","7m","2p","5p","8p","3s","6s","9s","7p","8p","E","E"],"winning_tile":"9p","expected_kind":"knitted_straight"},
+  {"id":"nine-gates","source":"GB/T 34708-2017 scoring table item 78","hand":["1m","1m","1m","2m","3m","4m","5m","6m","7m","8m","9m","9m","9m"],"winning_tile":"5m","expected_kind":"nine_gates"}
+]
