@@ -85,3 +85,27 @@ func TestMatchSnapshotIsCopied(t *testing.T) {
 		t.Fatal("snapshot round should not mutate match")
 	}
 }
+
+func TestMCRMatchSnapshotCopiesSettlementHistory(t *testing.T) {
+	match, err := NewMatch(73, NewMCRRuleSet(DefaultRuleConfig(ModeMCR).MCR))
+	if err != nil {
+		t.Fatal(err)
+	}
+	score := MCRScoreBreakdown{Fans: []FanMatch{{ID: "mcr_43", NameZH: "无番和", NameEN: "Chicken Hand", Points: 8, Count: 1}}, NonFlowerPoints: 8, TotalPoints: 8, MeetsMinimum: true}
+	match.Round.Over = true
+	match.Round.Phase = PhaseRoundOver
+	match.Round.Winner = 0
+	match.Round.WinType = WinSelfDraw
+	match.Round.MCRScore = &score
+	match.completeMCRRound()
+
+	snapshot := match.Snapshot()
+	if len(snapshot.MCRSettlements) != 1 || snapshot.LastMCRSettlement == nil {
+		t.Fatalf("snapshot = %#v", snapshot)
+	}
+	snapshot.MCRSettlements[0].Score.Fans[0].NameEN = "mutated"
+	snapshot.LastMCRSettlement.Score.Fans[0].NameEN = "mutated"
+	if match.MCRSettlements[0].Score.Fans[0].NameEN != "Chicken Hand" || match.LastMCRSettlement.Score.Fans[0].NameEN != "Chicken Hand" {
+		t.Fatal("snapshot mutated match settlement history")
+	}
+}

@@ -1,6 +1,8 @@
 package online
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -11,6 +13,32 @@ import (
 	"mahjong/internal/game"
 	"mahjong/internal/protocol"
 )
+
+func TestMCRReconnectRestoresCanonicalPrivateMatchSnapshot(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+	client := dialTestClient(t, url)
+	sendMessage(t, client, protocol.Message{Type: protocol.MsgCreateRoom, Mode: game.ModeMCR, RuleConfig: game.DefaultRuleConfig(game.ModeMCR)})
+	created := readUntil(t, client, protocol.MsgRoomCreated)
+	want, err := json.Marshal(created.Match)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.Close()
+
+	reconnectedClient := dialTestClient(t, url)
+	defer reconnectedClient.Close()
+	sendMessage(t, reconnectedClient, protocol.Message{Type: protocol.MsgReconnect, PlayerID: created.PlayerID, ReconnectToken: created.ReconnectToken})
+	reconnected := readUntil(t, reconnectedClient, protocol.MsgReconnected)
+	got, err := json.Marshal(reconnected.Match)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("reconnected MCR match differs\nbefore=%s\nafter=%s", want, got)
+	}
+}
 
 func TestWebSocketServerCreatesAndJoinsRoom(t *testing.T) {
 	server := NewServer()

@@ -27,7 +27,7 @@ func TestReplayLogCapturesSchemaModeAndRuleConfig(t *testing.T) {
 
 	log := game.ReplayLog()
 
-	if ReplaySchemaVersion != 2 {
+	if ReplaySchemaVersion != 3 {
 		t.Fatalf("ReplaySchemaVersion = %d", ReplaySchemaVersion)
 	}
 	if log.SchemaVersion != ReplaySchemaVersion {
@@ -50,7 +50,7 @@ func TestReplayLogToJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(data)
-	for _, want := range []string{`"schema_version": 2`, `"mode": "compatibility"`, `"rule_config"`, `"seed": 7`, `"shuffle_proof"`, `"wall_hash"`, `"events"`, `"discard"`} {
+	for _, want := range []string{`"schema_version": 3`, `"mode": "compatibility"`, `"rule_config"`, `"seed": 7`, `"shuffle_proof"`, `"wall_hash"`, `"events"`, `"discard"`} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("json missing %s:\n%s", want, text)
 		}
@@ -76,5 +76,35 @@ func TestPrintResultMentionsReplayReadyLog(t *testing.T) {
 	game.printResult(&out)
 	if !strings.Contains(out.String(), "Replay-ready event log") {
 		t.Fatalf("result output:\n%s", out.String())
+	}
+}
+
+func TestMCRMatchReplayContainsScoreAndSettlementHistory(t *testing.T) {
+	match, err := NewMatch(71, NewMCRRuleSet(DefaultRuleConfig(ModeMCR).MCR))
+	if err != nil {
+		t.Fatal(err)
+	}
+	score := MCRScoreBreakdown{
+		Fans:            []FanMatch{{ID: "mcr_34", NameZH: "花龙", NameEN: "Mixed Straight", Points: 8, Count: 1}},
+		NonFlowerPoints: 8,
+		TotalPoints:     8,
+		MeetsMinimum:    true,
+	}
+	for hand := 0; hand < 2; hand++ {
+		match.Round.Over = true
+		match.Round.Phase = PhaseRoundOver
+		match.Round.Winner = hand
+		match.Round.WinType = WinSelfDraw
+		match.Round.MCRScore = &score
+		match.completeMCRRound()
+	}
+
+	log := match.ReplayLog()
+
+	if log.SchemaVersion != ReplaySchemaVersion || ReplaySchemaVersion != 3 || log.MCRScore == nil || len(log.MCRSettlements) != 2 {
+		t.Fatalf("MCR replay = %#v", log)
+	}
+	if log.MCRScore.Fans[0].ID != "mcr_34" || log.MCRSettlements[1].Winner != 1 {
+		t.Fatalf("MCR replay details = %#v", log)
 	}
 }

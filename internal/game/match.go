@@ -11,18 +11,20 @@ type Match struct {
 	Complete          bool
 	Round             *Game
 	LastMCRSettlement *MCRSettlement
+	MCRSettlements    []MCRSettlement
 	rules             RuleSet
 }
 
 type MatchSnapshot struct {
-	Mode              RuleMode       `json:"mode"`
-	RuleConfig        RuleConfig     `json:"rule_config"`
-	Points            [4]int         `json:"points"`
-	Dealer            int            `json:"dealer"`
-	RoundNumber       int            `json:"round_number"`
-	Complete          bool           `json:"complete"`
-	Round             GameSnapshot   `json:"round"`
-	LastMCRSettlement *MCRSettlement `json:"last_mcr_settlement,omitempty"`
+	Mode              RuleMode        `json:"mode"`
+	RuleConfig        RuleConfig      `json:"rule_config"`
+	Points            [4]int          `json:"points"`
+	Dealer            int             `json:"dealer"`
+	RoundNumber       int             `json:"round_number"`
+	Complete          bool            `json:"complete"`
+	Round             GameSnapshot    `json:"round"`
+	LastMCRSettlement *MCRSettlement  `json:"last_mcr_settlement,omitempty"`
+	MCRSettlements    []MCRSettlement `json:"mcr_settlements,omitempty"`
 }
 
 func NewMatch(seed int64, rules RuleSet) (*Match, error) {
@@ -89,6 +91,7 @@ func (match *Match) snapshotWithRound(round GameSnapshot) MatchSnapshot {
 		Complete:          match.Complete,
 		Round:             round,
 		LastMCRSettlement: copyMCRSettlement(match.LastMCRSettlement),
+		MCRSettlements:    copyMCRSettlements(match.MCRSettlements),
 	}
 }
 
@@ -99,6 +102,7 @@ func (match *Match) completeMCRRound() {
 	if match.Round.Winner >= 0 && match.Round.MCRScore != nil {
 		settlement := SettleMCR(*match.Round.MCRScore, match.Round.Winner, match.Round.Discarder, match.Round.WinType)
 		match.LastMCRSettlement = &settlement
+		match.MCRSettlements = append(match.MCRSettlements, *copyMCRSettlement(&settlement))
 		for player, delta := range settlement.Deltas {
 			match.Points[player] += delta
 		}
@@ -130,4 +134,15 @@ func copyMCRSettlement(settlement *MCRSettlement) *MCRSettlement {
 	copyValue := *settlement
 	copyValue.Score = *copyMCRScore(&settlement.Score)
 	return &copyValue
+}
+
+func copyMCRSettlements(settlements []MCRSettlement) []MCRSettlement {
+	if len(settlements) == 0 {
+		return nil
+	}
+	result := make([]MCRSettlement, len(settlements))
+	for index := range settlements {
+		result[index] = *copyMCRSettlement(&settlements[index])
+	}
+	return result
 }

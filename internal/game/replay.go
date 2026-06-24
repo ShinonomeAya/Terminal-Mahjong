@@ -6,18 +6,23 @@ import (
 	"strings"
 )
 
-const ReplaySchemaVersion = 2
+const ReplaySchemaVersion = 3
 
 type ReplayLog struct {
-	SchemaVersion int          `json:"schema_version"`
-	Mode          RuleMode     `json:"mode"`
-	RuleConfig    RuleConfig   `json:"rule_config"`
-	Seed          int64        `json:"seed"`
-	ShuffleProof  ShuffleProof `json:"shuffle_proof"`
-	Winner        string       `json:"winner"`
-	Result        string       `json:"result"`
-	Score         string       `json:"score"`
-	Events        []GameEvent  `json:"events"`
+	SchemaVersion  int                `json:"schema_version"`
+	Mode           RuleMode           `json:"mode"`
+	RuleConfig     RuleConfig         `json:"rule_config"`
+	Seed           int64              `json:"seed"`
+	ShuffleProof   ShuffleProof       `json:"shuffle_proof"`
+	Winner         string             `json:"winner"`
+	Result         string             `json:"result"`
+	Score          string             `json:"score"`
+	Events         []GameEvent        `json:"events"`
+	Dealer         int                `json:"dealer,omitempty"`
+	HandNumber     int                `json:"hand_number,omitempty"`
+	Points         [4]int             `json:"points,omitempty"`
+	MCRScore       *MCRScoreBreakdown `json:"mcr_score,omitempty"`
+	MCRSettlements []MCRSettlement    `json:"mcr_settlements,omitempty"`
 }
 
 func (g *Game) ReplayLog() ReplayLog {
@@ -42,7 +47,22 @@ func (g *Game) ReplayLog() ReplayLog {
 		Result:        g.Reason,
 		Score:         scoreLabel,
 		Events:        append([]GameEvent(nil), g.Events...),
+		Dealer:        g.Dealer,
+		HandNumber:    g.HandNumber,
+		MCRScore:      copyMCRScore(g.MCRScore),
 	}
+}
+
+func (match *Match) ReplayLog() ReplayLog {
+	log := match.Round.ReplayLog()
+	log.Dealer = match.Dealer
+	log.HandNumber = match.RoundNumber
+	log.Points = match.Points
+	log.MCRSettlements = copyMCRSettlements(match.MCRSettlements)
+	if match.LastMCRSettlement != nil {
+		log.MCRScore = copyMCRScore(&match.LastMCRSettlement.Score)
+	}
+	return log
 }
 
 func (r ReplayLog) ToJSON() ([]byte, error) {
