@@ -13,6 +13,16 @@ func DetectMCRFans(context MCRFanContext) []MCRFanOccurrence {
 	result = append(result, detectSelfDrawn(context)...)
 	result = append(result, detectFlowers(context)...)
 	result = append(result, detectWaits(context)...)
+	result = append(result, detectDragonPungs(context)...)
+	result = append(result, detectWindPungs(context, "mcr_15", context.PrevalentWind)...)
+	result = append(result, detectWindPungs(context, "mcr_16", context.SeatWind)...)
+	result = append(result, detectConcealedHand(context)...)
+	result = append(result, detectAllChows(context)...)
+	result = append(result, detectTileHogs(context)...)
+	result = append(result, detectDoublePungs(context)...)
+	result = append(result, detectTwoConcealedPungs(context)...)
+	result = append(result, detectConcealedKongs(context)...)
+	result = append(result, detectAllSimples(context)...)
 	return result
 }
 
@@ -136,6 +146,121 @@ func detectWaits(context MCRFanContext) []MCRFanOccurrence {
 	return nil
 }
 
+func detectDragonPungs(context MCRFanContext) []MCRFanOccurrence {
+	var result []MCRFanOccurrence
+	for index, group := range context.Decomposition.Groups {
+		if isPungGroup(group) && group.Tiles[0] >= 31 && group.Tiles[0] <= 33 {
+			result = append(result, occurrence("mcr_14", 2, []int{index}))
+		}
+	}
+	return result
+}
+
+func detectWindPungs(context MCRFanContext, id FanID, wind Tile) []MCRFanOccurrence {
+	if wind < 27 || wind > 30 {
+		return nil
+	}
+	for index, group := range context.Decomposition.Groups {
+		if isPungGroup(group) && group.Tiles[0] == wind {
+			return []MCRFanOccurrence{occurrence(id, 2, []int{index})}
+		}
+	}
+	return nil
+}
+
+func detectConcealedHand(context MCRFanContext) []MCRFanOccurrence {
+	if context.WinType != WinDiscard || hasOpenMCRGroup(context.Decomposition.Groups) {
+		return nil
+	}
+	return []MCRFanOccurrence{occurrence("mcr_17", 2, nil)}
+}
+
+func detectAllChows(context MCRFanContext) []MCRFanOccurrence {
+	chows := 0
+	for _, group := range context.Decomposition.Groups {
+		switch group.Kind {
+		case MCRGroupChow:
+			chows++
+		case MCRGroupPair:
+			if group.Tiles[0] >= 27 {
+				return nil
+			}
+		default:
+			return nil
+		}
+	}
+	if chows == 4 {
+		return []MCRFanOccurrence{occurrence("mcr_18", 2, nil)}
+	}
+	return nil
+}
+
+func detectTileHogs(context MCRFanContext) []MCRFanOccurrence {
+	counts := make(map[Tile]int)
+	kongs := make(map[Tile]bool)
+	for _, group := range context.Decomposition.Groups {
+		for _, tile := range group.Tiles {
+			counts[tile]++
+		}
+		if group.Kind == MCRGroupKong {
+			kongs[group.Tiles[0]] = true
+		}
+	}
+	var result []MCRFanOccurrence
+	for tile, count := range counts {
+		if count == 4 && !kongs[tile] {
+			result = append(result, occurrence("mcr_19", 2, nil))
+		}
+	}
+	return result
+}
+
+func detectDoublePungs(context MCRFanContext) []MCRFanOccurrence {
+	return matchingGroupPairs(context, "mcr_20", 2, func(left, right MCRGroup) bool {
+		return isPungGroup(left) && isPungGroup(right) && left.Tiles[0].IsSuit() && right.Tiles[0].IsSuit() && left.Tiles[0].Rank() == right.Tiles[0].Rank() && tileSuit(left.Tiles[0]) != tileSuit(right.Tiles[0])
+	})
+}
+
+func detectTwoConcealedPungs(context MCRFanContext) []MCRFanOccurrence {
+	var concealed []int
+	for index, group := range context.Decomposition.Groups {
+		if !isPungGroup(group) || group.Open {
+			continue
+		}
+		if context.WinType == WinDiscard && group.Kind == MCRGroupPung && groupContainsTile(group, context.WinningTile) {
+			continue
+		}
+		concealed = append(concealed, index)
+	}
+	if len(concealed) >= 2 {
+		return []MCRFanOccurrence{occurrence("mcr_21", 2, concealed[:2])}
+	}
+	return nil
+}
+
+func detectConcealedKongs(context MCRFanContext) []MCRFanOccurrence {
+	var result []MCRFanOccurrence
+	for index, group := range context.Decomposition.Groups {
+		if group.Kind == MCRGroupKong && !group.Open {
+			result = append(result, occurrence("mcr_22", 2, []int{index}))
+		}
+	}
+	return result
+}
+
+func detectAllSimples(context MCRFanContext) []MCRFanOccurrence {
+	tiles := mcrContextTiles(context)
+	if len(tiles) == 0 {
+		return nil
+	}
+	for _, tile := range tiles {
+		if !tile.IsSuit() || tile.Rank() == 1 || tile.Rank() == 9 {
+			return nil
+		}
+	}
+	return []MCRFanOccurrence{occurrence("mcr_23", 2, nil)}
+}
+
 func matchingGroupPairs(context MCRFanContext, id FanID, points int, matches func(MCRGroup, MCRGroup) bool) []MCRFanOccurrence {
 	var result []MCRFanOccurrence
 	groups := context.Decomposition.Groups
@@ -178,6 +303,19 @@ func isTerminalOrHonor(tile Tile) bool {
 func groupContainsTile(group MCRGroup, tile Tile) bool {
 	for _, groupTile := range group.Tiles {
 		if groupTile == tile {
+			return true
+		}
+	}
+	return false
+}
+
+func isPungGroup(group MCRGroup) bool {
+	return group.Kind == MCRGroupPung || group.Kind == MCRGroupKong
+}
+
+func hasOpenMCRGroup(groups []MCRGroup) bool {
+	for _, group := range groups {
+		if group.Kind != MCRGroupPair && group.Open {
 			return true
 		}
 	}

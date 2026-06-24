@@ -98,6 +98,83 @@ func TestMCROnePointFanNearMisses(t *testing.T) {
 	}
 }
 
+func TestMCRTwoPointFanDetectors(t *testing.T) {
+	closedChows := []MCRGroup{
+		mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+		mcrTestGroup(MCRGroupChow, false, "4m", "5m", "6m"),
+		mcrTestGroup(MCRGroupChow, false, "2p", "3p", "4p"),
+		mcrTestGroup(MCRGroupChow, false, "6s", "7s", "8s"),
+		mcrTestGroup(MCRGroupPair, false, "5p", "5p"),
+	}
+	tests := []struct {
+		name    string
+		context MCRFanContext
+		fan     FanID
+	}{
+		{name: "dragon pung", context: fanContextWithGroups(mcrTestGroup(MCRGroupPung, false, "Z", "Z", "Z")), fan: "mcr_14"},
+		{name: "prevalent wind", context: MCRFanContext{Decomposition: decompositionWithGroups(mcrTestGroup(MCRGroupPung, true, "E", "E", "E")), PrevalentWind: mustFanTiles(t, "E")[0]}, fan: "mcr_15"},
+		{name: "seat wind", context: MCRFanContext{Decomposition: decompositionWithGroups(mcrTestGroup(MCRGroupPung, false, "S", "S", "S")), SeatWind: mustFanTiles(t, "S")[0]}, fan: "mcr_16"},
+		{name: "concealed hand", context: MCRFanContext{Decomposition: decompositionWithGroups(closedChows...), WinType: WinDiscard}, fan: "mcr_17"},
+		{name: "all chows", context: fanContextWithGroups(closedChows...), fan: "mcr_18"},
+		{name: "tile hog", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupPung, false, "5m", "5m", "5m"),
+			mcrTestGroup(MCRGroupChow, false, "4m", "5m", "6m"),
+		), fan: "mcr_19"},
+		{name: "double pung", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupPung, false, "2m", "2m", "2m"),
+			mcrTestGroup(MCRGroupPung, true, "2p", "2p", "2p"),
+		), fan: "mcr_20"},
+		{name: "two concealed pungs", context: MCRFanContext{Decomposition: decompositionWithGroups(
+			mcrTestGroup(MCRGroupPung, false, "3m", "3m", "3m"),
+			mcrTestGroup(MCRGroupPung, false, "7p", "7p", "7p"),
+		), WinType: WinSelfDraw}, fan: "mcr_21"},
+		{name: "concealed kong", context: fanContextWithGroups(mcrTestGroup(MCRGroupKong, false, "4s", "4s", "4s", "4s")), fan: "mcr_22"},
+		{name: "all simples", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "2m", "3m", "4m"),
+			mcrTestGroup(MCRGroupPung, true, "6p", "6p", "6p"),
+			mcrTestGroup(MCRGroupPair, false, "8s", "8s"),
+		), fan: "mcr_23"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := mcrFanOccurrenceCount(DetectMCRFans(test.context), test.fan); got != 1 {
+				t.Fatalf("%s count = %d, want 1", test.fan, got)
+			}
+		})
+	}
+}
+
+func TestMCRTwoPointFanNearMisses(t *testing.T) {
+	tests := []struct {
+		name    string
+		context MCRFanContext
+		fan     FanID
+	}{
+		{name: "dragon pair", context: fanContextWithGroups(mcrTestGroup(MCRGroupPair, false, "Z", "Z")), fan: "mcr_14"},
+		{name: "open concealed hand", context: MCRFanContext{Decomposition: decompositionWithGroups(mcrTestGroup(MCRGroupChow, true, "1m", "2m", "3m")), WinType: WinDiscard}, fan: "mcr_17"},
+		{name: "all chows honor pair", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupChow, false, "4m", "5m", "6m"),
+			mcrTestGroup(MCRGroupChow, false, "2p", "3p", "4p"),
+			mcrTestGroup(MCRGroupChow, false, "6s", "7s", "8s"),
+			mcrTestGroup(MCRGroupPair, false, "E", "E"),
+		), fan: "mcr_18"},
+		{name: "kong is not tile hog", context: fanContextWithGroups(mcrTestGroup(MCRGroupKong, false, "5m", "5m", "5m", "5m")), fan: "mcr_19"},
+		{name: "discard completes second pung", context: MCRFanContext{Decomposition: decompositionWithGroups(
+			mcrTestGroup(MCRGroupPung, false, "3m", "3m", "3m"),
+			mcrTestGroup(MCRGroupPung, false, "7p", "7p", "7p"),
+		), WinType: WinDiscard, WinningTile: mustFanTiles(t, "7p")[0]}, fan: "mcr_21"},
+		{name: "terminal present", context: fanContextWithGroups(mcrTestGroup(MCRGroupPung, false, "1m", "1m", "1m")), fan: "mcr_23"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := mcrFanOccurrenceCount(DetectMCRFans(test.context), test.fan); got != 0 {
+				t.Fatalf("%s count = %d, want 0", test.fan, got)
+			}
+		})
+	}
+}
+
 func fanContextWithGroups(groups ...MCRGroup) MCRFanContext {
 	return MCRFanContext{Decomposition: decompositionWithGroups(groups...)}
 }
