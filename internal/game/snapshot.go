@@ -8,6 +8,7 @@ type PlayerView struct {
 	Human     bool   `json:"human"`
 	Hand      []Tile `json:"hand"`
 	HandCount int    `json:"hand_count"`
+	Flowers   []Tile `json:"flowers"`
 	Melds     []Meld `json:"melds"`
 	Discards  []Tile `json:"discards"`
 }
@@ -65,6 +66,7 @@ func (g *Game) Snapshot() GameSnapshot {
 			Human:     player.Human,
 			Hand:      append([]Tile(nil), player.Hand...),
 			HandCount: len(player.Hand),
+			Flowers:   append([]Tile(nil), player.Flowers...),
 			Melds:     copyMelds(player.Melds),
 			Discards:  append([]Tile(nil), player.Discards...),
 		}
@@ -103,7 +105,7 @@ func (g *Game) SnapshotFor(id string) GameSnapshot {
 		}
 	}
 	for index := range snapshot.Events {
-		if snapshot.Events[index].Kind == EventDraw && snapshot.Events[index].Player != viewer {
+		if (snapshot.Events[index].Kind == EventDraw || snapshot.Events[index].Kind == EventReplacementDraw) && snapshot.Events[index].Player != viewer {
 			snapshot.Events[index].Tile = -1
 		}
 	}
@@ -166,7 +168,8 @@ func (g *Game) EnsureCurrentTurnDraw() (Tile, bool) {
 		g.RecordEvent(EventWallExhausted, g.Current, -1, g.Reason)
 		return -1, false
 	}
-	return g.draw(g.Current), true
+	tile := g.draw(g.Current)
+	return tile, tile >= 0
 }
 
 func (g *Game) discardCurrent(index int) (Tile, error) {
@@ -198,7 +201,7 @@ func (g *Game) tryCurrentKong(tileText string, out io.Writer) bool {
 		g.Reason = "draw: wall exhausted after kong"
 		return true
 	}
-	g.draw(g.Current)
+	g.drawReplacement(g.Current)
 	return true
 }
 

@@ -19,6 +19,7 @@ type Player struct {
 	Name     string
 	Human    bool
 	Hand     []Tile
+	Flowers  []Tile
 	Melds    []Meld
 	Discards []Tile
 }

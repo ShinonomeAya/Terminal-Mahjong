@@ -45,6 +45,7 @@ type RuleSet interface {
 	Allows(round *Game, command GameCommand) bool
 	BuildWall() []Tile
 	Deal(round *Game) error
+	Draw(round *Game, player int, source DrawSource) (Tile, bool)
 }
 
 type CompatibilityRuleSet struct {
@@ -89,6 +90,17 @@ func (rules *CompatibilityRuleSet) Deal(round *Game) error {
 		}
 	}
 	return nil
+}
+
+func (rules *CompatibilityRuleSet) Draw(round *Game, player int, source DrawSource) (Tile, bool) {
+	if len(round.Wall) == 0 {
+		return -1, false
+	}
+	tile := round.Wall[0]
+	round.Wall = round.Wall[1:]
+	round.Players[player].AddTile(tile)
+	round.RecordEvent(EventDraw, player, tile, "")
+	return tile, true
 }
 
 func (rules *CompatibilityRuleSet) LegalActions(round *Game, id string) []LegalAction {

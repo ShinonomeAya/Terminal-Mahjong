@@ -8,14 +8,16 @@ import (
 type EventKind string
 
 const (
-	EventDraw          EventKind = "draw"
-	EventDiscard       EventKind = "discard"
-	EventChow          EventKind = "chow"
-	EventPong          EventKind = "pong"
-	EventKong          EventKind = "kong"
-	EventWin           EventKind = "win"
-	EventQuit          EventKind = "quit"
-	EventWallExhausted EventKind = "wall-exhausted"
+	EventDraw            EventKind = "draw"
+	EventFlower          EventKind = "flower"
+	EventReplacementDraw EventKind = "replacement-draw"
+	EventDiscard         EventKind = "discard"
+	EventChow            EventKind = "chow"
+	EventPong            EventKind = "pong"
+	EventKong            EventKind = "kong"
+	EventWin             EventKind = "win"
+	EventQuit            EventKind = "quit"
+	EventWallExhausted   EventKind = "wall-exhausted"
 )
 
 type GameEvent struct {
@@ -57,7 +59,7 @@ func RecentEvents(events []GameEvent, limit int) []GameEvent {
 func (e GameEvent) String() string {
 	player := playerEventName(e.Player)
 	tileText := ""
-	if e.Tile >= 0 && int(e.Tile) < TileTypeCount {
+	if e.Tile >= 0 && e.Tile <= FlowerWinter {
 		tileText = " " + e.Tile.String()
 	}
 	note := ""

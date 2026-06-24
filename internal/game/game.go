@@ -147,10 +147,18 @@ func (g *Game) Play(in io.Reader, out io.Writer) {
 }
 
 func (g *Game) draw(playerIndex int) Tile {
-	tile := g.Wall[0]
-	g.Wall = g.Wall[1:]
-	g.Players[playerIndex].AddTile(tile)
-	g.RecordEvent(EventDraw, playerIndex, tile, "")
+	tile, ok := g.rules.Draw(g, playerIndex, DrawNormal)
+	if !ok {
+		return -1
+	}
+	return tile
+}
+
+func (g *Game) drawReplacement(playerIndex int) Tile {
+	tile, ok := g.rules.Draw(g, playerIndex, DrawReplacement)
+	if !ok {
+		return -1
+	}
 	return tile
 }
 
@@ -239,7 +247,7 @@ func (g *Game) tryHumanKong(tileText string, out io.Writer) bool {
 		g.Reason = "draw: wall exhausted after kong"
 		return true
 	}
-	replacement := g.draw(0)
+	replacement := g.drawReplacement(0)
 	fmt.Fprintf(out, "Replacement draw: %s.\n", replacement)
 	return true
 }
@@ -261,7 +269,7 @@ func (g *Game) resolveAIKongs(out io.Writer, playerIndex int) {
 			g.Reason = "draw: wall exhausted after kong"
 			return
 		}
-		replacement := g.draw(playerIndex)
+		replacement := g.drawReplacement(playerIndex)
 		fmt.Fprintf(out, "%s draws a replacement tile.\n", g.Players[playerIndex].Name)
 		if CanWin(g.Players[playerIndex].Hand) {
 			g.finish(playerIndex, fmt.Sprintf("self-draw after kong with %s", replacement), WinSelfDraw)

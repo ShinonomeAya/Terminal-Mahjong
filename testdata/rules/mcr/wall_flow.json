@@ -1,0 +1,38 @@
+[
+  {
+    "id": "play-draw-without-flower",
+    "source": "GB/T 34708-2017 flower replacement procedure",
+    "wall": ["1m", "2m"],
+    "player": 0,
+    "expected_tile": "1m",
+    "expected_flowers": [],
+    "exhausted": false
+  },
+  {
+    "id": "play-draw-one-flower",
+    "source": "GB/T 34708-2017 flower replacement procedure",
+    "wall": ["P1", "2m"],
+    "player": 1,
+    "expected_tile": "2m",
+    "expected_flowers": ["P1"],
+    "exhausted": false
+  },
+  {
+    "id": "play-draw-consecutive-replacement-flowers",
+    "source": "GB/T 34708-2017 flower replacement procedure",
+    "wall": ["P1", "3m", "S1", "S2"],
+    "player": 2,
+    "expected_tile": "3m",
+    "expected_flowers": ["P1", "S2", "S1"],
+    "exhausted": false
+  },
+  {
+    "id": "replacement-wall-exhaustion",
+    "source": "GB/T 34708-2017 flower replacement procedure",
+    "wall": ["P1", "S1"],
+    "player": 3,
+    "expected_tile": "?",
+    "expected_flowers": ["P1", "S1"],
+    "exhausted": true
+  }
+]
