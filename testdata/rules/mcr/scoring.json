@@ -1,0 +1,96 @@
+[
+  {
+    "id": "higher-fan-exclusion",
+    "occurrences": [
+      {"id":"mcr_08","points":1,"count":1},
+      {"id":"mcr_23","points":2,"count":1}
+    ],
+    "flowers": 0,
+    "expected_fans": ["mcr_23"],
+    "non_flower": 2,
+    "total": 2,
+    "eligible": false
+  },
+  {
+    "id": "account-once",
+    "occurrences": [
+      {"id":"mcr_01","points":1,"count":1,"groups":[0,1]},
+      {"id":"mcr_01","points":1,"count":1,"groups":[0,2]},
+      {"id":"mcr_01","points":1,"count":1,"groups":[2,3]}
+    ],
+    "flowers": 0,
+    "expected_fans": ["mcr_01"],
+    "non_flower": 2,
+    "total": 2,
+    "eligible": false
+  },
+  {
+    "id": "seven-shifted-pairs-exclusions",
+    "occurrences": [
+      {"id":"mcr_08","points":1,"count":1},
+      {"id":"mcr_55","points":24,"count":1},
+      {"id":"mcr_58","points":24,"count":1},
+      {"id":"mcr_80","points":88,"count":1}
+    ],
+    "flowers": 0,
+    "expected_fans": ["mcr_80"],
+    "non_flower": 88,
+    "total": 88,
+    "eligible": true
+  },
+  {
+    "id": "chicken-hand",
+    "occurrences": [],
+    "flowers": 0,
+    "expected_fans": ["mcr_43"],
+    "non_flower": 8,
+    "total": 8,
+    "eligible": true
+  },
+  {
+    "id": "seven-points",
+    "occurrences": [
+      {"id":"mcr_28","points":6,"count":1},
+      {"id":"mcr_09","points":1,"count":1}
+    ],
+    "flowers": 0,
+    "expected_fans": ["mcr_28","mcr_09"],
+    "non_flower": 7,
+    "total": 7,
+    "eligible": false
+  },
+  {
+    "id": "seven-points-plus-flowers",
+    "occurrences": [
+      {"id":"mcr_28","points":6,"count":1},
+      {"id":"mcr_09","points":1,"count":1},
+      {"id":"mcr_10","points":1,"count":2}
+    ],
+    "flowers": 2,
+    "expected_fans": ["mcr_28","mcr_09","mcr_10"],
+    "non_flower": 7,
+    "total": 9,
+    "eligible": false
+  },
+  {
+    "id": "exactly-eight-points",
+    "occurrences": [{"id":"mcr_34","points":8,"count":1}],
+    "flowers": 0,
+    "expected_fans": ["mcr_34"],
+    "non_flower": 8,
+    "total": 8,
+    "eligible": true
+  },
+  {
+    "id": "nine-points",
+    "occurrences": [
+      {"id":"mcr_34","points":8,"count":1},
+      {"id":"mcr_09","points":1,"count":1}
+    ],
+    "flowers": 0,
+    "expected_fans": ["mcr_34","mcr_09"],
+    "non_flower": 9,
+    "total": 9,
+    "eligible": true
+  }
+]

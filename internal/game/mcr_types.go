@@ -35,6 +35,45 @@ type MCRFanOccurrence struct {
 	Groups []int `json:"groups,omitempty"`
 }
 
+type FanMatch struct {
+	ID     FanID  `json:"id"`
+	NameZH string `json:"name_zh"`
+	NameEN string `json:"name_en"`
+	Points int    `json:"points"`
+	Count  int    `json:"count"`
+}
+
+type MCRScoreContext struct {
+	Winner          int     `json:"winner"`
+	Discarder       int     `json:"discarder"`
+	WinningTile     Tile    `json:"winning_tile"`
+	WinType         WinType `json:"win_type"`
+	SeatWind        Tile    `json:"seat_wind"`
+	PrevalentWind   Tile    `json:"prevalent_wind"`
+	Flowers         int     `json:"flowers"`
+	LastTileDraw    bool    `json:"last_tile_draw"`
+	LastTileClaim   bool    `json:"last_tile_claim"`
+	LastOfKind      bool    `json:"last_of_kind"`
+	ReplacementDraw bool    `json:"replacement_draw"`
+	RobbingKong     bool    `json:"robbing_kong"`
+}
+
+type MCRScoreBreakdown struct {
+	Fans            []FanMatch `json:"fans"`
+	NonFlowerPoints int        `json:"non_flower_points"`
+	FlowerPoints    int        `json:"flower_points"`
+	TotalPoints     int        `json:"total_points"`
+	MeetsMinimum    bool       `json:"meets_minimum"`
+	WinningGrouping []Meld     `json:"winning_grouping"`
+}
+
+type MCRSettlement struct {
+	Winner    int               `json:"winner"`
+	Discarder int               `json:"discarder"`
+	Deltas    [4]int            `json:"deltas"`
+	Score     MCRScoreBreakdown `json:"score"`
+}
+
 func NewMCRRuleSet(config MCRConfig) *MCRRuleSet {
 	ruleConfig := RuleConfig{MCR: config}
 	return &MCRRuleSet{

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -60,6 +62,30 @@ func TestEveryMCRFanHasGoldenCoverage(t *testing.T) {
 	for _, fan := range catalog {
 		if !covered[fan.ID] {
 			t.Errorf("%s has no positive and near-miss coverage", fan.ID)
+		}
+	}
+}
+
+func TestMCRProductionCatalogMatchesGoldenCatalog(t *testing.T) {
+	catalog := loadMCRCatalog(t, "../../testdata/rules/mcr/catalog.json")
+	if len(mcrFanMetadataByID) != len(catalog) {
+		t.Fatalf("production catalog = %d, want %d", len(mcrFanMetadataByID), len(catalog))
+	}
+	for _, fan := range catalog {
+		metadata, ok := mcrFanMetadataByID[FanID(fan.ID)]
+		if !ok {
+			t.Fatalf("production catalog is missing %s", fan.ID)
+		}
+		excludes := append([]FanID(nil), metadata.excludes...)
+		sort.Slice(excludes, func(i, j int) bool { return excludes[i] < excludes[j] })
+		wantExcludes := append([]string(nil), fan.Excludes...)
+		sort.Strings(wantExcludes)
+		gotExcludes := make([]string, len(excludes))
+		for index, id := range excludes {
+			gotExcludes[index] = string(id)
+		}
+		if metadata.zh != fan.NameZH || metadata.en != fan.NameEN || metadata.points != fan.Points || metadata.repeatable != fan.Repeatable || strings.Join(gotExcludes, ",") != strings.Join(wantExcludes, ",") {
+			t.Fatalf("production metadata for %s does not match catalog: %#v", fan.ID, metadata)
 		}
 	}
 }
