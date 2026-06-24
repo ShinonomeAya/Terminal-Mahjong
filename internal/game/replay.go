@@ -30,12 +30,16 @@ func (g *Game) ReplayLog() ReplayLog {
 	scoreLabel := ""
 	if g.Winner >= 0 {
 		winner = g.Players[g.Winner].Name
-		score := ScoreRound(WinContext{
-			WinType: g.WinType,
-			Melds:   g.Players[g.Winner].Melds,
-			Pattern: WinPatternOf(g.Players[g.Winner].Hand),
-		})
-		scoreLabel = score.Label
+		if g.Mode == ModeMCR && g.MCRScore != nil {
+			scoreLabel = fmt.Sprintf("%d points", g.MCRScore.TotalPoints)
+		} else {
+			score := ScoreRound(WinContext{
+				WinType: g.WinType,
+				Melds:   g.Players[g.Winner].Melds,
+				Pattern: WinPatternOf(g.Players[g.Winner].Hand),
+			})
+			scoreLabel = score.Label
+		}
 	}
 	return ReplayLog{
 		SchemaVersion: ReplaySchemaVersion,
@@ -61,6 +65,7 @@ func (match *Match) ReplayLog() ReplayLog {
 	log.MCRSettlements = copyMCRSettlements(match.MCRSettlements)
 	if match.LastMCRSettlement != nil {
 		log.MCRScore = copyMCRScore(&match.LastMCRSettlement.Score)
+		log.Score = fmt.Sprintf("%d points", match.LastMCRSettlement.Score.TotalPoints)
 	}
 	return log
 }

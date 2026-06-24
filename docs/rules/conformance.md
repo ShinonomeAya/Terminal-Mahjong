@@ -49,7 +49,15 @@ This matrix freezes the rule sources and project defaults before complete rule i
 | Subphase | Status |
 | --- | --- |
 | 12A shared match/rule/privacy foundation | Complete |
-| 12B complete Chinese Official rules | In progress |
+| 12B complete Chinese Official rules | Complete |
 | 12C complete Riichi rules | Not started |
 | 12D client/server/bot integration | Not started |
 | 12E dual-mode acceptance | Not started |
+
+### Phase 12B Acceptance
+
+- The MCR room path uses `MCRRuleSet` with a 144-tile wall, automatic flower replacement, complete legal actions, and recipient-private snapshots.
+- All 81 catalog IDs have positive and near-miss coverage; scoring applies catalog exclusions, group-use counting, Chicken Hand fallback, and the eight-point non-flower minimum.
+- Matches settle zero-sum, rotate the dealer after every hand, retain all settlement history, and complete after 16 hands.
+- Replay schema v3 stores the typed MCR score and settlement history without using compatibility scoring.
+- Acceptance on 2026-06-24 passed catalog/fixture validation, 1,000 fixed-seed invariants, full tests, race tests, vet, all command builds, and online tests repeated 20 times.

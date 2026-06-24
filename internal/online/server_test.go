@@ -285,8 +285,11 @@ func TestWebSocketServerBroadcastsAcceptedCommand(t *testing.T) {
 		wantHand = 13
 	}
 	currentHand := len(update.Snapshot.Players[update.Snapshot.Current].Hand)
+	if update.Snapshot.Current != 1 {
+		wantHand = 0
+	}
 	if currentHand != wantHand {
-		t.Fatalf("active human hand = %d, want %d in phase %s", currentHand, wantHand, update.Snapshot.Phase)
+		t.Fatalf("visible current hand = %d, want %d for viewer 1/current %d in phase %s", currentHand, wantHand, update.Snapshot.Current, update.Snapshot.Phase)
 	}
 }
 

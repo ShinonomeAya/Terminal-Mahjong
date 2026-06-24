@@ -104,7 +104,7 @@ func TestMCRMatchReplayContainsScoreAndSettlementHistory(t *testing.T) {
 	if log.SchemaVersion != ReplaySchemaVersion || ReplaySchemaVersion != 3 || log.MCRScore == nil || len(log.MCRSettlements) != 2 {
 		t.Fatalf("MCR replay = %#v", log)
 	}
-	if log.MCRScore.Fans[0].ID != "mcr_34" || log.MCRSettlements[1].Winner != 1 {
+	if log.MCRScore.Fans[0].ID != "mcr_34" || log.MCRSettlements[1].Winner != 1 || log.Score != "8 points" {
 		t.Fatalf("MCR replay details = %#v", log)
 	}
 }

@@ -152,3 +152,19 @@ Stage review:
 - Evidence: `go vet ./...`, full tests, race tests, game/online/TUI tests repeated 20 times, all command builds, and a real WebSocket create/ready/discard/reconnect privacy smoke.
 - Total-goal review: the architecture can host MCR and Riichi without duplicating networking or leaking live concealed information.
 - Remaining risk: MCR and Riichi still use compatibility mechanics until Phases 12B and 12C replace them.
+
+### Phase 12B Review
+
+- Stage goal: replace every compatibility mechanic reachable from an MCR room with complete Chinese Official wall, action, scoring, settlement, match, snapshot, and replay behavior.
+- Completed: 144-tile wall and flower replacement; exhaustive standard and special decomposition; all 81 fan IDs; catalog exclusions and counting; eight-point non-flower minimum; chow, pong, three kong forms, and robbing-kong windows; zero-sum settlement; 16-hand progression; private reconnect snapshots; typed replay score and settlement history.
+- Step evidence: focused RED/GREEN tests were committed for each point band, combined scoring, action priority, kong windows, settlement, match progression, replay, and reconnect behavior.
+- Acceptance evidence (2026-06-24):
+  - all `testdata/rules/mcr/**/*.json` files parsed with `ConvertFrom-Json`;
+  - `go test ./internal/game -run "MCRFanCatalog|EveryMCRFan|MCRScoring|MCRSettlement" -count=20`;
+  - `go test ./internal/game -run MCRGeneratedInvariantsAcrossOneThousandSeeds -count=1`;
+  - `go vet ./...`, `go test ./... -count=1`, and `go test -race ./... -count=1`;
+  - `go build ./cmd/mahjong ./cmd/server ./cmd/client`;
+  - `go test ./internal/online -count=20`;
+  - WebSocket MCR creation, private broadcast, pending claim, canonical reconnect, and 144-tile conservation integration tests.
+- Total-goal review: Chinese Official games now run through the shared terminal/network architecture without compatibility scoring or action fallback, while concealed tiles and shuffle seeds remain private during play.
+- Remaining risk: Phase 12C Riichi mechanics are not started. Dead wall, dora/ura-dora, riichi/furiten, yaku/fu/han, exhaustive draw, honba/riichi sticks, and East-South progression still require their own source-cited plan and acceptance cycle.
