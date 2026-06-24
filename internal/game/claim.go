@@ -173,3 +173,12 @@ func (g *Game) claimPong(playerIndex int, tile Tile) {
 	player.AddMeld(MeldPong, []Tile{tile, tile, tile})
 	g.RecordEvent(EventPong, playerIndex, tile, "")
 }
+
+func (g *Game) claimExposedKong(playerIndex int, tile Tile) {
+	player := &g.Players[playerIndex]
+	for count := 0; count < 3; count++ {
+		player.RemoveTile(tile)
+	}
+	player.AddMeld(MeldKong, []Tile{tile, tile, tile, tile})
+	g.RecordEvent(EventKong, playerIndex, tile, "exposed kong")
+}

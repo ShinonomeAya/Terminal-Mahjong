@@ -167,6 +167,8 @@ func commandKindForClaim(kind ClaimKind) CommandKind {
 	switch kind {
 	case ClaimWin:
 		return CommandClaimWin
+	case ClaimKong:
+		return CommandKong
 	case ClaimPong:
 		return CommandPong
 	case ClaimChow:

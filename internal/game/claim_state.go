@@ -12,6 +12,7 @@ type ClaimKind string
 
 const (
 	ClaimWin  ClaimKind = "win"
+	ClaimKong ClaimKind = "kong"
 	ClaimPong ClaimKind = "pong"
 	ClaimChow ClaimKind = "chow"
 )
@@ -23,13 +24,19 @@ type ClaimOption struct {
 }
 
 type PendingClaim struct {
-	Discarder int           `json:"discarder"`
-	Tile      Tile          `json:"tile"`
-	Options   []ClaimOption `json:"options"`
-	Active    int           `json:"active"`
+	Discarder   int           `json:"discarder"`
+	Tile        Tile          `json:"tile"`
+	Options     []ClaimOption `json:"options"`
+	Active      int           `json:"active"`
+	RobbingKong bool          `json:"robbing_kong,omitempty"`
+	KongPlayer  int           `json:"kong_player,omitempty"`
+	KongMeld    int           `json:"kong_meld,omitempty"`
 }
 
 func (g *Game) buildPendingClaim(discarder int, discard Tile) *PendingClaim {
+	if rules, ok := g.rules.(*MCRRuleSet); ok {
+		return rules.buildPendingClaim(g, discarder, discard)
+	}
 	options := make([]ClaimOption, 0)
 	for offset := 1; offset < len(g.Players); offset++ {
 		playerIndex := (discarder + offset) % len(g.Players)
@@ -69,10 +76,13 @@ func copyPendingClaim(pending *PendingClaim) *PendingClaim {
 		return nil
 	}
 	copyValue := &PendingClaim{
-		Discarder: pending.Discarder,
-		Tile:      pending.Tile,
-		Active:    pending.Active,
-		Options:   make([]ClaimOption, len(pending.Options)),
+		Discarder:   pending.Discarder,
+		Tile:        pending.Tile,
+		Active:      pending.Active,
+		RobbingKong: pending.RobbingKong,
+		KongPlayer:  pending.KongPlayer,
+		KongMeld:    pending.KongMeld,
+		Options:     make([]ClaimOption, len(pending.Options)),
 	}
 	for i, option := range pending.Options {
 		copyValue.Options[i] = ClaimOption{
@@ -118,7 +128,17 @@ func (g *Game) applyClaimCommand(command GameCommand) CommandResult {
 	option := options[optionIndex]
 	switch option.Kind {
 	case ClaimWin:
-		g.finish(option.Player, "discard-win", WinDiscard)
+		reason := "discard-win"
+		if g.PendingClaim.RobbingKong {
+			reason = "robbing-kong"
+		}
+		g.finish(option.Player, reason, WinDiscard)
+	case ClaimKong:
+		tile := g.PendingClaim.Tile
+		g.removeClaimedDiscard()
+		g.claimExposedKong(option.Player, tile)
+		g.completeAcceptedClaim(option.Player)
+		g.drawReplacement(option.Player)
 	case ClaimPong:
 		g.removeClaimedDiscard()
 		g.claimPong(option.Player, g.PendingClaim.Tile)
@@ -153,6 +173,12 @@ func (g *Game) activeClaimOptions() []ClaimOption {
 func (g *Game) passActiveClaim(activeCount int) {
 	g.PendingClaim.Active += activeCount
 	if g.PendingClaim.Active >= len(g.PendingClaim.Options) {
+		if g.PendingClaim.RobbingKong {
+			if rules, ok := g.rules.(*MCRRuleSet); ok {
+				rules.completeAddedKong(g)
+				return
+			}
+		}
 		discarder := g.PendingClaim.Discarder
 		g.completeUnclaimedDiscard(discarder)
 		return
@@ -189,6 +215,8 @@ func claimKindForCommand(command CommandKind) ClaimKind {
 	switch command {
 	case CommandClaimWin:
 		return ClaimWin
+	case CommandKong:
+		return ClaimKong
 	case CommandPong:
 		return ClaimPong
 	case CommandChow:

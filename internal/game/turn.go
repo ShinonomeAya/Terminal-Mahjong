@@ -49,7 +49,7 @@ func (g *Game) AdvanceAIUntilHumanTurn() {
 		if _, ok := g.EnsureCurrentTurnDraw(); !ok && g.Over {
 			return
 		}
-		if CanWin(g.Players[g.Current].Hand) {
+		if g.rules.Allows(g, GameCommand{PlayerID: playerID(g.Current), Kind: CommandWin}) {
 			g.finish(g.Current, "self-draw", WinSelfDraw)
 			return
 		}

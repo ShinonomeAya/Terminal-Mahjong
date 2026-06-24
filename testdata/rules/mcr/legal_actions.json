@@ -1,0 +1,11 @@
+[
+  {"id":"minimum-win","expected":["win only at eight non-flower points"]},
+  {"id":"win-priority","expected":["nearest eligible win before all meld claims"]},
+  {"id":"exposed-kong","expected":["consume three hand tiles and the discard then replace"]},
+  {"id":"pong-before-chow","expected":["pong claim before next-seat chow"]},
+  {"id":"next-seat-chow","expected":["only the next seat receives chow options"]},
+  {"id":"concealed-kong","expected":["declare immediately and draw from replacement end"]},
+  {"id":"added-kong","expected":["delay mutation until robbing window closes"]},
+  {"id":"robbing-kong","expected":["eligible winner keeps source pong unchanged"]},
+  {"id":"all-pass","expected":["continue with next draw or finish delayed added kong"]}
+]

@@ -8,8 +8,7 @@ const (
 )
 
 type MCRRuleSet struct {
-	config        MCRConfig
-	compatibility *CompatibilityRuleSet
+	config MCRConfig
 }
 
 type FanID string
@@ -75,11 +74,7 @@ type MCRSettlement struct {
 }
 
 func NewMCRRuleSet(config MCRConfig) *MCRRuleSet {
-	ruleConfig := RuleConfig{MCR: config}
-	return &MCRRuleSet{
-		config:        config,
-		compatibility: NewCompatibilityRuleSet(ModeMCR, ruleConfig),
-	}
+	return &MCRRuleSet{config: config}
 }
 
 func (rules *MCRRuleSet) Mode() RuleMode {
@@ -95,9 +90,9 @@ func (rules *MCRRuleSet) InitialPoints() [4]int {
 }
 
 func (rules *MCRRuleSet) LegalActions(round *Game, playerID string) []LegalAction {
-	return rules.compatibility.LegalActions(round, playerID)
+	return rules.legalActions(round, playerID)
 }
 
 func (rules *MCRRuleSet) Allows(round *Game, command GameCommand) bool {
-	return rules.compatibility.Allows(round, command)
+	return rules.allows(round, command)
 }

@@ -137,7 +137,7 @@ func (g *Game) ApplyCommand(command GameCommand) CommandResult {
 		}
 		return g.commandOK(command, tile.String())
 	case CommandWin:
-		if !CanWin(g.Players[g.Current].Hand) {
+		if _, mcr := g.rules.(*MCRRuleSet); !mcr && !CanWin(g.Players[g.Current].Hand) {
 			return g.commandError(command, "hand is not complete")
 		}
 		g.finish(g.Current, "self-draw", WinSelfDraw)
@@ -187,6 +187,9 @@ func (g *Game) discardCurrent(index int) (Tile, error) {
 }
 
 func (g *Game) tryCurrentKong(tileText string, out io.Writer) bool {
+	if rules, ok := g.rules.(*MCRRuleSet); ok {
+		return rules.declareKong(g, tileText)
+	}
 	tile, ok := ParseTile(tileText)
 	if !ok || g.Players[g.Current].Count(tile) < 4 {
 		return false
