@@ -59,7 +59,7 @@ func RecentEvents(events []GameEvent, limit int) []GameEvent {
 func (e GameEvent) String() string {
 	player := playerEventName(e.Player)
 	tileText := ""
-	if e.Tile >= 0 && e.Tile <= FlowerWinter {
+	if e.Tile >= 0 && e.Tile <= RedFiveSou {
 		tileText = " " + e.Tile.String()
 	}
 	note := ""

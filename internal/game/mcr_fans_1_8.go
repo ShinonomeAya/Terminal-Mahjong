@@ -574,7 +574,7 @@ func tileSuit(tile Tile) int {
 	if !tile.IsSuit() {
 		return -1
 	}
-	return int(tile) / 9
+	return int(tile.Base()) / 9
 }
 
 func isTerminalOrHonor(tile Tile) bool {

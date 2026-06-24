@@ -38,6 +38,7 @@ type Game struct {
 	Dealer       int
 	HandNumber   int
 	MCRScore     *MCRScoreBreakdown
+	Riichi       *RiichiRoundState
 	Over         bool
 	Events       []GameEvent
 	Phase        TurnPhase

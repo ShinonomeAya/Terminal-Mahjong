@@ -13,7 +13,7 @@
 | Area | Project value | Source |
 | --- | --- | --- |
 | Players and wall | Four players, 136 tiles, no flowers | EMA pp. 6-7, sections 1 and 2 |
-| Dead wall | 14 tiles remain outside normal draws; replacement tiles and indicators come from the dead wall | EMA pp. 9-10, sections 2.5-2.6 |
+| Dead wall | 14 tiles remain outside normal draws; replacement tiles and indicators come from the dead wall | EMA p. 8, sections 2.6-2.7 |
 | Calls | Ron has priority; pon/kan has priority over chi; chi is from the preceding player's discard | EMA pp. 11-13, section 3.3 |
 | Kuikae | Swap-calling is forbidden | EMA p. 5 revision notes and p. 12, section 3.3.3 |
 | Multiple winners | More than one ron winner is allowed; the discarder settles each hand | EMA p. 5 revision notes and p. 18, section 4.1 |
@@ -50,6 +50,10 @@ These values come from the approved dual-rules project specification and are not
 | Triple ron | Sanchahou abortive draw; one or two ron winners otherwise | Fixed together with the abortive-draw project extension |
 | Uma | Report the EMA 15k/5k/-5k/-15k ranking adjustment separately; do not mutate in-match point totals | Keeps gameplay totals and tournament ranking output distinct |
 | Chombo and etiquette penalties | Not exposed as player commands; illegal commands are rejected without mutation | Tournament adjudication is outside the terminal game command model |
+
+## Dead-Wall Array Orientation
+
+The in-memory `DeadWall[14]` is ordered from the replacement end toward the indicator end. Indexes `0..3` are the four rinshan positions. Index pairs `4/5`, `6/7`, `8/9`, `10/11`, and `12/13` are dora/ura indicators. A rinshan draw replaces its consumed slot with the last live-wall tile, keeping the dead-wall array at 14 while reducing the live wall. `testdata/rules/riichi/wall.json` freezes this representation; it is an implementation orientation of EMA sections 2.6-2.7, not a change to play order.
 
 ## Catalog Contract
 

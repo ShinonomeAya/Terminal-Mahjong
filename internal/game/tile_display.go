@@ -10,6 +10,7 @@ var tileGlyphs = [TileTypeCount]string{
 }
 
 func TileGlyph(tile Tile) string {
+	tile = tile.Base()
 	if tile < 0 || int(tile) >= TileTypeCount {
 		return "?"
 	}

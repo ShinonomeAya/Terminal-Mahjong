@@ -45,6 +45,12 @@ func (p *Player) RemoveTile(tile Tile) bool {
 			return true
 		}
 	}
+	for i, handTile := range p.Hand {
+		if handTile.Base() == tile.Base() {
+			p.Hand = append(p.Hand[:i], p.Hand[i+1:]...)
+			return true
+		}
+	}
 	return false
 }
 
@@ -60,7 +66,7 @@ func (p *Player) RemoveAt(index int) (Tile, error) {
 func (p *Player) Count(tile Tile) int {
 	count := 0
 	for _, handTile := range p.Hand {
-		if handTile == tile {
+		if handTile.Base() == tile.Base() {
 			count++
 		}
 	}

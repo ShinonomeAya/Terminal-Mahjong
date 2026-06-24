@@ -25,6 +25,7 @@ func chooseAIDiscardByUsefulness(hand []Tile) int {
 }
 
 func tileUsefulness(tile Tile, counts [TileTypeCount]int) int {
+	tile = tile.Base()
 	score := counts[tile] * 5
 	if !tile.IsSuit() {
 		return score

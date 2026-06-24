@@ -23,6 +23,9 @@ const (
 	FlowerSummer
 	FlowerAutumn
 	FlowerWinter
+	RedFiveMan
+	RedFivePin
+	RedFiveSou
 )
 
 var honorNames = []string{"E", "S", "W", "N", "Z", "F", "B"}
@@ -47,6 +50,10 @@ func BuildMCRWall() []Tile {
 
 func SortTiles(tiles []Tile) {
 	sort.Slice(tiles, func(i, j int) bool {
+		left, right := tiles[i].Base(), tiles[j].Base()
+		if left != right {
+			return left < right
+		}
 		return tiles[i] < tiles[j]
 	})
 }
@@ -54,14 +61,23 @@ func SortTiles(tiles []Tile) {
 func TileCounts(tiles []Tile) [TileTypeCount]int {
 	var counts [TileTypeCount]int
 	for _, tile := range tiles {
-		if tile >= 0 && int(tile) < TileTypeCount {
-			counts[tile]++
+		base := tile.Base()
+		if base >= 0 && int(base) < TileTypeCount {
+			counts[base]++
 		}
 	}
 	return counts
 }
 
 func (t Tile) String() string {
+	switch t {
+	case RedFiveMan:
+		return "0m"
+	case RedFivePin:
+		return "0p"
+	case RedFiveSou:
+		return "0s"
+	}
 	if t >= 0 && t < 9 {
 		return fmt.Sprintf("%dm", int(t)+1)
 	}
@@ -96,18 +112,36 @@ func (t Tile) String() string {
 }
 
 func (t Tile) IsSuit() bool {
-	return t >= 0 && t < 27
+	base := t.Base()
+	return base >= 0 && base < 27
 }
 
 func (t Tile) Rank() int {
 	if !t.IsSuit() {
 		return 0
 	}
-	return int(t)%9 + 1
+	return int(t.Base())%9 + 1
 }
 
 func (t Tile) IsFlower() bool {
 	return t >= FlowerPlum && t <= FlowerWinter
+}
+
+func (t Tile) IsRed() bool {
+	return t >= RedFiveMan && t <= RedFiveSou
+}
+
+func (t Tile) Base() Tile {
+	switch t {
+	case RedFiveMan:
+		return 4
+	case RedFivePin:
+		return 13
+	case RedFiveSou:
+		return 22
+	default:
+		return t
+	}
 }
 
 func ParseTile(text string) (Tile, bool) {
@@ -117,6 +151,16 @@ func ParseTile(text string) (Tile, bool) {
 	}
 	if len(token) >= 2 {
 		rank, err := strconv.Atoi(token[:1])
+		if err == nil && rank == 0 {
+			switch token[1:] {
+			case "m":
+				return RedFiveMan, true
+			case "p":
+				return RedFivePin, true
+			case "s":
+				return RedFiveSou, true
+			}
+		}
 		if err == nil && rank >= 1 && rank <= 9 {
 			switch token[1:] {
 			case "m":

@@ -62,3 +62,11 @@ func TestFormatTileLabelsSupportsUnicodeAndFallback(t *testing.T) {
 		t.Fatalf("fallback labels = %q", got)
 	}
 }
+
+func TestRedFiveGlyphUsesBaseFiveGlyph(t *testing.T) {
+	for red, base := range map[Tile]Tile{RedFiveMan: 4, RedFivePin: 13, RedFiveSou: 22} {
+		if got, want := TileGlyph(red), TileGlyph(base); got != want {
+			t.Fatalf("red %s glyph = %q, want %q", red, got, want)
+		}
+	}
+}
