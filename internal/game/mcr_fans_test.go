@@ -175,6 +175,126 @@ func TestMCRTwoPointFanNearMisses(t *testing.T) {
 	}
 }
 
+func TestMCRFourSixEightPointFanDetectors(t *testing.T) {
+	allPungs := []MCRGroup{
+		mcrTestGroup(MCRGroupPung, false, "2m", "2m", "2m"),
+		mcrTestGroup(MCRGroupPung, true, "4p", "4p", "4p"),
+		mcrTestGroup(MCRGroupPung, false, "6s", "6s", "6s"),
+		mcrTestGroup(MCRGroupKong, true, "E", "E", "E", "E"),
+		mcrTestGroup(MCRGroupPair, false, "Z", "Z"),
+	}
+	tests := []struct {
+		name    string
+		context MCRFanContext
+		fan     FanID
+	}{
+		{name: "outside hand", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupPung, true, "9p", "9p", "9p"),
+			mcrTestGroup(MCRGroupPair, false, "E", "E"),
+		), fan: "mcr_24"},
+		{name: "fully concealed hand", context: MCRFanContext{Decomposition: decompositionWithGroups(mcrTestGroup(MCRGroupChow, false, "2m", "3m", "4m")), WinType: WinSelfDraw}, fan: "mcr_25"},
+		{name: "two melded kongs", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupKong, true, "3m", "3m", "3m", "3m"),
+			mcrTestGroup(MCRGroupKong, true, "7p", "7p", "7p", "7p"),
+		), fan: "mcr_26"},
+		{name: "last of kind", context: MCRFanContext{LastOfKind: true}, fan: "mcr_27"},
+		{name: "all pungs", context: fanContextWithGroups(allPungs...), fan: "mcr_28"},
+		{name: "half flush", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupPung, false, "E", "E", "E"),
+		), fan: "mcr_29"},
+		{name: "mixed shifted chows", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupChow, false, "2p", "3p", "4p"),
+			mcrTestGroup(MCRGroupChow, false, "3s", "4s", "5s"),
+		), fan: "mcr_30"},
+		{name: "all types", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupPung, false, "4p", "4p", "4p"),
+			mcrTestGroup(MCRGroupPung, false, "6s", "6s", "6s"),
+			mcrTestGroup(MCRGroupPung, false, "E", "E", "E"),
+			mcrTestGroup(MCRGroupPair, false, "Z", "Z"),
+		), fan: "mcr_31"},
+		{name: "melded hand", context: MCRFanContext{Decomposition: decompositionWithGroups(
+			mcrTestGroup(MCRGroupChow, true, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupPung, true, "4p", "4p", "4p"),
+			mcrTestGroup(MCRGroupPung, true, "6s", "6s", "6s"),
+			mcrTestGroup(MCRGroupPung, true, "E", "E", "E"),
+			mcrTestGroup(MCRGroupPair, false, "Z", "Z"),
+		), WinType: WinDiscard}, fan: "mcr_32"},
+		{name: "two dragon pungs", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupPung, false, "Z", "Z", "Z"),
+			mcrTestGroup(MCRGroupPung, true, "F", "F", "F"),
+		), fan: "mcr_33"},
+		{name: "mixed straight", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupChow, false, "4p", "5p", "6p"),
+			mcrTestGroup(MCRGroupChow, false, "7s", "8s", "9s"),
+		), fan: "mcr_34"},
+		{name: "reversible tiles", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupPung, false, "1p", "1p", "1p"),
+			mcrTestGroup(MCRGroupChow, false, "4s", "5s", "6s"),
+			mcrTestGroup(MCRGroupPair, false, "B", "B"),
+		), fan: "mcr_35"},
+		{name: "mixed triple chow", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "3m", "4m", "5m"),
+			mcrTestGroup(MCRGroupChow, false, "3p", "4p", "5p"),
+			mcrTestGroup(MCRGroupChow, false, "3s", "4s", "5s"),
+		), fan: "mcr_36"},
+		{name: "mixed shifted pungs", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupPung, false, "3m", "3m", "3m"),
+			mcrTestGroup(MCRGroupPung, false, "4p", "4p", "4p"),
+			mcrTestGroup(MCRGroupPung, false, "5s", "5s", "5s"),
+		), fan: "mcr_37"},
+		{name: "two concealed kongs", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupKong, false, "3m", "3m", "3m", "3m"),
+			mcrTestGroup(MCRGroupKong, false, "5p", "5p", "5p", "5p"),
+		), fan: "mcr_38"},
+		{name: "last tile draw", context: MCRFanContext{LastTileDraw: true}, fan: "mcr_39"},
+		{name: "last tile claim", context: MCRFanContext{LastTileClaim: true}, fan: "mcr_40"},
+		{name: "replacement draw", context: MCRFanContext{ReplacementDraw: true}, fan: "mcr_41"},
+		{name: "robbing kong", context: MCRFanContext{RobbingKong: true}, fan: "mcr_42"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := mcrFanOccurrenceCount(DetectMCRFans(test.context), test.fan); got != 1 {
+				t.Fatalf("%s count = %d, want 1", test.fan, got)
+			}
+		})
+	}
+}
+
+func TestMCRFourSixEightPointFanNearMisses(t *testing.T) {
+	tests := []struct {
+		name    string
+		context MCRFanContext
+		fan     FanID
+	}{
+		{name: "outside group without terminal", context: fanContextWithGroups(mcrTestGroup(MCRGroupChow, false, "2m", "3m", "4m")), fan: "mcr_24"},
+		{name: "full flush is not half flush", context: fanContextWithGroups(mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m")), fan: "mcr_29"},
+		{name: "all types missing dragon", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupPung, false, "4p", "4p", "4p"),
+			mcrTestGroup(MCRGroupPung, false, "6s", "6s", "6s"),
+			mcrTestGroup(MCRGroupPung, false, "E", "E", "E"),
+		), fan: "mcr_31"},
+		{name: "reversible contains seven dots", context: fanContextWithGroups(mcrTestGroup(MCRGroupPung, false, "7p", "7p", "7p")), fan: "mcr_35"},
+		{name: "mixed straight repeats suit", context: fanContextWithGroups(
+			mcrTestGroup(MCRGroupChow, false, "1m", "2m", "3m"),
+			mcrTestGroup(MCRGroupChow, false, "4m", "5m", "6m"),
+			mcrTestGroup(MCRGroupChow, false, "7s", "8s", "9s"),
+		), fan: "mcr_34"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := mcrFanOccurrenceCount(DetectMCRFans(test.context), test.fan); got != 0 {
+				t.Fatalf("%s count = %d, want 0", test.fan, got)
+			}
+		})
+	}
+}
+
 func fanContextWithGroups(groups ...MCRGroup) MCRFanContext {
 	return MCRFanContext{Decomposition: decompositionWithGroups(groups...)}
 }

@@ -23,6 +23,22 @@ func DetectMCRFans(context MCRFanContext) []MCRFanOccurrence {
 	result = append(result, detectTwoConcealedPungs(context)...)
 	result = append(result, detectConcealedKongs(context)...)
 	result = append(result, detectAllSimples(context)...)
+	result = append(result, detectOutsideHand(context)...)
+	result = append(result, detectFullyConcealedHand(context)...)
+	result = append(result, detectTwoMeldedKongs(context)...)
+	result = append(result, detectLastOfKind(context)...)
+	result = append(result, detectAllPungs(context)...)
+	result = append(result, detectHalfFlush(context)...)
+	result = append(result, detectMixedShiftedChows(context)...)
+	result = append(result, detectAllTypes(context)...)
+	result = append(result, detectMeldedHand(context)...)
+	result = append(result, detectTwoDragonPungs(context)...)
+	result = append(result, detectMixedStraight(context)...)
+	result = append(result, detectReversibleTiles(context)...)
+	result = append(result, detectMixedTripleChow(context)...)
+	result = append(result, detectMixedShiftedPungs(context)...)
+	result = append(result, detectTwoConcealedKongs(context)...)
+	result = append(result, detectWinCircumstances(context)...)
 	return result
 }
 
@@ -261,6 +277,236 @@ func detectAllSimples(context MCRFanContext) []MCRFanOccurrence {
 	return []MCRFanOccurrence{occurrence("mcr_23", 2, nil)}
 }
 
+func detectOutsideHand(context MCRFanContext) []MCRFanOccurrence {
+	groups := context.Decomposition.Groups
+	if len(groups) == 0 {
+		return nil
+	}
+	for _, group := range groups {
+		switch group.Kind {
+		case MCRGroupChow:
+			start := group.Tiles[0].Rank()
+			if start != 1 && start != 7 {
+				return nil
+			}
+		case MCRGroupPair, MCRGroupPung, MCRGroupKong:
+			if !isTerminalOrHonor(group.Tiles[0]) {
+				return nil
+			}
+		default:
+			return nil
+		}
+	}
+	return []MCRFanOccurrence{occurrence("mcr_24", 4, nil)}
+}
+
+func detectFullyConcealedHand(context MCRFanContext) []MCRFanOccurrence {
+	if context.WinType != WinSelfDraw || hasOpenMCRGroup(context.Decomposition.Groups) {
+		return nil
+	}
+	return []MCRFanOccurrence{occurrence("mcr_25", 4, nil)}
+}
+
+func detectTwoMeldedKongs(context MCRFanContext) []MCRFanOccurrence {
+	var groups []int
+	for index, group := range context.Decomposition.Groups {
+		if group.Kind == MCRGroupKong && group.Open {
+			groups = append(groups, index)
+		}
+	}
+	if len(groups) < 2 {
+		return nil
+	}
+	return []MCRFanOccurrence{occurrence("mcr_26", 4, groups[:2])}
+}
+
+func detectLastOfKind(context MCRFanContext) []MCRFanOccurrence {
+	if !context.LastOfKind {
+		return nil
+	}
+	return []MCRFanOccurrence{occurrence("mcr_27", 4, nil)}
+}
+
+func detectAllPungs(context MCRFanContext) []MCRFanOccurrence {
+	pungs, pairs := 0, 0
+	for _, group := range context.Decomposition.Groups {
+		switch {
+		case isPungGroup(group):
+			pungs++
+		case group.Kind == MCRGroupPair:
+			pairs++
+		default:
+			return nil
+		}
+	}
+	if pungs != 4 || pairs != 1 {
+		return nil
+	}
+	return []MCRFanOccurrence{occurrence("mcr_28", 6, nil)}
+}
+
+func detectHalfFlush(context MCRFanContext) []MCRFanOccurrence {
+	tiles := mcrContextTiles(context)
+	suit := -1
+	hasHonor := false
+	for _, tile := range tiles {
+		if tile.IsSuit() {
+			if suit == -1 {
+				suit = tileSuit(tile)
+			} else if suit != tileSuit(tile) {
+				return nil
+			}
+		} else if tile >= 27 && tile < BaseTileTypeCount {
+			hasHonor = true
+		}
+	}
+	if len(tiles) == 0 || suit == -1 || !hasHonor {
+		return nil
+	}
+	return []MCRFanOccurrence{occurrence("mcr_29", 6, nil)}
+}
+
+func detectMixedShiftedChows(context MCRFanContext) []MCRFanOccurrence {
+	return matchingGroupTriples(context, "mcr_30", 6, func(first, second, third MCRGroup) bool {
+		if first.Kind != MCRGroupChow || second.Kind != MCRGroupChow || third.Kind != MCRGroupChow {
+			return false
+		}
+		return threeDistinctSuits(first.Tiles[0], second.Tiles[0], third.Tiles[0]) &&
+			threeConsecutiveRanks(first.Tiles[0].Rank(), second.Tiles[0].Rank(), third.Tiles[0].Rank())
+	})
+}
+
+func detectAllTypes(context MCRFanContext) []MCRFanOccurrence {
+	var suits [3]bool
+	hasWind, hasDragon := false, false
+	for _, tile := range mcrContextTiles(context) {
+		switch {
+		case tile.IsSuit():
+			suits[tileSuit(tile)] = true
+		case tile >= 27 && tile <= 30:
+			hasWind = true
+		case tile >= 31 && tile <= 33:
+			hasDragon = true
+		}
+	}
+	if suits[0] && suits[1] && suits[2] && hasWind && hasDragon {
+		return []MCRFanOccurrence{occurrence("mcr_31", 6, nil)}
+	}
+	return nil
+}
+
+func detectMeldedHand(context MCRFanContext) []MCRFanOccurrence {
+	if context.WinType != WinDiscard {
+		return nil
+	}
+	melds, pairs := 0, 0
+	for _, group := range context.Decomposition.Groups {
+		if group.Kind == MCRGroupPair {
+			pairs++
+			continue
+		}
+		if !group.Open || (group.Kind != MCRGroupChow && !isPungGroup(group)) {
+			return nil
+		}
+		melds++
+	}
+	if melds == 4 && pairs == 1 {
+		return []MCRFanOccurrence{occurrence("mcr_32", 6, nil)}
+	}
+	return nil
+}
+
+func detectTwoDragonPungs(context MCRFanContext) []MCRFanOccurrence {
+	var groups []int
+	for index, group := range context.Decomposition.Groups {
+		if isPungGroup(group) && group.Tiles[0] >= 31 && group.Tiles[0] <= 33 {
+			groups = append(groups, index)
+		}
+	}
+	if len(groups) < 2 {
+		return nil
+	}
+	return []MCRFanOccurrence{occurrence("mcr_33", 6, groups[:2])}
+}
+
+func detectMixedStraight(context MCRFanContext) []MCRFanOccurrence {
+	return matchingGroupTriples(context, "mcr_34", 8, func(first, second, third MCRGroup) bool {
+		if first.Kind != MCRGroupChow || second.Kind != MCRGroupChow || third.Kind != MCRGroupChow ||
+			!threeDistinctSuits(first.Tiles[0], second.Tiles[0], third.Tiles[0]) {
+			return false
+		}
+		var starts [10]bool
+		starts[first.Tiles[0].Rank()] = true
+		starts[second.Tiles[0].Rank()] = true
+		starts[third.Tiles[0].Rank()] = true
+		return starts[1] && starts[4] && starts[7]
+	})
+}
+
+func detectReversibleTiles(context MCRFanContext) []MCRFanOccurrence {
+	tiles := mcrContextTiles(context)
+	if len(tiles) == 0 {
+		return nil
+	}
+	for _, tile := range tiles {
+		suit, rank := tileSuit(tile), tile.Rank()
+		allowed := (suit == 1 && (rank == 1 || rank == 2 || rank == 3 || rank == 4 || rank == 5 || rank == 8 || rank == 9)) ||
+			(suit == 2 && (rank == 2 || rank == 4 || rank == 5 || rank == 6 || rank == 8 || rank == 9)) ||
+			tile == 33
+		if !allowed {
+			return nil
+		}
+	}
+	return []MCRFanOccurrence{occurrence("mcr_35", 8, nil)}
+}
+
+func detectMixedTripleChow(context MCRFanContext) []MCRFanOccurrence {
+	return matchingGroupTriples(context, "mcr_36", 8, func(first, second, third MCRGroup) bool {
+		return first.Kind == MCRGroupChow && second.Kind == MCRGroupChow && third.Kind == MCRGroupChow &&
+			threeDistinctSuits(first.Tiles[0], second.Tiles[0], third.Tiles[0]) &&
+			first.Tiles[0].Rank() == second.Tiles[0].Rank() && first.Tiles[0].Rank() == third.Tiles[0].Rank()
+	})
+}
+
+func detectMixedShiftedPungs(context MCRFanContext) []MCRFanOccurrence {
+	return matchingGroupTriples(context, "mcr_37", 8, func(first, second, third MCRGroup) bool {
+		return isPungGroup(first) && isPungGroup(second) && isPungGroup(third) &&
+			first.Tiles[0].IsSuit() && second.Tiles[0].IsSuit() && third.Tiles[0].IsSuit() &&
+			threeDistinctSuits(first.Tiles[0], second.Tiles[0], third.Tiles[0]) &&
+			threeConsecutiveRanks(first.Tiles[0].Rank(), second.Tiles[0].Rank(), third.Tiles[0].Rank())
+	})
+}
+
+func detectTwoConcealedKongs(context MCRFanContext) []MCRFanOccurrence {
+	var groups []int
+	for index, group := range context.Decomposition.Groups {
+		if group.Kind == MCRGroupKong && !group.Open {
+			groups = append(groups, index)
+		}
+	}
+	if len(groups) < 2 {
+		return nil
+	}
+	return []MCRFanOccurrence{occurrence("mcr_38", 8, groups[:2])}
+}
+
+func detectWinCircumstances(context MCRFanContext) []MCRFanOccurrence {
+	var result []MCRFanOccurrence
+	if context.LastTileDraw {
+		result = append(result, occurrence("mcr_39", 8, nil))
+	}
+	if context.LastTileClaim {
+		result = append(result, occurrence("mcr_40", 8, nil))
+	}
+	if context.ReplacementDraw {
+		result = append(result, occurrence("mcr_41", 8, nil))
+	}
+	if context.RobbingKong {
+		result = append(result, occurrence("mcr_42", 8, nil))
+	}
+	return result
+}
+
 func matchingGroupPairs(context MCRFanContext, id FanID, points int, matches func(MCRGroup, MCRGroup) bool) []MCRFanOccurrence {
 	var result []MCRFanOccurrence
 	groups := context.Decomposition.Groups
@@ -272,6 +518,40 @@ func matchingGroupPairs(context MCRFanContext, id FanID, points int, matches fun
 		}
 	}
 	return result
+}
+
+func matchingGroupTriples(context MCRFanContext, id FanID, points int, matches func(MCRGroup, MCRGroup, MCRGroup) bool) []MCRFanOccurrence {
+	var result []MCRFanOccurrence
+	groups := context.Decomposition.Groups
+	for first := 0; first < len(groups); first++ {
+		for second := first + 1; second < len(groups); second++ {
+			for third := second + 1; third < len(groups); third++ {
+				if matches(groups[first], groups[second], groups[third]) {
+					result = append(result, occurrence(id, points, []int{first, second, third}))
+				}
+			}
+		}
+	}
+	return result
+}
+
+func threeDistinctSuits(first, second, third Tile) bool {
+	firstSuit, secondSuit, thirdSuit := tileSuit(first), tileSuit(second), tileSuit(third)
+	return firstSuit >= 0 && secondSuit >= 0 && thirdSuit >= 0 &&
+		firstSuit != secondSuit && firstSuit != thirdSuit && secondSuit != thirdSuit
+}
+
+func threeConsecutiveRanks(first, second, third int) bool {
+	minRank, maxRank := first, first
+	for _, rank := range []int{second, third} {
+		if rank < minRank {
+			minRank = rank
+		}
+		if rank > maxRank {
+			maxRank = rank
+		}
+	}
+	return maxRank-minRank == 2 && first != second && first != third && second != third
 }
 
 func occurrence(id FanID, points int, groups []int) MCRFanOccurrence {
