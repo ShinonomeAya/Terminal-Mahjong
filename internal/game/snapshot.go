@@ -14,19 +14,23 @@ type PlayerView struct {
 }
 
 type GameSnapshot struct {
-	Seed         int64         `json:"seed"`
-	RNGMode      RNGMode       `json:"rng_mode"`
-	ShuffleProof ShuffleProof  `json:"shuffle_proof"`
-	Players      []PlayerView  `json:"players"`
-	WallCount    int           `json:"wall_count"`
-	Current      int           `json:"current"`
-	Winner       int           `json:"winner"`
-	Reason       string        `json:"reason"`
-	Over         bool          `json:"over"`
-	Events       []GameEvent   `json:"events"`
-	Phase        TurnPhase     `json:"phase"`
-	PendingClaim *PendingClaim `json:"pending_claim,omitempty"`
-	LegalActions []LegalAction `json:"legal_actions,omitempty"`
+	Seed         int64              `json:"seed"`
+	RNGMode      RNGMode            `json:"rng_mode"`
+	ShuffleProof ShuffleProof       `json:"shuffle_proof"`
+	Players      []PlayerView       `json:"players"`
+	WallCount    int                `json:"wall_count"`
+	Current      int                `json:"current"`
+	Winner       int                `json:"winner"`
+	Discarder    int                `json:"discarder"`
+	Dealer       int                `json:"dealer"`
+	HandNumber   int                `json:"hand_number"`
+	MCRScore     *MCRScoreBreakdown `json:"mcr_score,omitempty"`
+	Reason       string             `json:"reason"`
+	Over         bool               `json:"over"`
+	Events       []GameEvent        `json:"events"`
+	Phase        TurnPhase          `json:"phase"`
+	PendingClaim *PendingClaim      `json:"pending_claim,omitempty"`
+	LegalActions []LegalAction      `json:"legal_actions,omitempty"`
 }
 
 type CommandKind string
@@ -79,6 +83,10 @@ func (g *Game) Snapshot() GameSnapshot {
 		WallCount:    len(g.Wall),
 		Current:      g.Current,
 		Winner:       g.Winner,
+		Discarder:    g.Discarder,
+		Dealer:       g.Dealer,
+		HandNumber:   g.HandNumber,
+		MCRScore:     copyMCRScore(g.MCRScore),
 		Reason:       g.Reason,
 		Over:         g.Over,
 		Events:       append([]GameEvent(nil), g.Events...),
@@ -139,6 +147,12 @@ func (g *Game) ApplyCommand(command GameCommand) CommandResult {
 	case CommandWin:
 		if _, mcr := g.rules.(*MCRRuleSet); !mcr && !CanWin(g.Players[g.Current].Hand) {
 			return g.commandError(command, "hand is not complete")
+		}
+		if rules, ok := g.rules.(*MCRRuleSet); ok {
+			if score, valid := rules.selfDrawScore(g, g.Current); valid {
+				g.MCRScore = &score
+				g.Discarder = -1
+			}
 		}
 		g.finish(g.Current, "self-draw", WinSelfDraw)
 		return g.commandOK(command, "")
@@ -231,6 +245,16 @@ func copyLegalActions(actions []LegalAction) []LegalAction {
 		out[i].Consumed = append([]Tile(nil), action.Consumed...)
 	}
 	return out
+}
+
+func copyMCRScore(score *MCRScoreBreakdown) *MCRScoreBreakdown {
+	if score == nil {
+		return nil
+	}
+	copyValue := *score
+	copyValue.Fans = append([]FanMatch(nil), score.Fans...)
+	copyValue.WinningGrouping = copyMelds(score.WinningGrouping)
+	return &copyValue
 }
 
 func playerID(index int) string {

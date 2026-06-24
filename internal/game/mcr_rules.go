@@ -103,7 +103,11 @@ func (rules *MCRRuleSet) selfDrawScore(round *Game, playerIndex int) (MCRScoreBr
 		Discarder:       -1,
 		WinningTile:     winningTile,
 		WinType:         WinSelfDraw,
+		SeatWind:        mcrSeatWind(round, playerIndex),
+		PrevalentWind:   mcrPrevalentWind(round),
 		Flowers:         len(player.Flowers),
+		LastTileDraw:    len(round.Wall) == 0,
+		LastOfKind:      mcrVisibleTileCount(round, winningTile) >= 3,
 		ReplacementDraw: lastDrawWasReplacement(round.Events, playerIndex),
 	}), true
 }
@@ -115,12 +119,16 @@ func (rules *MCRRuleSet) discardWinScore(round *Game, playerIndex, discarder int
 func (rules *MCRRuleSet) discardWinScoreWithContext(round *Game, playerIndex, discarder int, discard Tile, robbingKong bool) MCRScoreBreakdown {
 	player := round.Players[playerIndex]
 	return ScoreMCR(player.Hand, player.Melds, MCRScoreContext{
-		Winner:      playerIndex,
-		Discarder:   discarder,
-		WinningTile: discard,
-		WinType:     WinDiscard,
-		Flowers:     len(player.Flowers),
-		RobbingKong: robbingKong,
+		Winner:        playerIndex,
+		Discarder:     discarder,
+		WinningTile:   discard,
+		WinType:       WinDiscard,
+		SeatWind:      mcrSeatWind(round, playerIndex),
+		PrevalentWind: mcrPrevalentWind(round),
+		Flowers:       len(player.Flowers),
+		LastTileClaim: len(round.Wall) == 0 && !robbingKong,
+		LastOfKind:    mcrVisibleTileCount(round, discard)+boolInt(robbingKong) >= 4,
+		RobbingKong:   robbingKong,
 	})
 }
 
@@ -242,4 +250,47 @@ func pongMeldIndex(player Player, tile Tile) int {
 		}
 	}
 	return -1
+}
+
+func mcrSeatWind(round *Game, player int) Tile {
+	dealer := 0
+	if round != nil {
+		dealer = round.Dealer
+	}
+	offset := (player - dealer + 4) % 4
+	return Tile(27 + offset)
+}
+
+func mcrPrevalentWind(round *Game) Tile {
+	hand := 1
+	if round != nil && round.HandNumber > 0 {
+		hand = round.HandNumber
+	}
+	return Tile(27 + ((hand - 1) / 4 % 4))
+}
+
+func mcrVisibleTileCount(round *Game, tile Tile) int {
+	count := 0
+	for _, player := range round.Players {
+		for _, discard := range player.Discards {
+			if discard == tile {
+				count++
+			}
+		}
+		for _, meld := range player.Melds {
+			for _, meldTile := range meld.Tiles {
+				if meldTile == tile {
+					count++
+				}
+			}
+		}
+	}
+	return count
+}
+
+func boolInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
 }

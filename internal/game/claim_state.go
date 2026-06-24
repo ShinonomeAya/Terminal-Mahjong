@@ -129,8 +129,14 @@ func (g *Game) applyClaimCommand(command GameCommand) CommandResult {
 	switch option.Kind {
 	case ClaimWin:
 		reason := "discard-win"
-		if g.PendingClaim.RobbingKong {
+		robbingKong := g.PendingClaim.RobbingKong
+		if robbingKong {
 			reason = "robbing-kong"
+		}
+		if rules, ok := g.rules.(*MCRRuleSet); ok {
+			score := rules.discardWinScoreWithContext(g, option.Player, g.PendingClaim.Discarder, g.PendingClaim.Tile, robbingKong)
+			g.MCRScore = &score
+			g.Discarder = g.PendingClaim.Discarder
 		}
 		g.finish(option.Player, reason, WinDiscard)
 	case ClaimKong:

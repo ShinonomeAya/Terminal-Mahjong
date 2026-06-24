@@ -34,6 +34,10 @@ type Game struct {
 	Winner       int
 	Reason       string
 	WinType      WinType
+	Discarder    int
+	Dealer       int
+	HandNumber   int
+	MCRScore     *MCRScoreBreakdown
 	Over         bool
 	Events       []GameEvent
 	Phase        TurnPhase
@@ -80,6 +84,7 @@ func NewGameWithRules(seed int64, rules RuleSet) (*Game, error) {
 		RNGMode:      mode,
 		ShuffleProof: proof,
 		Winner:       -1,
+		Discarder:    -1,
 		Phase:        PhaseAwaitingDiscard,
 		rules:        rules,
 		rng:          rng,

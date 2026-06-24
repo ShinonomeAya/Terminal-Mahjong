@@ -60,7 +60,7 @@ func TestMCRDiscardWinBelowEightPointsIsNotAClaim(t *testing.T) {
 	round.Players[1].Melds = []Meld{
 		{Kind: MeldChow, Tiles: mustFanTiles(t, "1m", "2m", "3m")},
 		{Kind: MeldChow, Tiles: mustFanTiles(t, "2p", "3p", "4p")},
-		{Kind: MeldPong, Tiles: mustFanTiles(t, "E", "E", "E")},
+		{Kind: MeldPong, Tiles: mustFanTiles(t, "W", "W", "W")},
 	}
 	round.Players[1].Hand = mustFanTiles(t, "6s", "7s", "Z", "Z")
 	discard := mustFanTiles(t, "8s")[0]
@@ -156,6 +156,9 @@ func TestMCRRobbingKongWinLeavesOriginalPong(t *testing.T) {
 	if !result.OK || !round.Over || round.Winner != 1 || round.Reason != "robbing-kong" {
 		t.Fatalf("result=%#v winner=%d reason=%q", result, round.Winner, round.Reason)
 	}
+	if round.MCRScore == nil || !mcrScoreHasFan(*round.MCRScore, "mcr_42") || round.Discarder != 0 {
+		t.Fatalf("robbing score=%#v discarder=%d", round.MCRScore, round.Discarder)
+	}
 	if round.Players[0].Count(tile) != 1 || !hasMCRMeld(round.Players[0].Melds, MeldPong, tile, 3) {
 		t.Fatalf("robbed added kong mutated source player: %#v", round.Players[0])
 	}
@@ -206,6 +209,9 @@ func TestMCRSpecialShapeWinCommandUsesMCRRuleSet(t *testing.T) {
 	if !result.OK || !round.Over || round.Winner != 0 {
 		t.Fatalf("result=%#v round winner=%d over=%t", result, round.Winner, round.Over)
 	}
+	if round.MCRScore == nil || !mcrScoreHasFan(*round.MCRScore, "mcr_81") {
+		t.Fatalf("special win score = %#v", round.MCRScore)
+	}
 }
 
 func mcrAddedKongTestGame(t *testing.T) *Game {
@@ -224,6 +230,15 @@ func mcrAddedKongTestGame(t *testing.T) *Game {
 func hasMCRMeld(melds []Meld, kind MeldKind, tile Tile, count int) bool {
 	for _, meld := range melds {
 		if meld.Kind == kind && len(meld.Tiles) == count && meld.Tiles[0] == tile {
+			return true
+		}
+	}
+	return false
+}
+
+func mcrScoreHasFan(score MCRScoreBreakdown, id FanID) bool {
+	for _, fan := range score.Fans {
+		if fan.ID == id {
 			return true
 		}
 	}
