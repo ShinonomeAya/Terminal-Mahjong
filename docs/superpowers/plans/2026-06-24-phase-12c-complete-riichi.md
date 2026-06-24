@@ -14,9 +14,10 @@
 
 - Normative source: European Mahjong Association, `Riichi Rules 2016`, already frozen in `docs/rules/conformance.md`. Task 1 records exact section/page references before mechanics are implemented.
 - Four players only. Three-player rules, local platform house rules, and unnamed online-client behavior are excluded.
-- Project options remain exactly those already validated by `RiichiConfig`: East-South match, 25,000 starting points, open tanyao enabled, and either three red fives or none.
+- Project options remain exactly those already validated by `RiichiConfig`: East-South match, 25,000 starting points, open tanyao enabled, and either three red fives or none. Starting points and red fives are explicit deviations from EMA 2016.
+- The approved master specification also requires abortive draws although EMA 2016 removed them. The fixed project extension is kyuushu kyuuhai, suufon renda, suucha riichi, suukaikan except four kans by one player, and sanchahou; this is documented as a project override, not an EMA rule.
 - Dora, ura-dora, kan-dora, and red fives add han but never satisfy the one-yaku win requirement.
-- Every ambiguous baseline decision, including multiple ron, abortive draws, kazoe limits, double yakuman, bankruptcy, all-last extension, and liability payments, is copied from the normative source into `docs/rules/riichi-source-notes.md`; implementation cannot begin until each row has a source citation and project value.
+- Every ambiguous baseline decision, including multiple ron, abortive draws, kazoe limits, yakuman accumulation, bankruptcy, all-last extension, and liability payments, is copied from the normative source or labeled as an approved project override in `docs/rules/riichi-source-notes.md`; implementation cannot begin until each row has a citation and concrete value.
 - Existing Chinese Official and compatibility modes must remain byte-for-byte stable unless a shared tile normalization test explicitly requires a compatible representation change.
 
 ## File Map
@@ -415,7 +416,7 @@ Step review: the one-yaku gate and every source-defined limit hand are independe
 
 - [ ] **Step 1: Add golden score fixtures**
 
-Cover every fu component, pinfu tsumo, seven-pairs 25 fu, open minimum fu, rounding, red/normal/kan/ura dora, dora-only rejection, dealer/non-dealer ron and tsumo, mangan through yakuman, multiple yakuman, and ambiguous grouping choosing the highest payment.
+Cover every fu component, pinfu tsumo, seven-pairs 25 fu, open minimum fu, rounding, red/normal/kan/ura dora, dora-only rejection, dealer/non-dealer ron and tsumo, mangan through yakuman, non-cumulative simultaneous yakuman, and ambiguous grouping choosing the highest payment.
 
 - [ ] **Step 2: Write failing score tests**
 

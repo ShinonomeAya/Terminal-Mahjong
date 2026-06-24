@@ -26,6 +26,13 @@ This matrix freezes the rule sources and project defaults before complete rule i
 - `RiichiConfig.RedFives` accepts `0` or `3`, defaulting to `3`.
 - A new variant requires a named configuration field, source note, validation rule, and at least one golden fixture.
 
+## Riichi Source Contract
+
+- The normative EMA PDF, retrieved on 2026-06-24, has SHA-256 `1BCFE2A0B50FC89DA10CD24C89225D5D8EC57313A790B02388C699D394ED6530`.
+- Exact page/section decisions and the complete yaku/bonus catalog are recorded in `docs/rules/riichi-source-notes.md` and `testdata/rules/riichi/catalog.json`.
+- The approved project specification intentionally differs from EMA 2016 on starting points (25,000), optional red fives (0 or 3), and five fixed abortive draws. These are labeled project overrides in every affected fixture.
+- EMA behavior retained by the project includes multiple ron, no 4-han-30-fu kiriage mangan, 13+ normal han as sanbaiman, single non-cumulative yakuman, mangan renhou, no nagashi mangan, no bankruptcy end, and no agari-yame.
+
 ## Chinese Official Project Decisions
 
 - A match is four rounds of four hands. The dealer advances after every completed hand; there are no dealer repeats.
@@ -50,7 +57,7 @@ This matrix freezes the rule sources and project defaults before complete rule i
 | --- | --- |
 | 12A shared match/rule/privacy foundation | Complete |
 | 12B complete Chinese Official rules | Complete |
-| 12C complete Riichi rules | Not started |
+| 12C complete Riichi rules | In progress |
 | 12D client/server/bot integration | Not started |
 | 12E dual-mode acceptance | Not started |
 
