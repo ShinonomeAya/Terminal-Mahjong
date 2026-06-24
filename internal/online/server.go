@@ -192,7 +192,7 @@ func (s *Server) createRoom(conn *websocket.Conn, name string, mode game.RuleMod
 	if mode == "" {
 		mode = game.ModeCompatibility
 	}
-	match, err := game.NewMatch(0, game.NewCompatibilityRuleSet(mode, config))
+	match, err := game.NewMatch(0, roomRuleSet(mode, config))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -209,6 +209,13 @@ func (s *Server) createRoom(conn *websocket.Conn, name string, mode game.RuleMod
 	s.rooms[code] = created
 	s.sessions[session.playerID] = session
 	return session, created, nil
+}
+
+func roomRuleSet(mode game.RuleMode, config game.RuleConfig) game.RuleSet {
+	if mode == game.ModeMCR {
+		return game.NewMCRRuleSet(config.MCR)
+	}
+	return game.NewCompatibilityRuleSet(mode, config)
 }
 
 func (s *Server) joinRoom(conn *websocket.Conn, code string, name string, mode game.RuleMode, config game.RuleConfig) (*session, *room, error) {

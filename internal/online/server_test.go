@@ -58,6 +58,19 @@ func TestWebSocketServerSendsRecipientPrivateMatchSnapshots(t *testing.T) {
 	if created.Match.Mode != game.ModeMCR || created.Match.RuleConfig != config {
 		t.Fatalf("created match = %#v", created.Match)
 	}
+	server.mu.Lock()
+	room := server.rooms[created.RoomCode]
+	totalTiles := len(room.match.Round.Wall)
+	for _, player := range room.match.Round.Players {
+		totalTiles += len(player.Hand) + len(player.Flowers)
+		for _, meld := range player.Melds {
+			totalTiles += len(meld.Tiles)
+		}
+	}
+	server.mu.Unlock()
+	if totalTiles != 144 {
+		t.Fatalf("MCR room tile total = %d, want 144", totalTiles)
+	}
 
 	second := dialTestClient(t, url)
 	defer second.Close()
