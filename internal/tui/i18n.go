@@ -158,6 +158,7 @@ func localizeStatusLine(m Model, text string) string {
 		"Discarding", "正在打出",
 		"Winning", "胡牌",
 		"Kong", "杠",
+		"Riichi", "立直",
 		"Ready sent", "已准备",
 		"Reconnected", "已重连",
 		"Waiting for players to ready", "等待玩家准备",
@@ -165,6 +166,7 @@ func localizeStatusLine(m Model, text string) string {
 		"Waiting for your turn", "等待轮到你",
 		"Win is not available", "当前不能胡",
 		"Kong is not available", "当前不能杠",
+		"Riichi is not available", "当前不能立直",
 		"Rooms found", "找到房间",
 		"Connecting online room...", "正在创建联网房间...",
 		"Loading online rooms...", "正在加载联网房间...",
@@ -217,6 +219,8 @@ func commandLabel(m Model, label string, ready bool) string {
 		label = "[H] 胡"
 	case "[K] Kong":
 		label = "[K] 杠"
+	case "[L] Riichi":
+		label = "[L] 立直"
 	case "[H]Win":
 		label = "[H]胡"
 	case "[K]Kong":

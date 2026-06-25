@@ -355,6 +355,51 @@ func TestRenderTableHighlightsReadyKongAction(t *testing.T) {
 	}
 }
 
+func TestOnlineActionBarUsesLegalActionsForWinAndKong(t *testing.T) {
+	snapshot := game.NewGame(7).SnapshotFor("0")
+	snapshot.Current = 0
+	snapshot.Players[0].Hand = mustUITiles(t,
+		"1m", "2m", "3m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+	snapshot.Players[0].HandCount = len(snapshot.Players[0].Hand)
+	snapshot.LegalActions = []game.LegalAction{{Kind: game.CommandDiscard, TileIndex: 0}}
+	model := NewModel()
+	model.Screen = ScreenTable
+	model.Language = LanguageEnglish
+	model.Online = true
+	model.OnlineStarted = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = snapshot
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "[H] Win:off") || !strings.Contains(view, "[K] Kong:off") {
+		t.Fatalf("online action bar should follow legal actions:\n%s", view)
+	}
+}
+
+func TestRenderTableShowsRiichiLegalAction(t *testing.T) {
+	snapshot := game.NewGame(7).SnapshotFor("0")
+	snapshot.Current = 0
+	snapshot.LegalActions = []game.LegalAction{{Kind: game.CommandRiichi, TileIndex: 0}}
+	model := NewModel()
+	model.Screen = ScreenTable
+	model.Online = true
+	model.OnlineStarted = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = snapshot
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "[L] 立直:可用") {
+		t.Fatalf("view missing riichi legal action:\n%s", view)
+	}
+}
+
 func TestReadyActionStateKeepsStableVisibleWidth(t *testing.T) {
 	action := actionState("[H] Win", true)
 

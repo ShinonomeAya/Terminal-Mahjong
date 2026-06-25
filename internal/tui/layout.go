@@ -371,25 +371,42 @@ func tableControls(m Model) string {
 	if m.chinese() {
 		if m.Online {
 			if m.Width > 0 && m.Width < 80 {
-				return strings.Join([]string{"方向键选牌", "R 准备", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), "回车打出", "Q 菜单"}, " | ")
+				return joinControls("方向键选牌", "R 准备", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), riichiCommandLabel(m, canOnlineRiichi(m)), "回车打出", "Q 菜单")
 			}
-			return strings.Join([]string{"←/→ 选牌", "R 准备", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), "回车/空格打出", "单击选牌", "再次单击打出", "Q 菜单"}, " | ")
+			return joinControls("←/→ 选牌", "R 准备", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), riichiCommandLabel(m, canOnlineRiichi(m)), "回车/空格打出", "单击选牌", "再次单击打出", "Q 菜单")
 		}
 		if m.Width > 0 && m.Width < 80 {
-			return strings.Join([]string{"方向键选牌", "回车打出", "单击选牌", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), "Q 退出"}, " | ")
+			return joinControls("方向键选牌", "回车打出", "单击选牌", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), riichiCommandLabel(m, canHumanRiichi(m)), "Q 退出")
 		}
-		return strings.Join([]string{"←/→ 选牌", "回车/空格打出", "单击选牌", "再次单击打出", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), "Q 退出"}, " | ")
+		return joinControls("←/→ 选牌", "回车/空格打出", "单击选牌", "再次单击打出", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), riichiCommandLabel(m, canHumanRiichi(m)), "Q 退出")
 	}
 	if m.Online {
 		if m.Width > 0 && m.Width < 80 {
-			return strings.Join([]string{"Arrows select", "R ready", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), "Enter discard", "Q menu"}, " | ")
+			return joinControls("Arrows select", "R ready", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), riichiCommandLabel(m, canOnlineRiichi(m)), "Enter discard", "Q menu")
 		}
-		return strings.Join([]string{"Left/Right select", "R ready", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), "Enter/Space discard", "click select", "second click discard", "Q menu"}, " | ")
+		return joinControls("Left/Right select", "R ready", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), riichiCommandLabel(m, canOnlineRiichi(m)), "Enter/Space discard", "click select", "second click discard", "Q menu")
 	}
 	if m.Width > 0 && m.Width < 80 {
-		return strings.Join([]string{"Arrows select", "Enter discard", "Click tile", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), "Q quit"}, " | ")
+		return joinControls("Arrows select", "Enter discard", "Click tile", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), riichiCommandLabel(m, canHumanRiichi(m)), "Q quit")
 	}
-	return strings.Join([]string{"Left/Right select", "Enter/Space discard", "click select", "second click discard", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), "Q quit"}, " | ")
+	return joinControls("Left/Right select", "Enter/Space discard", "click select", "second click discard", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), riichiCommandLabel(m, canHumanRiichi(m)), "Q quit")
+}
+
+func joinControls(parts ...string) string {
+	filtered := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part != "" {
+			filtered = append(filtered, part)
+		}
+	}
+	return strings.Join(filtered, " | ")
+}
+
+func riichiCommandLabel(m Model, ready bool) string {
+	if !ready {
+		return ""
+	}
+	return commandLabel(m, "[L] Riichi", true)
 }
 
 func claimControls(m Model) string {
@@ -455,58 +472,65 @@ func actionState(label string, ready bool) string {
 }
 
 func canHumanWin(m Model) bool {
-	if m.Game == nil || len(m.Game.Players) == 0 {
-		return false
-	}
-	return game.CanWin(m.Game.Players[0].Hand)
+	return localLegalActionAvailable(m, game.CommandWin)
 }
 
 func canHumanKong(m Model) bool {
-	if m.Game == nil || len(m.Game.Players) == 0 {
-		return false
-	}
-	counts := game.TileCounts(m.Game.Players[0].Hand)
-	for _, count := range counts {
-		if count >= 4 {
-			return true
-		}
-	}
-	return false
+	return localLegalActionAvailable(m, game.CommandKong)
+}
+
+func canHumanRiichi(m Model) bool {
+	return localLegalActionAvailable(m, game.CommandRiichi)
 }
 
 func canOnlineWin(m Model) bool {
-	if !m.OnlineStarted || m.OnlineSnapshot.Current != m.OnlineSeat {
-		return false
-	}
-	return game.CanWin(onlineHand(m))
+	return onlineLegalActionAvailable(m, game.CommandWin)
 }
 
 func canOnlineKong(m Model) bool {
-	if !m.OnlineStarted || m.OnlineSnapshot.Current != m.OnlineSeat {
-		return false
-	}
 	_, ok := onlineKongTile(m)
 	return ok
 }
 
+func canOnlineRiichi(m Model) bool {
+	return onlineLegalActionAvailable(m, game.CommandRiichi)
+}
+
 func onlineKongTile(m Model) (game.Tile, bool) {
-	hand := onlineHand(m)
-	if len(hand) == 0 {
+	if !m.OnlineStarted || m.OnlineSnapshot.Current != m.OnlineSeat {
 		return 0, false
 	}
-	if m.SelectedIndex >= 0 && m.SelectedIndex < len(hand) {
-		selected := hand[m.SelectedIndex]
-		if game.TileCounts(hand)[selected] >= 4 {
-			return selected, true
+	for _, action := range m.OnlineSnapshot.LegalActions {
+		if action.Kind != game.CommandKong {
+			continue
 		}
-	}
-	counts := game.TileCounts(hand)
-	for tile, count := range counts {
-		if count >= 4 {
-			return game.Tile(tile), true
-		}
+		tile, ok := game.ParseTile(action.Tile)
+		return tile, ok
 	}
 	return 0, false
+}
+
+func localLegalActionAvailable(m Model, kind game.CommandKind) bool {
+	if m.Game == nil {
+		return false
+	}
+	return legalActionAvailable(m.Game.Snapshot().LegalActions, kind)
+}
+
+func onlineLegalActionAvailable(m Model, kind game.CommandKind) bool {
+	if !m.OnlineStarted || m.OnlineSnapshot.Current != m.OnlineSeat {
+		return false
+	}
+	return legalActionAvailable(m.OnlineSnapshot.LegalActions, kind)
+}
+
+func legalActionAvailable(actions []game.LegalAction, kind game.CommandKind) bool {
+	for _, action := range actions {
+		if action.Kind == kind {
+			return true
+		}
+	}
+	return false
 }
 
 func renderStatus(m Model) string {

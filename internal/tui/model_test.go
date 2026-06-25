@@ -554,6 +554,7 @@ func TestOnlineTableWinKeySendsWinCommand(t *testing.T) {
 		"7s", "7s", "7s",
 		"E", "E",
 	)
+	model.OnlineSnapshot.LegalActions = []game.LegalAction{{Kind: game.CommandWin}}
 
 	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("h")})
 	updated := next.(Model)
@@ -590,6 +591,7 @@ func TestOnlineTableKongKeySendsKongCommand(t *testing.T) {
 		"2p", "3p", "4p",
 		"7s", "8s", "9s", "E",
 	)
+	model.OnlineSnapshot.LegalActions = []game.LegalAction{{Kind: game.CommandKong, Tile: "1m"}}
 
 	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
 	updated := next.(Model)
@@ -621,6 +623,7 @@ func TestOnlineActionBarShowsReadyWinAndKong(t *testing.T) {
 		"2p", "3p", "4p",
 		"7s", "7s", "7s", "E",
 	)
+	model.OnlineSnapshot.LegalActions = []game.LegalAction{{Kind: game.CommandWin}, {Kind: game.CommandKong, Tile: "1m"}}
 
 	view := model.View()
 	for _, text := range []string{"[H] 胡", "[K] 杠"} {

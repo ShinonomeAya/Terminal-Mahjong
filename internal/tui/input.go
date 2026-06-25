@@ -39,6 +39,8 @@ func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		m.Game.Quit("quit")
 		m.Screen = ScreenGameOver
+	case "l":
+		return riichiLocal(m)
 	}
 	return m, nil
 }
@@ -72,6 +74,8 @@ func updateOnlineTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return winOnline(m)
 	case "k":
 		return kongOnline(m)
+	case "l":
+		return riichiOnline(m)
 	case "q":
 		if m.OnlineClient != nil {
 			m.OnlineClient.Close()
@@ -82,6 +86,69 @@ func updateOnlineTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.NetworkStatus = NetworkLocal
 	}
 	return m, nil
+}
+
+func riichiOnline(m Model) (tea.Model, tea.Cmd) {
+	if !m.OnlineStarted {
+		m.StatusLine = "Waiting for players to ready"
+		return m, nil
+	}
+	if m.OnlineClient == nil {
+		m.StatusLine = "Online room is not ready"
+		return m, nil
+	}
+	if m.OnlineSnapshot.Current != m.OnlineSeat {
+		m.StatusLine = "Waiting for your turn"
+		return m, nil
+	}
+	index, ok := selectedLegalTileIndex(m.OnlineSnapshot.LegalActions, game.CommandRiichi, m.SelectedIndex)
+	if !ok {
+		m.StatusLine = "Riichi is not available"
+		return m, nil
+	}
+	m.StatusLine = "Riichi"
+	return m, sendOnlineGameCommandCmd(m.OnlineClient, game.GameCommand{Kind: game.CommandRiichi, TileIndex: index})
+}
+
+func riichiLocal(m Model) (tea.Model, tea.Cmd) {
+	if m.Game == nil {
+		return m, nil
+	}
+	index, ok := selectedLegalTileIndex(m.Game.Snapshot().LegalActions, game.CommandRiichi, m.SelectedIndex)
+	if !ok {
+		m.StatusLine = "Riichi is not available"
+		return m, nil
+	}
+	result := m.Game.ApplyCommand(game.GameCommand{PlayerID: "0", Kind: game.CommandRiichi, TileIndex: index})
+	if !result.OK {
+		m.StatusLine = result.Error
+		return m, nil
+	}
+	m.StatusLine = "Riichi"
+	m.Game.AdvanceAIUntilHumanTurn()
+	if m.Game.Over {
+		m.Screen = ScreenGameOver
+	}
+	return m, nil
+}
+
+func selectedLegalTileIndex(actions []game.LegalAction, kind game.CommandKind, selected int) (int, bool) {
+	fallback := -1
+	for _, action := range actions {
+		if action.Kind != kind {
+			continue
+		}
+		if fallback < 0 {
+			fallback = action.TileIndex
+		}
+		if action.TileIndex == selected {
+			return selected, true
+		}
+	}
+	if fallback >= 0 {
+		return fallback, true
+	}
+	return 0, false
 }
 
 func discardOnlineSelected(m Model) (tea.Model, tea.Cmd) {
