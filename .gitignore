@@ -11,3 +11,7 @@ coverage.out
 
 # Local brainstorming/mockup sessions
 .superpowers/
+# Local Go test/runtime cache
+.gocache/
+.tmp/
+*.go.[0-9]*

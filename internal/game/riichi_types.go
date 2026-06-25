@@ -8,6 +8,33 @@ const (
 	RiichiAccepted RiichiDeclarationState = "accepted"
 )
 
+type RiichiShapeKind string
+
+const (
+	RiichiShapeStandard        RiichiShapeKind = "standard"
+	RiichiShapeSevenPairs      RiichiShapeKind = "seven_pairs"
+	RiichiShapeThirteenOrphans RiichiShapeKind = "thirteen_orphans"
+)
+
+type RiichiWaitKind string
+
+const (
+	RiichiWaitUnknown RiichiWaitKind = ""
+	RiichiWaitRyanmen RiichiWaitKind = "ryanmen"
+	RiichiWaitKanchan RiichiWaitKind = "kanchan"
+	RiichiWaitPenchan RiichiWaitKind = "penchan"
+	RiichiWaitTanki   RiichiWaitKind = "tanki"
+	RiichiWaitShanpon RiichiWaitKind = "shanpon"
+	RiichiWaitKokushi RiichiWaitKind = "kokushi"
+)
+
+type RiichiDecomposition struct {
+	Kind   RiichiShapeKind `json:"kind"`
+	Groups []MCRGroup      `json:"groups"`
+	Tiles  []Tile          `json:"tiles"`
+	Wait   RiichiWaitKind  `json:"wait,omitempty"`
+}
+
 type RiichiRoundState struct {
 	DeadWall         []Tile                    `json:"dead_wall"`
 	DoraIndicators   []Tile                    `json:"dora_indicators"`

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "standard-ryanmen-waits",
+    "source": "EMA riichi complete hand: four sets and one pair; ryanmen wait example",
+    "hand": ["1m", "2m", "3m", "4m", "5m", "6m", "7p", "8p", "9p", "2s", "2s", "3s", "4s"],
+    "winning_tile": "5s",
+    "expected_kind": "standard",
+    "expected_wait": "ryanmen",
+    "expected_waits": ["2s", "5s"]
+  },
+  {
+    "id": "seven-pairs-strict",
+    "source": "EMA riichi special shape: chiitoitsu uses seven distinct pairs",
+    "hand": ["1m", "1m", "2m", "2m", "3p", "3p", "4p", "4p", "5s", "5s", "E", "E", "Z"],
+    "winning_tile": "Z",
+    "expected_kind": "seven_pairs",
+    "expected_wait": "tanki"
+  },
+  {
+    "id": "thirteen-orphans",
+    "source": "EMA riichi yakuman shape: kokushi musou",
+    "hand": ["1m", "9m", "1p", "9p", "1s", "9s", "E", "S", "W", "N", "Z", "F", "B"],
+    "winning_tile": "E",
+    "expected_kind": "thirteen_orphans",
+    "expected_wait": "kokushi"
+  }
+]
