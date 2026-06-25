@@ -37,6 +37,9 @@ func (g *Game) buildPendingClaim(discarder int, discard Tile) *PendingClaim {
 	if rules, ok := g.rules.(*MCRRuleSet); ok {
 		return rules.buildPendingClaim(g, discarder, discard)
 	}
+	if rules, ok := g.rules.(*RiichiRuleSet); ok {
+		return rules.buildPendingClaim(g, discarder, discard)
+	}
 	options := make([]ClaimOption, 0)
 	for offset := 1; offset < len(g.Players); offset++ {
 		playerIndex := (discarder + offset) % len(g.Players)
@@ -144,6 +147,9 @@ func (g *Game) applyClaimCommand(command GameCommand) CommandResult {
 		g.removeClaimedDiscard()
 		g.claimExposedKong(option.Player, tile)
 		g.completeAcceptedClaim(option.Player)
+		if rules, ok := g.rules.(*RiichiRuleSet); ok {
+			rules.afterAcceptedKong(g)
+		}
 		g.drawReplacement(option.Player)
 	case ClaimPong:
 		g.removeClaimedDiscard()
@@ -181,6 +187,10 @@ func (g *Game) passActiveClaim(activeCount int) {
 	if g.PendingClaim.Active >= len(g.PendingClaim.Options) {
 		if g.PendingClaim.RobbingKong {
 			if rules, ok := g.rules.(*MCRRuleSet); ok {
+				rules.completeAddedKong(g)
+				return
+			}
+			if rules, ok := g.rules.(*RiichiRuleSet); ok {
 				rules.completeAddedKong(g)
 				return
 			}

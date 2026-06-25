@@ -1,0 +1,7 @@
+[
+  {"id":"ron-priority","expected":["ron before calls"]},
+  {"id":"daiminkan-before-chi","expected":["daiminkan before pon and chi"]},
+  {"id":"next-seat-chi","expected":["only next seat may chi"]},
+  {"id":"concealed-kong","expected":["ankan draws rinshan and reveals kan dora"]},
+  {"id":"added-kong-chankan","expected":["shouminkan opens chankan before mutation"]}
+]

@@ -76,9 +76,9 @@ func (rules *RiichiRuleSet) InitialPoints() [4]int {
 }
 
 func (rules *RiichiRuleSet) LegalActions(round *Game, playerID string) []LegalAction {
-	return rules.compatibility.LegalActions(round, playerID)
+	return rules.legalActions(round, playerID)
 }
 
 func (rules *RiichiRuleSet) Allows(round *Game, command GameCommand) bool {
-	return rules.compatibility.Allows(round, command)
+	return rules.allows(round, command)
 }

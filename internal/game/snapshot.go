@@ -204,6 +204,9 @@ func (g *Game) tryCurrentKong(tileText string, out io.Writer) bool {
 	if rules, ok := g.rules.(*MCRRuleSet); ok {
 		return rules.declareKong(g, tileText)
 	}
+	if rules, ok := g.rules.(*RiichiRuleSet); ok {
+		return rules.declareKong(g, tileText)
+	}
 	tile, ok := ParseTile(tileText)
 	if !ok || g.Players[g.Current].Count(tile) < 4 {
 		return false
