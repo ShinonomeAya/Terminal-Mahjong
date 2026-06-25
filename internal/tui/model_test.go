@@ -186,6 +186,28 @@ func TestJoinOnlineEnterJoinsRoomAndShowsTable(t *testing.T) {
 	}
 }
 
+func TestCreateOnlineRoomUsesSelectedRiichiOptions(t *testing.T) {
+	server := online.NewServer()
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	serverURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+
+	model := NewModel()
+	model.OnlineServerURL = serverURL
+	model.OnlineSession = t.TempDir() + "/session.json"
+	model.SelectedMode = game.ModeRiichi
+	model.SelectedRiichiRedFives = 0
+
+	msg := createOnlineRoomCmd(model)()
+	connected, ok := msg.(onlineConnectedMsg)
+	if !ok {
+		t.Fatalf("message = %#v, want onlineConnectedMsg", msg)
+	}
+	if connected.Message.Mode != game.ModeRiichi || connected.Message.RuleConfig.Riichi.RedFives != 0 {
+		t.Fatalf("created rules = %q/%#v", connected.Message.Mode, connected.Message.RuleConfig)
+	}
+}
+
 func TestOnlineConnectedMessageShowsSnapshotTable(t *testing.T) {
 	model := NewModel()
 	snapshot := game.NewGame(7).Snapshot()

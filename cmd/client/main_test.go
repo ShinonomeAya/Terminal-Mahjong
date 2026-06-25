@@ -124,6 +124,28 @@ func TestRunListsRooms(t *testing.T) {
 	}
 }
 
+func TestRunClientCreatesRiichiRoomWithFlags(t *testing.T) {
+	serverURL, closeServer := startClientTestServer()
+	defer closeServer()
+
+	sessionPath := filepath.Join(t.TempDir(), "session.json")
+	var output bytes.Buffer
+	if err := run(context.Background(), []string{
+		"-server", serverURL,
+		"-session", sessionPath,
+		"-mode", "riichi",
+		"-red-fives", "0",
+	}, &output); err != nil {
+		t.Fatal(err)
+	}
+	text := output.String()
+	for _, want := range []string{"type=room_created", "mode=riichi", "red_fives=0"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("output missing %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestWatchOncePrintsRoomState(t *testing.T) {
 	serverURL, closeServer := startClientMessageServer(t, protocol.Message{
 		Type:     protocol.MsgRoomState,
