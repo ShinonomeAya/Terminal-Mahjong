@@ -24,6 +24,9 @@ func (rules *RiichiRuleSet) legalActions(round *Game, id string) []LegalAction {
 	}
 
 	player := round.Players[round.Current]
+	if len(player.Hand)%3 != 2 {
+		return nil
+	}
 	actions := make([]LegalAction, 0, len(player.Hand)+4)
 	for index := range player.Hand {
 		actions = append(actions, LegalAction{Kind: CommandDiscard, TileIndex: index})
@@ -45,19 +48,59 @@ func (rules *RiichiRuleSet) legalActions(round *Game, id string) []LegalAction {
 }
 
 func (rules *RiichiRuleSet) allows(round *Game, command GameCommand) bool {
-	for _, action := range rules.legalActions(round, command.PlayerID) {
-		if action.Kind != command.Kind {
+	if round == nil || round.Over || round.Phase == PhaseRoundOver || command.PlayerID != playerID(round.Current) {
+		return false
+	}
+	if round.Phase == PhaseAwaitingClaim {
+		return rules.allowsClaimCommand(round, command)
+	}
+	if round.Phase != PhaseAwaitingDiscard || round.Current < 0 || round.Current >= len(round.Players) {
+		return false
+	}
+	player := round.Players[round.Current]
+	if len(player.Hand)%3 != 2 {
+		return command.Kind == CommandQuit
+	}
+	switch command.Kind {
+	case CommandDiscard:
+		return command.TileIndex >= 0 && command.TileIndex < len(player.Hand)
+	case CommandWin:
+		return riichiCanSelfDrawWin(round, round.Current)
+	case CommandRiichi:
+		for _, index := range rules.riichiDeclarationDiscardIndexes(round, round.Current) {
+			if index == command.TileIndex {
+				return true
+			}
+		}
+		return false
+	case CommandKong:
+		tile, ok := ParseTile(command.Tile)
+		if !ok {
+			return false
+		}
+		base := tile.Base()
+		return player.Count(base) >= 4 || (player.Count(base) >= 1 && playerHasBasePong(player, base))
+	case CommandQuit:
+		return true
+	default:
+		return false
+	}
+}
+
+func (rules *RiichiRuleSet) allowsClaimCommand(round *Game, command GameCommand) bool {
+	options := round.activeClaimOptions()
+	if len(options) == 0 {
+		return command.Kind == CommandPass
+	}
+	if command.Kind == CommandPass {
+		return true
+	}
+	for index, option := range options {
+		if commandKindForClaim(option.Kind) != command.Kind {
 			continue
 		}
-		switch action.Kind {
-		case CommandDiscard, CommandChow, CommandRiichi:
-			if action.TileIndex != command.TileIndex {
-				continue
-			}
-		case CommandKong:
-			if action.Tile != command.Tile && action.Tile != "" {
-				continue
-			}
+		if option.Kind == ClaimChow && command.TileIndex != index {
+			continue
 		}
 		return true
 	}

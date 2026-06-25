@@ -158,6 +158,69 @@ func TestRiichiRoomUsesRiichiRuleSetAndReconnectsCanonicalPrivateSnapshot(t *tes
 	}
 }
 
+func TestRiichiWebSocketReadyDiscardAndReconnectSmoke(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+	config := game.DefaultRuleConfig(game.ModeRiichi)
+
+	host := dialTestClient(t, url)
+	sendMessage(t, host, protocol.Message{Type: protocol.MsgCreateRoom, Name: "east", Mode: game.ModeRiichi, RuleConfig: config})
+	created := readUntil(t, host, protocol.MsgRoomCreated)
+	clients := []*websocket.Conn{host}
+	defer func() {
+		for _, client := range clients {
+			client.Close()
+		}
+	}()
+
+	for seat := 1; seat < 4; seat++ {
+		client := dialTestClient(t, url)
+		clients = append(clients, client)
+		sendMessage(t, client, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode, Name: "guest"})
+		joined := readUntil(t, client, protocol.MsgRoomJoined)
+		if joined.Seat != seat || joined.Match.Mode != game.ModeRiichi {
+			t.Fatalf("joined = %#v", joined)
+		}
+	}
+	for _, client := range clients {
+		sendMessage(t, client, protocol.Message{Type: protocol.MsgReady})
+	}
+	started := readUntilStartedRoomState(t, host)
+	assertPrivateSnapshot(t, started.Match.Round, 0)
+	if started.Match.Round.Riichi == nil || len(started.Match.Round.Riichi.UraIndicators) != 0 {
+		t.Fatalf("started riichi private snapshot = %#v", started.Match.Round.Riichi)
+	}
+	discard, ok := firstDiscardAction(started.Match.Round.LegalActions)
+	if !ok {
+		t.Fatalf("started legal actions missing discard: %#v", started.Match.Round.LegalActions)
+	}
+
+	sendMessage(t, host, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandDiscard, TileIndex: discard.TileIndex}})
+	update := readUntil(t, host, protocol.MsgGameSnapshot)
+	assertPrivateSnapshot(t, update.Match.Round, 0)
+	if update.Match.Round.Riichi == nil || len(update.Match.Round.Riichi.UraIndicators) != 0 {
+		t.Fatalf("post-discard riichi private snapshot = %#v", update.Match.Round.Riichi)
+	}
+	want, err := json.Marshal(update.Match)
+	if err != nil {
+		t.Fatal(err)
+	}
+	host.Close()
+
+	reconnectedClient := dialTestClient(t, url)
+	clients[0] = reconnectedClient
+	sendMessage(t, reconnectedClient, protocol.Message{Type: protocol.MsgReconnect, PlayerID: created.PlayerID, ReconnectToken: created.ReconnectToken})
+	reconnected := readUntil(t, reconnectedClient, protocol.MsgReconnected)
+	got, err := json.Marshal(reconnected.Match)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("reconnected Riichi smoke match differs\nbefore=%s\nafter=%s", want, got)
+	}
+}
+
 func TestWebSocketServerRejectsConflictingJoinMode(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)
@@ -632,4 +695,31 @@ func readUntil(t *testing.T, conn *websocket.Conn, messageType protocol.MessageT
 			return message
 		}
 	}
+}
+
+func readUntilStartedRoomState(t *testing.T, conn *websocket.Conn) protocol.Message {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	if err := conn.SetReadDeadline(deadline); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		var message protocol.Message
+		err := conn.ReadJSON(&message)
+		if err != nil {
+			t.Fatalf("did not receive started room_state: %v", err)
+		}
+		if message.Type == protocol.MsgRoomState && message.Started {
+			return message
+		}
+	}
+}
+
+func firstDiscardAction(actions []game.LegalAction) (game.LegalAction, bool) {
+	for _, action := range actions {
+		if action.Kind == game.CommandDiscard {
+			return action, true
+		}
+	}
+	return game.LegalAction{}, false
 }

@@ -57,7 +57,7 @@ This matrix freezes the rule sources and project defaults before complete rule i
 | --- | --- |
 | 12A shared match/rule/privacy foundation | Complete |
 | 12B complete Chinese Official rules | Complete |
-| 12C complete Riichi rules | In progress |
+| 12C complete Riichi rules | Complete |
 | 12D client/server/bot integration | Not started |
 | 12E dual-mode acceptance | Not started |
 
@@ -68,3 +68,11 @@ This matrix freezes the rule sources and project defaults before complete rule i
 - Matches settle zero-sum, rotate the dealer after every hand, retain all settlement history, and complete after 16 hands.
 - Replay schema v3 stores the typed MCR score and settlement history without using compatibility scoring.
 - Acceptance on 2026-06-24 passed catalog/fixture validation, 1,000 fixed-seed invariants, full tests, race tests, vet, all command builds, and online tests repeated 20 times.
+
+### Phase 12C Acceptance
+
+- Riichi room creation now uses `RiichiRuleSet` with a 136-tile wall, 14-tile dead wall, public dora indicators, hidden ura indicators during play, honba, riichi sticks, declarations, and recipient-private furiten state.
+- Red fives, dora/ura/kan-dora, rinshan draws, riichi, ippatsu cancellation, all furiten states, chi/pon/kan/ron windows, yaku detection, fu/han/limit scoring, exhaustive draw payments, and East-South settlement are covered by focused fixtures and generated invariants.
+- Bots consume authoritative `LegalActions`; Riichi command validation no longer depends on clients reconstructing hidden rule state.
+- Replay schema v3 stores typed Riichi scores, dora, post-game ura, and Riichi settlement history without using compatibility scoring.
+- Acceptance on 2026-06-25 passed Riichi fixture JSON parsing, catalog/yaku/scoring/settlement tests repeated 20 times, 1,000 fixed-seed invariants for both red-five modes, WebSocket ready/discard/reconnect smoke, full tests, race tests, vet, all command builds, and online tests repeated 20 times.

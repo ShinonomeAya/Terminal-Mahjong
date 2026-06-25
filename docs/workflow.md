@@ -168,3 +168,20 @@ Stage review:
   - WebSocket MCR creation, private broadcast, pending claim, canonical reconnect, and 144-tile conservation integration tests.
 - Total-goal review: Chinese Official games now run through the shared terminal/network architecture without compatibility scoring or action fallback, while concealed tiles and shuffle seeds remain private during play.
 - Remaining risk: Phase 12C Riichi mechanics are not started. Dead wall, dora/ura-dora, riichi/furiten, yaku/fu/han, exhaustive draw, honba/riichi sticks, and East-South progression still require their own source-cited plan and acceptance cycle.
+
+### Phase 12C Review
+
+- Stage goal: replace the Riichi compatibility label with complete, source-cited four-player EMA Riichi 2016 mechanics while preserving shared local, online, bot, snapshot, and replay interfaces.
+- Completed: EMA source notes and catalog fixtures; 136-tile wall, dead wall, dora/ura/kan-dora, red fives, and rinshan draws; Riichi hand/wait enumeration; chi, pon, ron, daiminkan, ankan, shouminkan, and chankan windows; riichi declarations, ippatsu, and all furiten states; complete yaku, fu, han, dora bonus, limits, settlement, exhaustive draw payments, honba, riichi sticks, and East-South match progression; recipient-private Riichi snapshots, canonical reconnect, typed replay state, and legal-action-bound bots.
+- Step evidence: focused RED/GREEN tests were committed for source fixtures, wall/dead wall, decomposition, action windows, furiten/riichi, yaku detection, scoring, settlement, snapshots, replay, reconnect, and bot legal-action behavior.
+- Acceptance evidence (2026-06-25):
+  - all `testdata/rules/riichi/**/*.json` files parsed with `ConvertFrom-Json`;
+  - `go test ./internal/game -run "RiichiCatalog|EveryRiichiYaku|RiichiScoring|RiichiSettlement" -count=20`;
+  - `go test ./internal/game -run "RiichiGenerated|RiichiFuritenRonNever" -count=1`;
+  - `go test ./internal/game ./internal/online ./internal/bot -run "Riichi.*Snapshot|Riichi.*Reconnect|Riichi.*Replay|Riichi.*Bot|RiichiRoom" -count=1`;
+  - `go test ./internal/online -run TestRiichiWebSocketReadyDiscardAndReconnectSmoke -count=1`;
+  - `gofmt -l` over `internal` and `cmd`, `git diff --check`, `go vet ./...`, `go test ./... -count=1`, and `go test -race ./... -count=1`;
+  - `go build ./cmd/mahjong ./cmd/server ./cmd/client`;
+  - `go test ./internal/online -count=20`.
+- Total-goal review: both complete rule modes now run through the shared terminal/network architecture with private live information redacted, typed score/replay state, and bots constrained by server-provided legal actions.
+- Remaining risk: Phase 12D still needs client-facing mode/options polish, localized score/error presentation, and side-by-side local/online command-sequence agreement checks before the wide table redesign begins.
