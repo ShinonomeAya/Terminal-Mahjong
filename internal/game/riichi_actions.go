@@ -31,6 +31,9 @@ func (rules *RiichiRuleSet) legalActions(round *Game, id string) []LegalAction {
 	if riichiCanSelfDrawWin(round, round.Current) {
 		actions = append(actions, LegalAction{Kind: CommandWin})
 	}
+	for _, index := range rules.riichiDeclarationDiscardIndexes(round, round.Current) {
+		actions = append(actions, LegalAction{Kind: CommandRiichi, TileIndex: index})
+	}
 	counts := TileCounts(player.Hand)
 	for tile, count := range counts {
 		base := Tile(tile)
@@ -47,7 +50,7 @@ func (rules *RiichiRuleSet) allows(round *Game, command GameCommand) bool {
 			continue
 		}
 		switch action.Kind {
-		case CommandDiscard, CommandChow:
+		case CommandDiscard, CommandChow, CommandRiichi:
 			if action.TileIndex != command.TileIndex {
 				continue
 			}
@@ -65,7 +68,7 @@ func (rules *RiichiRuleSet) buildPendingClaim(round *Game, discarder int, discar
 	options := make([]ClaimOption, 0)
 	for offset := 1; offset < len(round.Players); offset++ {
 		playerIndex := (discarder + offset) % len(round.Players)
-		if riichiCanWinOnDiscard(round, playerIndex, discard) {
+		if riichiCanWinOnDiscard(round, playerIndex, discard) && !rules.isFuritenForRon(round, playerIndex, discard) {
 			options = append(options, ClaimOption{Kind: ClaimWin, Player: playerIndex})
 		}
 	}
@@ -170,6 +173,7 @@ func (rules *RiichiRuleSet) completeAddedKong(round *Game) {
 }
 
 func (rules *RiichiRuleSet) afterAcceptedKong(round *Game) {
+	rules.cancelIppatsu(round)
 	revealRiichiKanDora(round)
 }
 

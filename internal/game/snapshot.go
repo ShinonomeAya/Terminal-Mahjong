@@ -42,6 +42,7 @@ const (
 	CommandQuit     CommandKind = "quit"
 	CommandPass     CommandKind = "pass"
 	CommandClaimWin CommandKind = "claim_win"
+	CommandRiichi   CommandKind = "riichi"
 	CommandPong     CommandKind = "pong"
 	CommandChow     CommandKind = "chow"
 )
@@ -140,6 +141,16 @@ func (g *Game) ApplyCommand(command GameCommand) CommandResult {
 	switch command.Kind {
 	case CommandDiscard:
 		tile, err := g.discardCurrent(command.TileIndex)
+		if err != nil {
+			return g.commandError(command, err.Error())
+		}
+		return g.commandOK(command, tile.String())
+	case CommandRiichi:
+		rules, ok := g.rules.(*RiichiRuleSet)
+		if !ok {
+			return g.commandError(command, "riichi is not available")
+		}
+		tile, err := rules.declareRiichi(g, command.TileIndex)
 		if err != nil {
 			return g.commandError(command, err.Error())
 		}

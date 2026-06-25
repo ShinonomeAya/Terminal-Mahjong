@@ -1,0 +1,8 @@
+[
+  {"id":"closed-tenpai-riichi","expected":["closed tenpai exposes riichi declaration discard choices"]},
+  {"id":"riichi-accepts-after-safe-discard","expected":["declaration becomes accepted and ippatsu when nobody claims"]},
+  {"id":"own-discard-furiten","expected":["own discard in waits suppresses ron"]},
+  {"id":"temporary-furiten-after-pass","expected":["passing ron suppresses later ron until own draw"]},
+  {"id":"riichi-pass-furiten","expected":["passing ron after riichi creates persistent riichi furiten"]},
+  {"id":"ippatsu-cancelled-by-call","expected":["accepted calls cancel ippatsu"]}
+]

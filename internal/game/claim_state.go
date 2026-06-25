@@ -183,6 +183,9 @@ func (g *Game) activeClaimOptions() []ClaimOption {
 }
 
 func (g *Game) passActiveClaim(activeCount int) {
+	if rules, ok := g.rules.(*RiichiRuleSet); ok {
+		rules.recordClaimPass(g, g.Current, g.activeClaimOptions())
+	}
 	g.PendingClaim.Active += activeCount
 	if g.PendingClaim.Active >= len(g.PendingClaim.Options) {
 		if g.PendingClaim.RobbingKong {
@@ -203,12 +206,18 @@ func (g *Game) passActiveClaim(activeCount int) {
 }
 
 func (g *Game) completeUnclaimedDiscard(discarder int) {
+	if rules, ok := g.rules.(*RiichiRuleSet); ok {
+		rules.acceptRiichiDeclaration(g, discarder)
+	}
 	g.PendingClaim = nil
 	g.Phase = PhaseAwaitingDiscard
 	g.Current = (discarder + 1) % len(g.Players)
 }
 
 func (g *Game) completeAcceptedClaim(player int) {
+	if rules, ok := g.rules.(*RiichiRuleSet); ok {
+		rules.cancelIppatsu(g)
+	}
 	g.PendingClaim = nil
 	g.Phase = PhaseAwaitingDiscard
 	g.Current = player

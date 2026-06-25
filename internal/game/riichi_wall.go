@@ -56,6 +56,9 @@ func (rules *RiichiRuleSet) Draw(round *Game, player int, source DrawSource) (Ti
 	if source == DrawReplacement {
 		return rules.drawRinshan(round, player)
 	}
+	if round.Riichi != nil && player >= 0 && player < len(round.Riichi.TemporaryFuriten) {
+		round.Riichi.TemporaryFuriten[player] = false
+	}
 	if len(round.Wall) == 0 {
 		finishRiichiWallExhaustion(round, player)
 		return -1, false
