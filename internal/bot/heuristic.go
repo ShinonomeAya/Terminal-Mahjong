@@ -22,7 +22,16 @@ func (b *HeuristicBot) Decide(_ context.Context, snapshot game.GameSnapshot, pla
 		return game.GameCommand{PlayerID: playerID, Kind: game.CommandQuit}
 	}
 	if snapshot.Phase == game.PhaseAwaitingClaim {
+		if snapshot.PendingClaim != nil {
+			return decideClaim(snapshot, player, playerID)
+		}
+		if len(snapshot.LegalActions) > 0 {
+			return decideLegal(snapshot.LegalActions, player, playerID)
+		}
 		return decideClaim(snapshot, player, playerID)
+	}
+	if len(snapshot.LegalActions) > 0 {
+		return decideLegal(snapshot.LegalActions, player, playerID)
 	}
 	if game.CanWin(player.Hand) {
 		return game.GameCommand{PlayerID: playerID, Kind: game.CommandWin}
@@ -32,6 +41,61 @@ func (b *HeuristicBot) Decide(_ context.Context, snapshot game.GameSnapshot, pla
 	}
 	index := game.ChooseAIDiscard(player.Hand)
 	return game.GameCommand{PlayerID: playerID, Kind: game.CommandDiscard, TileIndex: index}
+}
+
+func decideLegal(actions []game.LegalAction, player game.PlayerView, playerID string) game.GameCommand {
+	for _, kind := range []game.CommandKind{game.CommandClaimWin, game.CommandWin, game.CommandPong, game.CommandChow, game.CommandRiichi, game.CommandKong} {
+		if action, ok := firstLegalAction(actions, kind); ok {
+			return commandFromLegalAction(playerID, action)
+		}
+	}
+	if action, ok := bestLegalDiscard(actions, player.Hand); ok {
+		return commandFromLegalAction(playerID, action)
+	}
+	if action, ok := firstLegalAction(actions, game.CommandPass); ok {
+		return commandFromLegalAction(playerID, action)
+	}
+	if action, ok := firstLegalAction(actions, game.CommandQuit); ok {
+		return commandFromLegalAction(playerID, action)
+	}
+	return game.GameCommand{PlayerID: playerID, Kind: game.CommandQuit}
+}
+
+func firstLegalAction(actions []game.LegalAction, kind game.CommandKind) (game.LegalAction, bool) {
+	for _, action := range actions {
+		if action.Kind == kind {
+			return action, true
+		}
+	}
+	return game.LegalAction{}, false
+}
+
+func bestLegalDiscard(actions []game.LegalAction, hand []game.Tile) (game.LegalAction, bool) {
+	bestIndex := game.ChooseAIDiscard(hand)
+	var fallback game.LegalAction
+	found := false
+	for _, action := range actions {
+		if action.Kind != game.CommandDiscard {
+			continue
+		}
+		if !found {
+			fallback = action
+			found = true
+		}
+		if action.TileIndex == bestIndex {
+			return action, true
+		}
+	}
+	return fallback, found
+}
+
+func commandFromLegalAction(playerID string, action game.LegalAction) game.GameCommand {
+	return game.GameCommand{
+		PlayerID:  playerID,
+		Kind:      action.Kind,
+		TileIndex: action.TileIndex,
+		Tile:      action.Tile,
+	}
 }
 
 func decideClaim(snapshot game.GameSnapshot, player game.PlayerView, playerID string) game.GameCommand {

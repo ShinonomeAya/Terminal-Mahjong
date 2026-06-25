@@ -117,6 +117,47 @@ func TestWebSocketServerSendsRecipientPrivateMatchSnapshots(t *testing.T) {
 	}
 }
 
+func TestRiichiRoomUsesRiichiRuleSetAndReconnectsCanonicalPrivateSnapshot(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+	config := game.DefaultRuleConfig(game.ModeRiichi)
+
+	client := dialTestClient(t, url)
+	sendMessage(t, client, protocol.Message{Type: protocol.MsgCreateRoom, Name: "east", Mode: game.ModeRiichi, RuleConfig: config})
+	created := readUntil(t, client, protocol.MsgRoomCreated)
+	if created.Match.Mode != game.ModeRiichi || created.Match.RuleConfig != config {
+		t.Fatalf("created match = %#v", created.Match)
+	}
+	if created.Match.Round.Riichi == nil || created.Match.Round.Riichi.DeadWallCount != 14 || len(created.Match.Round.Riichi.DoraIndicators) != 1 {
+		t.Fatalf("created riichi snapshot = %#v", created.Match.Round.Riichi)
+	}
+	server.mu.Lock()
+	room := server.rooms[created.RoomCode]
+	hasRiichiState := room != nil && room.match.Round.Riichi != nil && len(room.match.Round.Riichi.DeadWall) == 14
+	server.mu.Unlock()
+	if !hasRiichiState {
+		t.Fatal("room did not use authoritative RiichiRuleSet")
+	}
+	want, err := json.Marshal(created.Match)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.Close()
+
+	reconnectedClient := dialTestClient(t, url)
+	defer reconnectedClient.Close()
+	sendMessage(t, reconnectedClient, protocol.Message{Type: protocol.MsgReconnect, PlayerID: created.PlayerID, ReconnectToken: created.ReconnectToken})
+	reconnected := readUntil(t, reconnectedClient, protocol.MsgReconnected)
+	got, err := json.Marshal(reconnected.Match)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("reconnected Riichi match differs\nbefore=%s\nafter=%s", want, got)
+	}
+}
+
 func TestWebSocketServerRejectsConflictingJoinMode(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)

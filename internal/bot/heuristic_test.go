@@ -46,6 +46,23 @@ func TestHeuristicBotDiscardsLegalTile(t *testing.T) {
 	}
 }
 
+func TestRiichiHeuristicBotChoosesOnlyFromLegalActions(t *testing.T) {
+	snapshot := snapshotWithHand(t,
+		"1m", "2m", "3m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+	snapshot.LegalActions = []game.LegalAction{{Kind: game.CommandDiscard, TileIndex: 3}}
+
+	command := NewHeuristicBot().Decide(context.Background(), snapshot, "0")
+
+	if command.Kind != game.CommandDiscard || command.TileIndex != 3 {
+		t.Fatalf("command = %#v, want only legal discard index 3", command)
+	}
+}
+
 func TestHeuristicBotRejectsUnknownPlayer(t *testing.T) {
 	snapshot := snapshotWithHand(t, "1m", "2m", "3m")
 

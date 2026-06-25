@@ -14,23 +14,39 @@ type PlayerView struct {
 }
 
 type GameSnapshot struct {
-	Seed         int64              `json:"seed"`
-	RNGMode      RNGMode            `json:"rng_mode"`
-	ShuffleProof ShuffleProof       `json:"shuffle_proof"`
-	Players      []PlayerView       `json:"players"`
-	WallCount    int                `json:"wall_count"`
-	Current      int                `json:"current"`
-	Winner       int                `json:"winner"`
-	Discarder    int                `json:"discarder"`
-	Dealer       int                `json:"dealer"`
-	HandNumber   int                `json:"hand_number"`
-	MCRScore     *MCRScoreBreakdown `json:"mcr_score,omitempty"`
-	Reason       string             `json:"reason"`
-	Over         bool               `json:"over"`
-	Events       []GameEvent        `json:"events"`
-	Phase        TurnPhase          `json:"phase"`
-	PendingClaim *PendingClaim      `json:"pending_claim,omitempty"`
-	LegalActions []LegalAction      `json:"legal_actions,omitempty"`
+	Seed         int64                 `json:"seed"`
+	RNGMode      RNGMode               `json:"rng_mode"`
+	ShuffleProof ShuffleProof          `json:"shuffle_proof"`
+	Players      []PlayerView          `json:"players"`
+	WallCount    int                   `json:"wall_count"`
+	Current      int                   `json:"current"`
+	Winner       int                   `json:"winner"`
+	Discarder    int                   `json:"discarder"`
+	Dealer       int                   `json:"dealer"`
+	HandNumber   int                   `json:"hand_number"`
+	MCRScore     *MCRScoreBreakdown    `json:"mcr_score,omitempty"`
+	RiichiScore  *RiichiScoreBreakdown `json:"riichi_score,omitempty"`
+	Riichi       *RiichiSnapshot       `json:"riichi,omitempty"`
+	Reason       string                `json:"reason"`
+	Over         bool                  `json:"over"`
+	Events       []GameEvent           `json:"events"`
+	Phase        TurnPhase             `json:"phase"`
+	PendingClaim *PendingClaim         `json:"pending_claim,omitempty"`
+	LegalActions []LegalAction         `json:"legal_actions,omitempty"`
+}
+
+type RiichiSnapshot struct {
+	DeadWallCount       int                       `json:"dead_wall_count"`
+	DoraIndicators      []Tile                    `json:"dora_indicators,omitempty"`
+	UraIndicators       []Tile                    `json:"ura_indicators,omitempty"`
+	RinshanDraws        int                       `json:"rinshan_draws"`
+	KanCount            int                       `json:"kan_count"`
+	Honba               int                       `json:"honba"`
+	RiichiSticks        int                       `json:"riichi_sticks"`
+	Declarations        [4]RiichiDeclarationState `json:"declarations"`
+	Ippatsu             [4]bool                   `json:"ippatsu"`
+	OwnTemporaryFuriten bool                      `json:"own_temporary_furiten,omitempty"`
+	OwnRiichiFuriten    bool                      `json:"own_riichi_furiten,omitempty"`
 }
 
 type CommandKind string
@@ -88,6 +104,8 @@ func (g *Game) Snapshot() GameSnapshot {
 		Dealer:       g.Dealer,
 		HandNumber:   g.HandNumber,
 		MCRScore:     copyMCRScore(g.MCRScore),
+		RiichiScore:  copyRiichiScore(g.RiichiScore),
+		Riichi:       g.riichiSnapshot(-1),
 		Reason:       g.Reason,
 		Over:         g.Over,
 		Events:       append([]GameEvent(nil), g.Events...),
@@ -100,6 +118,7 @@ func (g *Game) Snapshot() GameSnapshot {
 func (g *Game) SnapshotFor(id string) GameSnapshot {
 	snapshot := g.Snapshot()
 	if g.Over || g.Phase == PhaseRoundOver {
+		snapshot.Riichi = g.riichiSnapshot(-1)
 		return snapshot
 	}
 
@@ -118,9 +137,35 @@ func (g *Game) SnapshotFor(id string) GameSnapshot {
 			snapshot.Events[index].Tile = -1
 		}
 	}
+	snapshot.Riichi = g.riichiSnapshot(viewer)
+	snapshot.RiichiScore = nil
 	if viewer != snapshot.Current {
 		snapshot.PendingClaim = nil
 		snapshot.LegalActions = nil
+	}
+	return snapshot
+}
+
+func (g *Game) riichiSnapshot(viewer int) *RiichiSnapshot {
+	if g.Riichi == nil {
+		return nil
+	}
+	snapshot := &RiichiSnapshot{
+		DeadWallCount:  len(g.Riichi.DeadWall),
+		DoraIndicators: append([]Tile(nil), g.Riichi.DoraIndicators...),
+		RinshanDraws:   g.Riichi.RinshanDraws,
+		KanCount:       g.Riichi.KanCount,
+		Honba:          g.Riichi.Honba,
+		RiichiSticks:   g.Riichi.RiichiSticks,
+		Declarations:   g.Riichi.Declarations,
+		Ippatsu:        g.Riichi.Ippatsu,
+	}
+	if g.Over || g.Phase == PhaseRoundOver {
+		snapshot.UraIndicators = append([]Tile(nil), g.Riichi.UraIndicators...)
+	}
+	if viewer >= 0 && viewer < len(g.Riichi.TemporaryFuriten) {
+		snapshot.OwnTemporaryFuriten = g.Riichi.TemporaryFuriten[viewer]
+		snapshot.OwnRiichiFuriten = g.Riichi.RiichiFuriten[viewer]
 	}
 	return snapshot
 }
@@ -268,6 +313,16 @@ func copyMCRScore(score *MCRScoreBreakdown) *MCRScoreBreakdown {
 	copyValue := *score
 	copyValue.Fans = append([]FanMatch(nil), score.Fans...)
 	copyValue.WinningGrouping = copyMelds(score.WinningGrouping)
+	return &copyValue
+}
+
+func copyRiichiScore(score *RiichiScoreBreakdown) *RiichiScoreBreakdown {
+	if score == nil {
+		return nil
+	}
+	copyValue := *score
+	copyValue.Yaku = append([]RiichiYakuMatch(nil), score.Yaku...)
+	copyValue.WinningGroups = copyMelds(score.WinningGroups)
 	return &copyValue
 }
 

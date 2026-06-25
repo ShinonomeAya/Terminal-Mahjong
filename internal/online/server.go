@@ -215,6 +215,9 @@ func roomRuleSet(mode game.RuleMode, config game.RuleConfig) game.RuleSet {
 	if mode == game.ModeMCR {
 		return game.NewMCRRuleSet(config.MCR)
 	}
+	if mode == game.ModeRiichi {
+		return game.NewRiichiRuleSet(config.Riichi)
+	}
 	return game.NewCompatibilityRuleSet(mode, config)
 }
 
