@@ -1,0 +1,7 @@
+[
+  {"id":"nondealer-ron","source":"EMA 2016 p.24 ron payment from discarder"},
+  {"id":"dealer-tsumo","source":"EMA 2016 p.24 dealer tsumo payment"},
+  {"id":"nondealer-tsumo","source":"EMA 2016 p.24 non-dealer tsumo payment"},
+  {"id":"exhaustive-one-tenpai","source":"EMA 2016 p.15 exhaustive draw noten payment"},
+  {"id":"dealer-repeat","source":"EMA 2016 p.15 dealer continuation after dealer win"}
+]

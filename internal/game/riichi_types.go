@@ -76,6 +76,25 @@ type RiichiScoreBreakdown struct {
 	WinningGroups []Meld            `json:"winning_groups"`
 }
 
+type RiichiSettlement struct {
+	Winners     []int                  `json:"winners"`
+	Discarder   int                    `json:"discarder"`
+	Deltas      [4]int                 `json:"deltas"`
+	Scores      []RiichiScoreBreakdown `json:"scores"`
+	HonbaAfter  int                    `json:"honba_after"`
+	SticksAfter int                    `json:"sticks_after"`
+}
+
+type RiichiSettlementInput struct {
+	Winners      []int
+	Discarder    int
+	Dealer       int
+	WinType      WinType
+	Scores       []RiichiScoreBreakdown
+	Honba        int
+	RiichiSticks int
+}
+
 type RiichiRoundState struct {
 	DeadWall         []Tile                    `json:"dead_wall"`
 	DoraIndicators   []Tile                    `json:"dora_indicators"`
