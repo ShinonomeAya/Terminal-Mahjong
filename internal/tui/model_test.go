@@ -47,9 +47,34 @@ func TestMenuEnterStartsSoloGame(t *testing.T) {
 	}
 }
 
+func TestMenuCanStartLocalRiichiWithRedFivesDisabled(t *testing.T) {
+	model := NewModel()
+	model.SelectedMode = game.ModeRiichi
+	model.SelectedRiichiRedFives = 0
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if updated.Game == nil || updated.Game.Mode != game.ModeRiichi || updated.Game.RuleConfig.Riichi.RedFives != 0 {
+		t.Fatalf("local riichi game = %#v", updated.Game)
+	}
+}
+
+func TestMenuCanStartLocalMCR(t *testing.T) {
+	model := NewModel()
+	model.SelectedMode = game.ModeMCR
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if updated.Game == nil || updated.Game.Mode != game.ModeMCR {
+		t.Fatalf("local MCR game = %#v", updated.Game)
+	}
+}
+
 func TestMenuViewContainsOptions(t *testing.T) {
 	view := NewModel().View()
-	for _, text := range []string{"终端麻将", "单机对局", "创建联网房间", "浏览联网房间", "加入联网房间", "断线重连", "玩法说明", "语言：中文", "退出"} {
+	for _, text := range []string{"终端麻将", "单机对局", "创建联网房间", "浏览联网房间", "加入联网房间", "断线重连", "规则：日麻", "红五：三张", "玩法说明", "语言：中文", "退出"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("view missing %q:\n%s", text, view)
 		}
@@ -58,16 +83,34 @@ func TestMenuViewContainsOptions(t *testing.T) {
 
 func TestMenuLanguageToggleShowsEnglishMenu(t *testing.T) {
 	model := NewModel()
-	model.MenuIndex = 6
+	model.MenuIndex = 8
 
 	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	updated := next.(Model)
 
 	view := updated.View()
-	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Language: English", "Controls"} {
+	for _, text := range []string{"TERMINAL MAHJONG", "Solo Game", "Rules: Riichi", "Red fives: 3", "Language: English", "Controls"} {
 		if !strings.Contains(view, text) {
 			t.Fatalf("english menu missing %q:\n%s", text, view)
 		}
+	}
+}
+
+func TestMenuTogglesRuleModeAndRedFives(t *testing.T) {
+	model := NewModel()
+	model.MenuIndex = 5
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+	if updated.SelectedMode != game.ModeMCR {
+		t.Fatalf("selected mode = %q, want MCR", updated.SelectedMode)
+	}
+
+	updated.MenuIndex = 6
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated = next.(Model)
+	if updated.SelectedRiichiRedFives != 0 {
+		t.Fatalf("red fives = %d, want disabled", updated.SelectedRiichiRedFives)
 	}
 }
 

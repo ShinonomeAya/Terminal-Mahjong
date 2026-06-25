@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"mahjong/internal/game"
 )
 
 type Language string
@@ -34,9 +36,60 @@ func toggleLanguage(m Model) Model {
 
 func menuLabels(m Model) []string {
 	if !m.chinese() {
-		return []string{"Solo Game", "Create Online Room", "Browse Online Rooms", "Join Online Room", "Reconnect Online", "How to Play", languageMenuLabel(m), "Quit"}
+		return []string{"Solo Game", "Create Online Room", "Browse Online Rooms", "Join Online Room", "Reconnect Online", ruleModeMenuLabel(m), redFivesMenuLabel(m), "How to Play", languageMenuLabel(m), "Quit"}
 	}
-	return []string{"单机对局", "创建联网房间", "浏览联网房间", "加入联网房间", "断线重连", "玩法说明", languageMenuLabel(m), "退出"}
+	return []string{"单机对局", "创建联网房间", "浏览联网房间", "加入联网房间", "断线重连", ruleModeMenuLabel(m), redFivesMenuLabel(m), "玩法说明", languageMenuLabel(m), "退出"}
+}
+
+func ruleModeMenuLabel(m Model) string {
+	if !m.chinese() {
+		return "Rules: " + ruleModeName(m, m.SelectedMode)
+	}
+	return "规则：" + ruleModeName(m, m.SelectedMode)
+}
+
+func redFivesMenuLabel(m Model) string {
+	label := "Red fives: "
+	if m.chinese() {
+		label = "红五："
+	}
+	value := "3"
+	if m.SelectedRiichiRedFives == 0 {
+		value = "off"
+		if m.chinese() {
+			value = "关闭"
+		}
+	} else if m.chinese() {
+		value = "三张"
+	}
+	if m.SelectedMode != game.ModeRiichi {
+		if m.chinese() {
+			return label + value + "（仅日麻）"
+		}
+		return label + value + " (Riichi only)"
+	}
+	return label + value
+}
+
+func ruleModeName(m Model, mode game.RuleMode) string {
+	if !m.chinese() {
+		switch mode {
+		case game.ModeRiichi:
+			return "Riichi"
+		case game.ModeMCR:
+			return "Chinese Official"
+		default:
+			return "Classic"
+		}
+	}
+	switch mode {
+	case game.ModeRiichi:
+		return "日麻"
+	case game.ModeMCR:
+		return "国标"
+	default:
+		return "经典"
+	}
 }
 
 func playerName(m Model, name string) string {

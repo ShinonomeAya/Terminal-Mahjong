@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"mahjong/internal/game"
 )
 
 func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -17,7 +19,7 @@ func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEnter:
 		switch m.MenuIndex {
 		case 0:
-			m.Game = newStartedGame()
+			m.Game = newStartedGameWithRules(m.SelectedMode, selectedRuleConfig(m))
 			m.Online = false
 			m.NetworkStatus = NetworkLocal
 			m.Screen = ScreenTable
@@ -39,14 +41,39 @@ func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.StatusLine = "Reconnecting online room..."
 			return m, reconnectOnlineCmd(m)
 		case 5:
-			m.Screen = ScreenHelp
+			m = toggleSelectedMode(m)
 		case 6:
-			m = toggleLanguage(m)
+			m = toggleSelectedRiichiRedFives(m)
 		case 7:
+			m.Screen = ScreenHelp
+		case 8:
+			m = toggleLanguage(m)
+		case 9:
 			return m, tea.Quit
 		}
 	}
 	return m, nil
+}
+
+func toggleSelectedMode(m Model) Model {
+	switch m.SelectedMode {
+	case game.ModeRiichi:
+		m.SelectedMode = game.ModeMCR
+	case game.ModeMCR:
+		m.SelectedMode = game.ModeCompatibility
+	default:
+		m.SelectedMode = game.ModeRiichi
+	}
+	return m
+}
+
+func toggleSelectedRiichiRedFives(m Model) Model {
+	if m.SelectedRiichiRedFives == 0 {
+		m.SelectedRiichiRedFives = 3
+		return m
+	}
+	m.SelectedRiichiRedFives = 0
+	return m
 }
 
 func updateOnlineRooms(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {

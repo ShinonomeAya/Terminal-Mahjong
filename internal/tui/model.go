@@ -22,48 +22,52 @@ const (
 )
 
 type Model struct {
-	Screen              Screen
-	MenuIndex           int
-	GameOverIndex       int
-	SelectedIndex       int
-	ClaimOptionIndex    int
-	UnicodeTiles        bool
-	Language            Language
-	Game                *game.Game
-	Online              bool
-	OnlineClient        *online.Client
-	OnlineSnapshot      game.GameSnapshot
-	OnlineMatch         game.MatchSnapshot
-	OnlinePlayerID      string
-	OnlineRoomCode      string
-	OnlineSeat          int
-	OnlineReadySeats    []int
-	OnlineOccupiedSeats []int
-	OnlineStarted       bool
-	OnlineEvents        chan tea.Msg
-	OnlineRooms         []protocol.RoomSummary
-	RoomIndex           int
-	OnlineServerURL     string
-	OnlineName          string
-	OnlineSession       string
-	JoinRoomCode        string
-	HandHitBoxes        []TileHitBox
-	StatusLine          string
-	NetworkStatus       NetworkStatus
-	ReconnectAttempt    int
-	ReconnectMax        int
-	Width               int
-	Height              int
+	Screen                 Screen
+	MenuIndex              int
+	GameOverIndex          int
+	SelectedIndex          int
+	ClaimOptionIndex       int
+	UnicodeTiles           bool
+	Language               Language
+	SelectedMode           game.RuleMode
+	SelectedRiichiRedFives int
+	Game                   *game.Game
+	Online                 bool
+	OnlineClient           *online.Client
+	OnlineSnapshot         game.GameSnapshot
+	OnlineMatch            game.MatchSnapshot
+	OnlinePlayerID         string
+	OnlineRoomCode         string
+	OnlineSeat             int
+	OnlineReadySeats       []int
+	OnlineOccupiedSeats    []int
+	OnlineStarted          bool
+	OnlineEvents           chan tea.Msg
+	OnlineRooms            []protocol.RoomSummary
+	RoomIndex              int
+	OnlineServerURL        string
+	OnlineName             string
+	OnlineSession          string
+	JoinRoomCode           string
+	HandHitBoxes           []TileHitBox
+	StatusLine             string
+	NetworkStatus          NetworkStatus
+	ReconnectAttempt       int
+	ReconnectMax           int
+	Width                  int
+	Height                 int
 }
 
 func NewModel() Model {
 	return Model{
-		Screen:          ScreenMenu,
-		UnicodeTiles:    true,
-		Language:        LanguageChinese,
-		OnlineServerURL: "ws://127.0.0.1:8080/ws",
-		OnlineName:      "Player",
-		OnlineSession:   ".mahjong-session.json",
+		Screen:                 ScreenMenu,
+		UnicodeTiles:           true,
+		Language:               LanguageChinese,
+		SelectedMode:           game.ModeRiichi,
+		SelectedRiichiRedFives: 3,
+		OnlineServerURL:        "ws://127.0.0.1:8080/ws",
+		OnlineName:             "Player",
+		OnlineSession:          ".mahjong-session.json",
 	}
 }
 
