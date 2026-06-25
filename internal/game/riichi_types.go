@@ -44,22 +44,36 @@ type RiichiYakuMatch struct {
 }
 
 type RiichiYakuContext struct {
-	Decomposition RiichiDecomposition
-	WinningTile   Tile
-	WinType       WinType
-	Closed        bool
-	SeatWind      Tile
-	PrevalentWind Tile
-	Riichi        RiichiDeclarationState
-	Ippatsu       bool
-	DoubleRiichi  bool
-	Rinshan       bool
-	Chankan       bool
-	Haitei        bool
-	Houtei        bool
-	Renhou        bool
-	Tenhou        bool
-	Chiihou       bool
+	Decomposition  RiichiDecomposition
+	WinningTile    Tile
+	WinType        WinType
+	Closed         bool
+	SeatWind       Tile
+	PrevalentWind  Tile
+	Riichi         RiichiDeclarationState
+	Ippatsu        bool
+	DoubleRiichi   bool
+	Rinshan        bool
+	Chankan        bool
+	Haitei         bool
+	Houtei         bool
+	Renhou         bool
+	Tenhou         bool
+	Chiihou        bool
+	DoraIndicators []Tile
+	UraIndicators  []Tile
+}
+
+type RiichiScoreBreakdown struct {
+	Yaku          []RiichiYakuMatch `json:"yaku"`
+	Fu            int               `json:"fu"`
+	YakuHan       int               `json:"yaku_han"`
+	BonusHan      int               `json:"bonus_han"`
+	Yakuman       int               `json:"yakuman"`
+	BasePoints    int               `json:"base_points"`
+	LimitName     string            `json:"limit_name,omitempty"`
+	HasYaku       bool              `json:"has_yaku"`
+	WinningGroups []Meld            `json:"winning_groups"`
 }
 
 type RiichiRoundState struct {

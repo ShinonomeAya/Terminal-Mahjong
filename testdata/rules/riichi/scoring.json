@@ -1,0 +1,7 @@
+[
+  {"id":"pinfu-tsumo","source":"EMA 2016 pp.20,24 pinfu and worked scoring table"},
+  {"id":"seven-pairs","source":"EMA 2016 pp.21,24 chiitoitsu fixed 25 fu"},
+  {"id":"red-and-normal-dora","source":"EMA 2016 p.18 dora; project red-five override in riichi-source-notes.md"},
+  {"id":"dora-only-rejected","source":"EMA 2016 p.18 dora are bonus han and do not satisfy the yaku requirement"},
+  {"id":"haneman-limit","source":"EMA 2016 p.24 limit table"}
+]
