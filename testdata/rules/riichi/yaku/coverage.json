@@ -1,0 +1,371 @@
+[
+    {
+        "id":  "riichi",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "ippatsu",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "double_riichi",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "menzen_tsumo",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "pinfu",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "iipeikou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "tanyao",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "sanshoku_doujun",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "ittsu",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "yakuhai_dragon",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "yakuhai_seat",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "yakuhai_prevalent",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "chanta",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "rinshan",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "chankan",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "haitei",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "houtei",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "chiitoitsu",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "sanshoku_doukou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "sanankou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "sankantsu",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "toitoi",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "honitsu",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "shousangen",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "honroutou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "junchan",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "ryanpeikou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "chinitsu",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "renhou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "kokushi",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "chuuren",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "tenhou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "chiihou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "suuankou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "suukantsu",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "ryuuiisou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "chinroutou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "tsuuiisou",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "daisangen",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "shousuushii",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    },
+    {
+        "id":  "daisuushii",
+        "positive":  [
+                         "positive golden example in riichi_yaku_test.go"
+                     ],
+        "near_miss":  [
+                          "near miss reserved for score/band fixtures"
+                      ]
+    }
+]

@@ -35,6 +35,33 @@ type RiichiDecomposition struct {
 	Wait   RiichiWaitKind  `json:"wait,omitempty"`
 }
 
+type RiichiYakuMatch struct {
+	ID      string `json:"id"`
+	NameZH  string `json:"name_zh"`
+	NameEN  string `json:"name_en"`
+	Han     int    `json:"han"`
+	Yakuman int    `json:"yakuman,omitempty"`
+}
+
+type RiichiYakuContext struct {
+	Decomposition RiichiDecomposition
+	WinningTile   Tile
+	WinType       WinType
+	Closed        bool
+	SeatWind      Tile
+	PrevalentWind Tile
+	Riichi        RiichiDeclarationState
+	Ippatsu       bool
+	DoubleRiichi  bool
+	Rinshan       bool
+	Chankan       bool
+	Haitei        bool
+	Houtei        bool
+	Renhou        bool
+	Tenhou        bool
+	Chiihou       bool
+}
+
 type RiichiRoundState struct {
 	DeadWall         []Tile                    `json:"dead_wall"`
 	DoraIndicators   []Tile                    `json:"dora_indicators"`
