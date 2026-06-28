@@ -16,12 +16,12 @@ func newStartedGameWithRules(mode game.RuleMode, config game.RuleConfig) *game.G
 	default:
 		rules = game.NewCompatibilityRuleSet(game.ModeCompatibility, game.RuleConfig{})
 	}
-	g, err := game.NewGameWithRules(0, rules)
+	match, err := game.NewMatch(0, rules)
 	if err != nil {
 		panic(err)
 	}
-	g.StartHumanTurn()
-	return g
+	match.EnsureCurrentTurnDraw()
+	return match.Round
 }
 
 func selectedRuleConfig(m Model) game.RuleConfig {

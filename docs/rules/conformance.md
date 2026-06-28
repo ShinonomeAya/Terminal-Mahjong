@@ -58,7 +58,7 @@ This matrix freezes the rule sources and project defaults before complete rule i
 | 12A shared match/rule/privacy foundation | Complete |
 | 12B complete Chinese Official rules | Complete |
 | 12C complete Riichi rules | Complete |
-| 12D client/server/bot integration | Not started |
+| 12D client/server/bot integration | Complete |
 | 12E dual-mode acceptance | Not started |
 
 ### Phase 12B Acceptance
@@ -76,3 +76,11 @@ This matrix freezes the rule sources and project defaults before complete rule i
 - Bots consume authoritative `LegalActions`; Riichi command validation no longer depends on clients reconstructing hidden rule state.
 - Replay schema v3 stores typed Riichi scores, dora, post-game ura, and Riichi settlement history without using compatibility scoring.
 - Acceptance on 2026-06-25 passed Riichi fixture JSON parsing, catalog/yaku/scoring/settlement tests repeated 20 times, 1,000 fixed-seed invariants for both red-five modes, WebSocket ready/discard/reconnect smoke, full tests, race tests, vet, all command builds, and online tests repeated 20 times.
+
+### Phase 12D Acceptance
+
+- The TUI start menu selects Riichi, Chinese Official, or compatibility rules and exposes the Riichi red-five option without adding rule logic to layout code.
+- Local TUI startup and online room startup both use the shared `Match` coordinator and the same validated `RuleConfig`.
+- The CLI creates typed MCR/Riichi rooms with `-mode` and `-red-fives`, and room listings expose mode and option metadata.
+- Win, kong, riichi, and claim presentation now follows authoritative `LegalActions`; the TUI no longer reconstructs win or kong legality from concealed hand shape.
+- Acceptance on 2026-06-28 passed local/online rule-mode parity tests, TUI/CLI/online tests repeated 20 times, full tests, race tests, and all command builds.

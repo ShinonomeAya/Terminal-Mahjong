@@ -34,7 +34,7 @@
 - Modify: `internal/tui/menu.go`
 - Modify: `internal/tui/model_test.go`
 
-- [ ] **Step 1: Write failing menu tests**
+- [x] **Step 1: Write failing menu tests**
 
 Add tests that press a mode/options key from the menu and then start a local game:
 
@@ -61,11 +61,11 @@ func TestMenuCanStartLocalMCR(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run `go test ./internal/tui -run "MenuCanStartLocal.*Mode|MenuCanStartLocalRiichi" -count=1`. Expected: fail because selected mode fields and local rule creation do not exist.
 
-- [ ] **Step 3: Implement selected mode fields and local creation**
+- [x] **Step 3: Implement selected mode fields and local creation**
 
 Add to `Model`:
 
@@ -76,7 +76,7 @@ SelectedRiichiRedFives int
 
 Initialize `SelectedMode: game.ModeRiichi` and `SelectedRiichiRedFives: 3`. Replace `newStartedGame()` in the solo start branch with `newStartedGameWithRules(m.SelectedMode, selectedRuleConfig(m))`.
 
-- [ ] **Step 4: Add simple menu toggles**
+- [x] **Step 4: Add simple menu toggles**
 
 Add two menu entries before Help:
 
@@ -87,7 +87,7 @@ Add two menu entries before Help:
 
 The rule toggle cycles `riichi -> mcr -> compatibility`; the red-five toggle only changes `0/3` and is rendered disabled/muted when mode is not Riichi.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run `go test ./internal/tui -run "MenuCanStartLocal|Menu.*Language|RenderMenu" -count=1` and `go test ./internal/tui -count=1`.
 
@@ -106,7 +106,7 @@ Step review: local play can start the same MCR/Riichi rules implemented in 12B/1
 - Modify: `cmd/client/main.go`
 - Modify: `cmd/client/main_test.go`
 
-- [ ] **Step 1: Write failing online and CLI tests**
+- [x] **Step 1: Write failing online and CLI tests**
 
 ```go
 func TestCreateOnlineRoomUsesSelectedRiichiOptions(t *testing.T) {
@@ -123,15 +123,15 @@ func TestCreateOnlineRoomUsesSelectedRiichiOptions(t *testing.T) {
 
 For `cmd/client`, add a test that runs `run(ctx, []string{"-mode", "riichi", "-red-fives", "0"}, out)` against the existing test server and asserts the output contains `mode=riichi`.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run `go test ./internal/tui ./cmd/client -run "SelectedRiichi|mode|red" -count=1`. Expected: fail because CLI flags and TUI create command do not pass selected config.
 
-- [ ] **Step 3: Wire TUI create room config**
+- [x] **Step 3: Wire TUI create room config**
 
 Change `createOnlineRoomCmd(m)` to call `client.CreateRoomWithRules(ctx, m.SelectedMode, selectedRuleConfig(m))`.
 
-- [ ] **Step 4: Add CLI flags**
+- [x] **Step 4: Add CLI flags**
 
 Add:
 
@@ -142,11 +142,11 @@ redFives := flags.Int("red-fives", 3, "riichi red fives: 0 or 3")
 
 Parse with `game.ParseRuleMode`, build `RuleConfig`, validate it, and pass it to `CreateRoomWithRules` when creating a room. Joining and reconnecting keep server state authoritative.
 
-- [ ] **Step 5: Print room mode/options**
+- [x] **Step 5: Print room mode/options**
 
 Update `printMessage` and `printRoomList` to include mode and red-five count when present.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run `go test ./internal/tui ./cmd/client ./internal/online -run "Rules|Room|mode|red|Create" -count=1` and `go test ./cmd/client ./internal/tui -count=1`.
 
@@ -166,19 +166,19 @@ Step review: local TUI, online TUI, and CLI room creation all choose the same va
 - Modify: `internal/tui/layout_test.go`
 - Modify: `internal/tui/model_test.go`
 
-- [ ] **Step 1: Write failing legal-action rendering tests**
+- [x] **Step 1: Write failing legal-action rendering tests**
 
 Create tests where an online snapshot has only `CommandDiscard` and verify `[H] Win` and `[K] Kong` render as off in both languages. Create another snapshot with `CommandRiichi` and verify the controls show Riichi/立直.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run `go test ./internal/tui -run "LegalAction|Riichi.*Control|Localized.*Score|Localized.*Error" -count=1`.
 
-- [ ] **Step 3: Centralize legal action checks**
+- [x] **Step 3: Centralize legal action checks**
 
 Make `canOnlineWin`, `canOnlineKong`, and new `canOnlineRiichi` read `OnlineSnapshot.LegalActions` only. Local mode uses `Game.Snapshot().LegalActions`.
 
-- [ ] **Step 4: Localize mode, score, draw, and error text**
+- [x] **Step 4: Localize mode, score, draw, and error text**
 
 Add small mapping functions in `i18n.go`:
 
@@ -191,7 +191,7 @@ func localizedScoreSummary(m Model, snapshot game.GameSnapshot) string
 
 Keep unknown strings unchanged.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run `go test ./internal/tui -run "LegalAction|Localized|OnlineTable|RenderTable" -count=1` and `go test ./internal/tui -count=1`.
 
@@ -209,15 +209,15 @@ Step review: the TUI no longer advertises actions that the authoritative snapsho
 - Modify: `docs/workflow.md`
 - Modify: `docs/rules/conformance.md`
 
-- [ ] **Step 1: Write parity tests**
+- [x] **Step 1: Write parity tests**
 
 Build one local match and one WebSocket-created match for each mode using seed/config fixtures, compare `Mode`, `RuleConfig`, initial points, wall count, and first legal action kinds.
 
-- [ ] **Step 2: Verify RED/GREEN**
+- [x] **Step 2: Verify RED/GREEN**
 
 Run `go test ./internal/tui ./internal/online ./internal/game -run "RuleModeParity|Phase12D|LegalAction" -count=1`.
 
-- [ ] **Step 3: Run acceptance checks**
+- [x] **Step 3: Run acceptance checks**
 
 ```powershell
 go test ./internal/tui ./cmd/client ./internal/online -count=20
@@ -226,7 +226,7 @@ go test -race ./... -count=1
 go build ./cmd/mahjong ./cmd/server ./cmd/client
 ```
 
-- [ ] **Step 4: Update docs and commit**
+- [x] **Step 4: Update docs and commit**
 
 Mark Phase 12D complete and 12E not started. Record exact evidence and remaining Phase 12E risk.
 

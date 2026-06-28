@@ -185,3 +185,21 @@ Stage review:
   - `go test ./internal/online -count=20`.
 - Total-goal review: both complete rule modes now run through the shared terminal/network architecture with private live information redacted, typed score/replay state, and bots constrained by server-provided legal actions.
 - Remaining risk: Phase 12D still needs client-facing mode/options polish, localized score/error presentation, and side-by-side local/online command-sequence agreement checks before the wide table redesign begins.
+
+### Phase 12D Review
+
+- Stage goal: expose completed MCR and Riichi rules through the local TUI, online TUI, CLI client, shared protocol, and bots without duplicating rule decisions in presentation code.
+- Completed: TUI rule-mode and red-five selection; local startup through `Match`; typed online room creation; CLI `-mode` and `-red-fives` options; mode-aware room listings; LegalActions-driven win, kong, riichi, and claim controls; Chinese/English Riichi action labels; and local/online startup parity coverage.
+- Step evidence:
+  - Task 1 added local rule selection and verified all TUI menu tests;
+  - Task 2 added online/CLI room configuration and verified TUI, CLI, and online packages;
+  - Task 3 replaced hand-derived Win/Kong availability with authoritative `LegalActions`, added playable Riichi controls, and preserved compact/wide line-width tests;
+  - Task 4 found and removed a real local/online divergence by routing local games through the shared `Match` coordinator.
+- Acceptance evidence (2026-06-28):
+  - `go test ./internal/tui -run TestRuleModeParityBetweenLocalAndOnlineCreation -count=1`;
+  - `go test ./internal/tui ./cmd/client ./internal/online -count=20`;
+  - `go test ./... -count=1`;
+  - `go test -race ./... -count=1`;
+  - `go build ./cmd/mahjong ./cmd/server ./cmd/client`.
+- Total-goal review: rule selection, room configuration, reconnect state, bot commands, and TUI controls now share the same typed mode/configuration/legal-action contracts in local and LAN play.
+- Remaining risk: Phase 12E must rerun the combined dual-mode property, privacy, reconnect, smoke, static, race, and build gates before Phase 13 visual restructuring begins.
