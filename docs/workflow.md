@@ -222,3 +222,30 @@ Stage review:
   - `go build ./cmd/mahjong ./cmd/server ./cmd/client`.
 - Total-goal review: Phase 12 now delivers selectable complete Chinese Official and four-player Riichi rules through local and LAN terminal clients, with deterministic replay metadata, authoritative legal actions, legal bots, private live state, and canonical reconnect.
 - Remaining risk: Phase 13 is presentation work. It must preserve these accepted rule, protocol, privacy, replay, and width-test contracts while restructuring the wide competitive table and tactical rail.
+
+### Phase 13 Review
+
+- Stage goal: replace the stacked table with the approved wide competitive layout plus a read-only tactical rail, while keeping 80-column terminals playable.
+- Completed:
+  - 13A normalized local and online snapshots into one table view state and introduced component-based table rendering;
+  - 13B added four fixed seats, public mode markers, active-turn emphasis, and deterministic six-tile discard rivers;
+  - 13C added pure effective/improvement analysis and a bounded viewer-private tactical rail;
+  - 13D added right-side, below-table, and `Tab`-controlled fallback behavior;
+  - 13E bounded long tactical lists, removed random acceptance inputs, and made the 80x42 fallback use vertical seats, a narrow hand panel, compact controls, and height-aware tactical visibility.
+- Visual evidence (fixed seed `1313`):
+  - `artifacts/phase13/riichi-wide-zh.html`;
+  - `artifacts/phase13/riichi-wide-en.html`;
+  - `artifacts/phase13/mcr-wide-zh.html`;
+  - `artifacts/phase13/mcr-wide-en.html`;
+  - `artifacts/phase13/riichi-fallback-80.html`.
+- Visual review: a real PTY run exposed an over-tall tactical rail, and the 80x42 capture test exposed both a 49-line composition and a 96-cell legacy middle row. The final generator asserts every artifact stays within its requested width and 42-line height. Automated PNG capture was not archived because local-file browser navigation was blocked; the deterministic HTML files remain directly reviewable.
+- Acceptance evidence (2026-06-28):
+  - `MAHJONG_PHASE13_CAPTURE_DIR=artifacts/phase13 go test ./internal/tui -run TestGeneratePhase13Snapshots -count=1`;
+  - `go test ./internal/tui -count=20`;
+  - `go test ./... -count=1`;
+  - `go test -race ./... -count=1`;
+  - `go vet ./...`;
+  - `go build ./cmd/mahjong ./cmd/server ./cmd/client`;
+  - `gofmt -l` over all changed Go files and `git diff --check`.
+- Total-goal review: the wide A-layout plus C tactical rail now improves seat, river, hand, action, and tactical comprehension without changing game authority, hidden-information rules, reconnect state, or terminal-first controls.
+- Remaining risk: Mahjong glyph size and color still depend on the user's terminal font and renderer; future visual acceptance should archive native terminal PNGs when the desktop capture path is available.

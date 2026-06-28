@@ -45,11 +45,11 @@
 - Create: `internal/tui/table_components_test.go`
 - Modify: `internal/tui/layout.go`
 
-- [ ] **Step 1: Write failing structural tests**
+- [x] **Step 1: Write failing structural tests**
 
 Create local and online models at width 140. Assert the rendered view contains exactly one header, four seat labels, one center table, one hand row, one action row, and one tactical rail placeholder.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -59,7 +59,7 @@ go test ./internal/tui -run "WideTableSkeleton|SharedTableState" -count=1
 
 Expected: fail because component state and the tactical rail region do not exist.
 
-- [ ] **Step 3: Add normalized state**
+- [x] **Step 3: Add normalized state**
 
 Define:
 
@@ -79,15 +79,15 @@ func tableStateFor(m Model) tableViewState
 
 Local state uses `m.Game.SnapshotFor("0")`; online state uses `m.OnlineSnapshot` and `m.OnlineMatch`. No component reads `Game` internals directly after normalization.
 
-- [ ] **Step 4: Add component skeleton**
+- [x] **Step 4: Add component skeleton**
 
 Create `renderWideTable`, `renderTableHeader`, `renderSeatBlock`, `renderTableCenter`, `renderHandAndActions`, and `renderTacticalPlaceholder`. Compose with `lipgloss.JoinHorizontal` and `lipgloss.JoinVertical`.
 
-- [ ] **Step 5: Preserve existing view entry points**
+- [x] **Step 5: Preserve existing view entry points**
 
 Make `renderTable` and `renderOnlineTable` delegate to `renderWideTable` when width is at least 110. Keep existing compact rendering temporarily for narrower widths.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run `go test ./internal/tui -run "WideTableSkeleton|SharedTableState|RenderTable|OnlineTable" -count=1` and `go test ./internal/tui -count=1`.
 
@@ -105,27 +105,27 @@ Step review: local and online tables now share one component boundary without ch
 - Modify: `internal/tui/table_components_test.go`
 - Modify: `internal/tui/style.go`
 
-- [ ] **Step 1: Write failing seat/river tests**
+- [x] **Step 1: Write failing seat/river tests**
 
 Assert each seat shows seat direction/wind, points when present, hand count, meld count, flowers for MCR, riichi marker for Riichi, and active-turn emphasis. Assert each discard river is rendered in stable rows with a fixed cell budget and latest-discard emphasis.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run `go test ./internal/tui -run "WideTableSeat|DiscardRiver|ActiveSeat" -count=1`.
 
-- [ ] **Step 3: Implement seat view data**
+- [x] **Step 3: Implement seat view data**
 
 Define `seatView` with seat index, localized label, wind, points, hand count, melds, flowers, riichi state, active flag, and discards. Build four seat views from `tableViewState`.
 
-- [ ] **Step 4: Implement fixed rivers**
+- [x] **Step 4: Implement fixed rivers**
 
 Render discards in deterministic six-tile rows. Use stable cell widths and truncate only beyond the bounded river capacity with an explicit count marker; do not wrap based on glyph width.
 
-- [ ] **Step 5: Add mode-specific public markers**
+- [x] **Step 5: Add mode-specific public markers**
 
 MCR seats show flowers; Riichi seats show accepted riichi and public dora. Never render opponent concealed tiles or live ura indicators.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run focused seat/river tests, privacy tests, and `go test ./internal/tui -count=1`.
 
@@ -145,7 +145,7 @@ Step review: a player can identify all four seats, turn ownership, and discard h
 - Create: `internal/tui/tactical_test.go`
 - Modify: `internal/tui/table_components.go`
 
-- [ ] **Step 1: Write failing effective-tile tests**
+- [x] **Step 1: Write failing effective-tile tests**
 
 Add:
 
@@ -159,11 +159,11 @@ func TestEffectiveTilesReduceShanten(t *testing.T) {
 
 Add an improvement test for a 14-tile hand that returns discard/effective-tile candidates without mutating the input.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run `go test ./internal/game -run "EffectiveTiles|ImprovementTiles" -count=1`.
 
-- [ ] **Step 3: Implement pure analysis**
+- [x] **Step 3: Implement pure analysis**
 
 Add:
 
@@ -179,15 +179,15 @@ func ImprovementTiles(hand []Tile) []TileImprovement
 
 Normalize red tiles for counting, skip fifth copies, sort/deduplicate output, and never mutate input.
 
-- [ ] **Step 4: Build tactical view model**
+- [x] **Step 4: Build tactical view model**
 
 Define `tacticalView` with shanten, effective tiles, improvements, mode status, legal actions, and at most five recent typed events. Use only viewer-visible hand and snapshot fields.
 
-- [ ] **Step 5: Render the C rail**
+- [x] **Step 5: Render the C rail**
 
 Render a fixed-width right rail with localized headings and bare Unicode tiles. Keep it read-only and visually separate from the central table without nesting cards.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run game analysis tests, tactical privacy/localization tests, and full TUI tests.
 
@@ -207,19 +207,19 @@ Step review: the C rail explains the viewer's current tactical state without exp
 - Modify: `internal/tui/table_components_test.go`
 - Modify: `internal/tui/model_test.go`
 
-- [ ] **Step 1: Write failing responsive tests**
+- [x] **Step 1: Write failing responsive tests**
 
 At width 140 assert the rail is right-aligned; at width 90 assert it moves below the table; at width 64 assert it is hidden by default and appears after `Tab`.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run `go test ./internal/tui -run "TacticalFallback|TabTogglesTactical" -count=1`.
 
-- [ ] **Step 3: Add visibility state**
+- [x] **Step 3: Add visibility state**
 
 Add `ShowTactical bool` to `Model`, default false. In table input, `Tab` toggles it without changing selected tile or claim state.
 
-- [ ] **Step 4: Compose three width modes**
+- [x] **Step 4: Compose three width modes**
 
 Use constants:
 
@@ -230,7 +230,7 @@ const mediumTableMinWidth = 80
 
 Wide joins rail right; medium joins rail below; compact hides rail unless toggled. The compact table remains playable and is not a second visual theme.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run responsive, line-width, hitbox, and full TUI tests.
 
@@ -249,19 +249,19 @@ Step review: narrow terminals remain usable while the approved wide table stays 
 - Modify: `docs/workflow.md`
 - Create: `artifacts/phase13/` screenshots generated by the existing PTY/manual capture workflow.
 
-- [ ] **Step 1: Preserve interaction contracts**
+- [x] **Step 1: Preserve interaction contracts**
 
 Run and extend tests for arrow selection, Enter/Space discard, H/K/L actions, claims, mouse hitboxes, menu return, language switching, online ready/reconnect, and game-over navigation.
 
-- [ ] **Step 2: Verify ANSI width budgets**
+- [x] **Step 2: Verify ANSI width budgets**
 
 Require no wide-layout line to exceed the requested viewport and no compact control line to exceed its budget. Assert Mahjong Unicode cells keep stable hitboxes after selection.
 
-- [ ] **Step 3: Capture screenshots**
+- [x] **Step 3: Capture deterministic visual evidence**
 
-Capture Chinese and English screenshots at 140x42 for MCR and Riichi, plus one 80-column fallback. Inspect that seat/table/hand/rail regions do not overlap and that selected tile, dora/flowers, action state, and tactical headings are legible.
+Generate fixed-seed Chinese and English 140x42 HTML renders for MCR and Riichi, plus one 80x42 fallback. Inspect the real PTY and rendered artifacts for overlap, selected-tile visibility, dora/flowers, action state, and tactical headings. Direct PNG capture was unavailable because the desktop browser rejected local-file navigation; retain the deterministic HTML renders as the reviewable evidence instead of bypassing that policy.
 
-- [ ] **Step 4: Run full acceptance**
+- [x] **Step 4: Run full acceptance**
 
 ```powershell
 go test ./internal/tui -count=20
@@ -270,9 +270,9 @@ go test -race ./... -count=1
 go build ./cmd/mahjong ./cmd/server ./cmd/client
 ```
 
-- [ ] **Step 5: Update review and commit**
+- [x] **Step 5: Update review and commit**
 
-Record exact screenshot paths and verification commands in `docs/workflow.md`, mark 13A-E complete, and commit:
+Record exact visual-artifact paths and verification commands in `docs/workflow.md`, mark 13A-E complete, and commit:
 
 ```powershell
 git add internal/tui/layout_test.go internal/tui/model_test.go docs/workflow.md artifacts/phase13

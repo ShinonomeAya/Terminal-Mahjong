@@ -96,6 +96,23 @@ func TestTacticalFallbackMovesBelowAtMediumWidth(t *testing.T) {
 	}
 }
 
+func TestTacticalFallbackHidesWhenMediumTerminalIsTooShort(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGameWithRules(game.ModeRiichi, game.DefaultRuleConfig(game.ModeRiichi))
+	model.Screen = ScreenTable
+	model.Width = 80
+	model.Height = 42
+
+	view := renderTable(model)
+
+	if strings.Contains(view, "战术分析") {
+		t.Fatalf("medium tactical rail should be hidden when it exceeds terminal height:\n%s", view)
+	}
+	if lines := strings.Count(strings.TrimRight(view, "\n"), "\n") + 1; lines > model.Height {
+		t.Fatalf("medium table rendered %d lines, want at most %d:\n%s", lines, model.Height, view)
+	}
+}
+
 func TestTabTogglesTacticalRailAtCompactWidth(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGameWithRules(game.ModeRiichi, game.DefaultRuleConfig(game.ModeRiichi))

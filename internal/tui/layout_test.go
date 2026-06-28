@@ -461,6 +461,22 @@ func TestRenderTableUsesCompactControlsForNarrowWidth(t *testing.T) {
 	}
 }
 
+func TestRenderTableFits80ColumnFallback(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGame()
+	model.Screen = ScreenTable
+	model.Width = 80
+	model.Height = 42
+
+	view := renderTable(model)
+
+	for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
+		if visibleWidth(line) > model.Width {
+			t.Fatalf("80-column fallback line too wide (%d cells):\n%s", visibleWidth(line), line)
+		}
+	}
+}
+
 func TestRenderTableUsesClientSections(t *testing.T) {
 	model := NewModel()
 	model.Game = newStartedGame()

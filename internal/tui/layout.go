@@ -24,6 +24,8 @@ const (
 	handRowGap = 1
 	handCellW  = 4
 	handCols   = 14
+
+	threeColumnTableMinWidth = 96
 )
 
 func handHitBoxes(count int, startX int, y int) []TileHitBox {
@@ -180,14 +182,14 @@ func centerLine(width int, text string) string {
 }
 
 func handPanelWidth(m Model) int {
-	if tableWidth(m) < 80 {
+	if tableWidth(m) < threeColumnTableMinWidth {
 		return 74
 	}
 	return 92
 }
 
 func renderTableMiddle(m Model, leftSeat string, center string, rightSeat string) string {
-	if tableWidth(m) < 80 {
+	if tableWidth(m) < threeColumnTableMinWidth {
 		return lipgloss.JoinVertical(lipgloss.Center, leftSeat, center, rightSeat)
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, leftSeat, "  ", center, "  ", rightSeat)
@@ -297,12 +299,17 @@ func renderBoardFrame(m Model, meta string, topSeat string, middle string, hand 
 		centerLine(width, styleTitle(appTitle(m))),
 		centerLine(width, meta),
 		centerLine(width, styleMuted(renderNetworkStatus(m))),
-		centerLine(width, styleSectionTitle(opponentsTitle(m))),
+	}
+	if width >= threeColumnTableMinWidth {
+		sections = append(sections, centerLine(width, styleSectionTitle(opponentsTitle(m))))
+	}
+	sections = append(
+		sections,
 		centerLine(width, topSeat),
 		centerLine(width, middle),
 		centerLine(width, hand),
 		centerLine(width, prompt),
-	}
+	)
 	return lipgloss.PlaceHorizontal(width, lipgloss.Center, strings.Join(sections, "\n")) + "\n"
 }
 
@@ -378,23 +385,23 @@ func tableControls(m Model) string {
 	}
 	if m.chinese() {
 		if m.Online {
-			if m.Width > 0 && m.Width < 80 {
+			if m.Width > 0 && m.Width < threeColumnTableMinWidth {
 				return joinControls("方向键选牌", "R 准备", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), riichiCommandLabel(m, canOnlineRiichi(m)), "回车打出", "Q 菜单")
 			}
 			return joinControls("←/→ 选牌", "R 准备", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), riichiCommandLabel(m, canOnlineRiichi(m)), "回车/空格打出", "单击选牌", "再次单击打出", "Q 菜单")
 		}
-		if m.Width > 0 && m.Width < 80 {
+		if m.Width > 0 && m.Width < threeColumnTableMinWidth {
 			return joinControls("方向键选牌", "回车打出", "单击选牌", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), riichiCommandLabel(m, canHumanRiichi(m)), "Q 退出")
 		}
 		return joinControls("←/→ 选牌", "回车/空格打出", "单击选牌", "再次单击打出", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), riichiCommandLabel(m, canHumanRiichi(m)), "Q 退出")
 	}
 	if m.Online {
-		if m.Width > 0 && m.Width < 80 {
+		if m.Width > 0 && m.Width < threeColumnTableMinWidth {
 			return joinControls("Arrows select", "R ready", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), riichiCommandLabel(m, canOnlineRiichi(m)), "Enter discard", "Q menu")
 		}
 		return joinControls("Left/Right select", "R ready", commandLabel(m, "[H] Win", canOnlineWin(m)), commandLabel(m, "[K] Kong", canOnlineKong(m)), riichiCommandLabel(m, canOnlineRiichi(m)), "Enter/Space discard", "click select", "second click discard", "Q menu")
 	}
-	if m.Width > 0 && m.Width < 80 {
+	if m.Width > 0 && m.Width < threeColumnTableMinWidth {
 		return joinControls("Arrows select", "Enter discard", "Click tile", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), riichiCommandLabel(m, canHumanRiichi(m)), "Q quit")
 	}
 	return joinControls("Left/Right select", "Enter/Space discard", "click select", "second click discard", commandLabel(m, "[H] Win", canHumanWin(m)), commandLabel(m, "[K] Kong", canHumanKong(m)), riichiCommandLabel(m, canHumanRiichi(m)), "Q quit")

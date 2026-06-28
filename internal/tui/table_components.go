@@ -36,10 +36,14 @@ func renderWideTable(m Model, state tableViewState) string {
 }
 
 func renderTacticalFallback(m Model, state tableViewState, board string) string {
-	if m.Width >= mediumTableMinWidth || (m.Width > 0 && m.ShowTactical) {
-		return strings.TrimRight(board, "\n") + "\n" + renderTacticalRail(m, tacticalViewFor(m, state)) + "\n"
+	if m.Width < mediumTableMinWidth && (m.Width <= 0 || !m.ShowTactical) {
+		return board
 	}
-	return board
+	withRail := strings.TrimRight(board, "\n") + "\n" + renderTacticalRail(m, tacticalViewFor(m, state)) + "\n"
+	if !m.ShowTactical && m.Height > 0 && lipgloss.Height(withRail) > m.Height {
+		return board
+	}
+	return withRail
 }
 
 func renderTableHeader(m Model, state tableViewState) string {

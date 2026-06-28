@@ -44,3 +44,21 @@ func TestTacticalRailRendersLocalizedAnalysis(t *testing.T) {
 		}
 	}
 }
+
+func TestTacticalRailBoundsLongAnalysis(t *testing.T) {
+	model := NewModel()
+	view := tacticalView{
+		Shanten:   2,
+		Effective: mustUITiles(t, "1m", "2m", "3m", "4m", "5m", "6m"),
+	}
+
+	rail := renderTacticalRail(model, view)
+	lines := strings.Split(rail, "\n")
+
+	if len(lines) > 18 {
+		t.Fatalf("tactical rail height = %d, want <= 18:\n%s", len(lines), rail)
+	}
+	if !strings.Contains(rail, "+") {
+		t.Fatalf("long tactical lists should use a +N summary:\n%s", rail)
+	}
+}

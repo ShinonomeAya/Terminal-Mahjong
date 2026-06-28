@@ -47,16 +47,20 @@ func tacticalViewFor(m Model, state tableViewState) tacticalView {
 }
 
 func renderTacticalRail(m Model, view tacticalView) string {
-	effective := game.FormatTileLabels(view.Effective, m.UnicodeTiles)
+	effective := tacticalTileSummary(view.Effective, 5, m.UnicodeTiles)
 	if effective == "" {
 		effective = "-"
 	}
-	improvements := tacticalImprovementLines(m, view.Improvements, 3)
+	improvements := tacticalImprovementLines(m, view.Improvements, 2)
 	if len(improvements) == 0 {
 		improvements = []string{"-"}
 	}
-	events := make([]string, 0, len(view.Events))
-	for _, event := range view.Events {
+	eventsStart := len(view.Events) - 4
+	if eventsStart < 0 {
+		eventsStart = 0
+	}
+	events := make([]string, 0, len(view.Events)-eventsStart)
+	for _, event := range view.Events[eventsStart:] {
 		events = append(events, formatEventLine(m, event, m.UnicodeTiles))
 	}
 	if len(events) == 0 {
@@ -89,10 +93,25 @@ func tacticalImprovementLines(m Model, improvements []game.TileImprovement, limi
 	lines := make([]string, 0, limit)
 	for _, improvement := range improvements[:limit] {
 		discard := game.TileLabel(improvement.Discard, m.UnicodeTiles)
-		effective := game.FormatTileLabels(improvement.Effective, m.UnicodeTiles)
+		effective := tacticalTileSummary(improvement.Effective, 3, m.UnicodeTiles)
 		lines = append(lines, discard+" > "+effective)
 	}
 	return lines
+}
+
+func tacticalTileSummary(tiles []game.Tile, limit int, unicode bool) string {
+	if len(tiles) == 0 {
+		return ""
+	}
+	shown := tiles
+	if len(shown) > limit {
+		shown = shown[:limit]
+	}
+	text := game.FormatTileLabels(shown, unicode)
+	if remaining := len(tiles) - len(shown); remaining > 0 {
+		text += fmt.Sprintf(" +%d", remaining)
+	}
+	return text
 }
 
 func tacticalModeStatus(m Model, state tableViewState) string {
