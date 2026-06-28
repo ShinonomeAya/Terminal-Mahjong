@@ -1,6 +1,7 @@
 package game
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -84,5 +85,34 @@ func TestBestDiscardIndexKeepsCompleteMelds(t *testing.T) {
 	index := BestDiscardIndex(hand)
 	if index < 0 || hand[index] != mustTile(t, "9m") {
 		t.Fatalf("discard = %d:%s, want 9m", index, hand[index])
+	}
+}
+
+func TestEffectiveTilesReduceShanten(t *testing.T) {
+	hand := mustTiles(t, "1m", "2m", "3m", "4m", "5m", "6m", "7p", "8p", "9p", "2s", "2s", "3s", "4s")
+
+	got := EffectiveTiles(hand)
+
+	if FormatTiles(got) != "2s 5s" {
+		t.Fatalf("effective tiles = %s, want 2s 5s", FormatTiles(got))
+	}
+}
+
+func TestImprovementTilesDoNotMutateHand(t *testing.T) {
+	hand := mustTiles(t, "1m", "2m", "3m", "4m", "5m", "6m", "7p", "8p", "9p", "2s", "2s", "3s", "4s", "E")
+	before := append([]Tile(nil), hand...)
+
+	got := ImprovementTiles(hand)
+
+	if !reflect.DeepEqual(hand, before) {
+		t.Fatalf("hand mutated: before=%v after=%v", before, hand)
+	}
+	if len(got) == 0 {
+		t.Fatal("expected discard improvements")
+	}
+	for _, improvement := range got {
+		if len(improvement.Effective) == 0 {
+			t.Fatalf("discard %s has no effective tiles", improvement.Discard)
+		}
 	}
 }

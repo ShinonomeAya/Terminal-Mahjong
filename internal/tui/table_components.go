@@ -30,7 +30,7 @@ func renderWideTable(m Model, state tableViewState) string {
 		centerLine(wideTableBodyWidth+4, renderWideSeat(m, state, state.ViewerSeat, wideSeatLabel(m, "self"))),
 		renderWideHandAndActions(m, state),
 	)
-	rail := renderTacticalPlaceholder(m)
+	rail := renderTacticalRail(m, tacticalViewFor(m, state))
 	return lipgloss.JoinHorizontal(lipgloss.Top, table, "  ", rail) + "\n"
 }
 
@@ -149,13 +149,6 @@ func renderWideHandAndActions(m Model, state tableViewState) string {
 	hand := stylePanelWidth(handTitle(m), renderHand(m, player.Hand, m.SelectedIndex, m.UnicodeTiles), wideTableBodyWidth)
 	actions := styleSectionTitle(controlsTitle(m)) + "\n" + styleMuted(tableControls(m))
 	return hand + "\n" + actions
-}
-
-func renderTacticalPlaceholder(m Model) string {
-	if m.chinese() {
-		return stylePanelWidth("战术分析", "向听：-\n有效牌：-\n改良牌：-\n\n最近事件\n-", tacticalRailWidth)
-	}
-	return stylePanelWidth("Tactical Analysis", "Shanten: -\nEffective: -\nImprovements: -\n\nRecent Events\n-", tacticalRailWidth)
 }
 
 func wideSeatLabel(m Model, position string) string {

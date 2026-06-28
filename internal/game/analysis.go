@@ -139,6 +139,53 @@ func HandTips(tiles []Tile) string {
 	return fmt.Sprintf("shanten: %d", shanten)
 }
 
+type TileImprovement struct {
+	Discard   Tile   `json:"discard"`
+	Effective []Tile `json:"effective"`
+}
+
+func EffectiveTiles(hand []Tile) []Tile {
+	current := ShantenStandard(hand)
+	counts := TileCounts(hand)
+	effective := make([]Tile, 0)
+	for tile := 0; tile < TileTypeCount; tile++ {
+		if counts[tile] >= 4 {
+			continue
+		}
+		candidate := append([]Tile(nil), hand...)
+		candidate = append(candidate, Tile(tile))
+		if ShantenStandard(candidate) < current {
+			effective = append(effective, Tile(tile))
+		}
+	}
+	return effective
+}
+
+func ImprovementTiles(hand []Tile) []TileImprovement {
+	if len(hand) == 0 {
+		return nil
+	}
+	improvements := make([]TileImprovement, 0, len(hand))
+	seen := make(map[Tile]bool)
+	for index, discard := range hand {
+		if seen[discard] {
+			continue
+		}
+		seen[discard] = true
+		candidate := append([]Tile(nil), hand[:index]...)
+		candidate = append(candidate, hand[index+1:]...)
+		effective := EffectiveTiles(candidate)
+		if len(effective) == 0 {
+			continue
+		}
+		improvements = append(improvements, TileImprovement{
+			Discard:   discard,
+			Effective: append([]Tile(nil), effective...),
+		})
+	}
+	return improvements
+}
+
 func BestDiscardIndex(hand []Tile) int {
 	if len(hand) == 0 {
 		return -1
