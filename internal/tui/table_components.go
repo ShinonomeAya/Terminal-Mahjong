@@ -69,6 +69,7 @@ func renderWideSeat(m Model, state tableViewState, seat int, label string) strin
 		marker = ">"
 	}
 	body := fmt.Sprintf("%s %s  %s", marker, label, name)
+	points := state.Match.Points[seat]
 	if seat == state.ViewerSeat {
 		if m.chinese() {
 			body += fmt.Sprintf("  %d张", playerHandCount(player))
@@ -80,22 +81,67 @@ func renderWideSeat(m Model, state tableViewState, seat int, label string) strin
 	} else {
 		body += fmt.Sprintf("\nhand:%d", playerHandCount(player))
 	}
+	if points != 0 {
+		body += fmt.Sprintf("  %d", points)
+	}
+	if m.chinese() {
+		body += fmt.Sprintf("\n副露:%d", len(player.Melds))
+		if len(player.Flowers) > 0 {
+			body += fmt.Sprintf("  花:%d", len(player.Flowers))
+		}
+		if state.Snapshot.Riichi != nil && state.Snapshot.Riichi.Declarations[seat] == game.RiichiAccepted {
+			body += "  立直"
+		}
+	} else {
+		body += fmt.Sprintf("\nmelds:%d", len(player.Melds))
+		if len(player.Flowers) > 0 {
+			body += fmt.Sprintf("  flowers:%d", len(player.Flowers))
+		}
+		if state.Snapshot.Riichi != nil && state.Snapshot.Riichi.Declarations[seat] == game.RiichiAccepted {
+			body += "  RIICHI"
+		}
+	}
 	return stylePanelWidth("", body, wideSeatWidth)
 }
 
 func renderWideCenter(m Model, state tableViewState) string {
 	var lines []string
-	for _, player := range state.Snapshot.Players {
-		line := game.FormatTileLabels(recentTiles(player.Discards, 6), m.UnicodeTiles)
-		if line == "" {
-			line = "-"
+	for seat, player := range state.Snapshot.Players {
+		label := fmt.Sprintf("%d", seat+1)
+		if seat == state.ViewerSeat {
+			label = wideSeatLabel(m, "self")
 		}
-		lines = append(lines, line)
+		river := renderDiscardRiver(m, player.Discards)
+		lines = append(lines, label+" "+river)
 	}
 	if m.chinese() {
 		return "牌河\n" + strings.Join(lines, "\n")
 	}
 	return "Discard rivers\n" + strings.Join(lines, "\n")
+}
+
+func renderDiscardRiver(m Model, tiles []game.Tile) string {
+	if len(tiles) == 0 {
+		return "-"
+	}
+	const tilesPerRow = 6
+	rows := make([]string, 0, (len(tiles)+tilesPerRow-1)/tilesPerRow)
+	for start := 0; start < len(tiles); start += tilesPerRow {
+		end := start + tilesPerRow
+		if end > len(tiles) {
+			end = len(tiles)
+		}
+		cells := make([]string, 0, end-start)
+		for index := start; index < end; index++ {
+			label := game.TileLabel(tiles[index], m.UnicodeTiles)
+			if index == len(tiles)-1 {
+				label = "◆" + label
+			}
+			cells = append(cells, label)
+		}
+		rows = append(rows, strings.Join(cells, " "))
+	}
+	return strings.Join(rows, "\n")
 }
 
 func renderWideHandAndActions(m Model, state tableViewState) string {

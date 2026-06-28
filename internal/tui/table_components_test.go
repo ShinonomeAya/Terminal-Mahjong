@@ -38,3 +38,45 @@ func TestWideTableSkeletonContainsApprovedRegions(t *testing.T) {
 		t.Fatalf("wide table tactical rail count = %d:\n%s", strings.Count(view, "战术分析"), view)
 	}
 }
+
+func TestWideTableSeatShowsPublicModeStateAndActiveTurn(t *testing.T) {
+	match, err := game.NewMatch(31, game.NewRiichiRuleSet(game.DefaultRuleConfig(game.ModeRiichi).Riichi))
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot := match.Round.SnapshotFor("0")
+	snapshot.Current = 1
+	snapshot.Players[1].Melds = []game.Meld{{Kind: game.MeldPong, Tiles: mustUITiles(t, "1m", "1m", "1m")}}
+	snapshot.Riichi.Declarations[1] = game.RiichiAccepted
+	model := NewModel()
+	model.Online = true
+	model.OnlineStarted = true
+	model.OnlineSeat = 0
+	model.OnlineSnapshot = snapshot
+	model.OnlineMatch = match.SnapshotFor("0")
+	model.OnlineMatch.Points = [4]int{25000, 24000, 26000, 25000}
+	model.Width = 140
+
+	view := renderWideTable(model, tableStateFor(model))
+
+	for _, want := range []string{"24000", "副露:1", "立直", ">"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("wide seat missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestDiscardRiverUsesStableSixTileRowsAndLatestMarker(t *testing.T) {
+	model := NewModel()
+	tiles := mustUITiles(t, "1m", "2m", "3m", "4m", "5m", "6m", "7m")
+
+	river := renderDiscardRiver(model, tiles)
+	lines := strings.Split(river, "\n")
+
+	if len(lines) != 2 {
+		t.Fatalf("river rows = %d, want 2:\n%s", len(lines), river)
+	}
+	if !strings.Contains(lines[1], "◆") {
+		t.Fatalf("latest discard marker missing:\n%s", river)
+	}
+}
