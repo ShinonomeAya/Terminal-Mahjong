@@ -59,7 +59,7 @@ This matrix freezes the rule sources and project defaults before complete rule i
 | 12B complete Chinese Official rules | Complete |
 | 12C complete Riichi rules | Complete |
 | 12D client/server/bot integration | Complete |
-| 12E dual-mode acceptance | Not started |
+| 12E dual-mode acceptance | Complete |
 
 ### Phase 12B Acceptance
 
@@ -84,3 +84,11 @@ This matrix freezes the rule sources and project defaults before complete rule i
 - The CLI creates typed MCR/Riichi rooms with `-mode` and `-red-fives`, and room listings expose mode and option metadata.
 - Win, kong, riichi, and claim presentation now follows authoritative `LegalActions`; the TUI no longer reconstructs win or kong legality from concealed hand shape.
 - Acceptance on 2026-06-28 passed local/online rule-mode parity tests, TUI/CLI/online tests repeated 20 times, full tests, race tests, and all command builds.
+
+### Phase 12E Acceptance
+
+- Fixed-seed MCR and Riichi matches produce canonical-equal snapshots and replay logs, and every returned initial legal action is accepted against a fresh copy of the same state.
+- Representative MCR ron/tsumo and Riichi ron/tsumo/exhaustive-draw transfers are zero-sum.
+- The dual-mode WebSocket matrix verifies recipient-private hands, hidden shuffle seeds, canonical reconnect JSON, public MCR flowers, public Riichi dora/dead-wall counts, and hidden live ura indicators.
+- Acceptance on 2026-06-28 passed all rule JSON parsing, focused catalog/yaku/fan/scoring/settlement/generated tests, dual-mode online privacy/reconnect tests repeated 20 times, TUI/CLI tests repeated 20 times, formatting, diff, vet, full tests, race tests, and all command builds.
+- Phase 12 selectable complete rules are accepted; Phase 13 may begin without reopening rule mechanics.

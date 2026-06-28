@@ -34,7 +34,7 @@
 **Files:**
 - Create: `internal/game/dual_mode_acceptance_test.go`
 
-- [ ] **Step 1: Write fixed-seed acceptance tests**
+- [x] **Step 1: Write fixed-seed acceptance tests**
 
 Create a table with MCR and Riichi rules. For each mode, construct two matches with seed `120012`, compare canonical JSON snapshots and replay logs, and verify each initial legal action kind is accepted on a fresh copy:
 
@@ -52,11 +52,11 @@ func TestDualModeFixedSeedReplayAndLegalActionClosure(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Add settlement conservation checks**
+- [x] **Step 2: Add settlement conservation checks**
 
 Call representative MCR discard/self-draw settlements and Riichi ron/tsumo/exhaustive-draw settlements. Sum every `[4]int` delta array and require zero.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run:
 
@@ -66,7 +66,7 @@ go test ./internal/game -run "DualMode|MCRGenerated|RiichiGenerated" -count=1
 
 Expected: all deterministic and generated invariant tests pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add internal/game/dual_mode_acceptance_test.go
@@ -80,7 +80,7 @@ Step review: both complete rulesets satisfy the same fixed-seed and legal-comman
 **Files:**
 - Create: `internal/online/dual_mode_acceptance_test.go`
 
-- [ ] **Step 1: Write table-driven WebSocket acceptance**
+- [x] **Step 1: Write table-driven WebSocket acceptance**
 
 For MCR and Riichi:
 
@@ -94,11 +94,11 @@ For MCR and Riichi:
 
 Use the existing `startTestServer`, `dialTestClient`, `readUntil`, `assertPrivateSnapshot`, and `firstDiscardAction` helpers from `internal/online/server_test.go`.
 
-- [ ] **Step 2: Add mode-specific privacy assertions**
+- [x] **Step 2: Add mode-specific privacy assertions**
 
 For Riichi, require `DeadWallCount == 14`, non-empty public dora, and empty live `UraIndicators`. For MCR, require public flower arrays to remain present while opponent hands remain nil.
 
-- [ ] **Step 3: Verify stability**
+- [x] **Step 3: Verify stability**
 
 Run:
 
@@ -108,7 +108,7 @@ go test ./internal/online -run "DualMode.*Privacy|DualMode.*Reconnect" -count=20
 
 Expected: both mode subtests pass 20 consecutive runs.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add internal/online/dual_mode_acceptance_test.go
@@ -124,7 +124,7 @@ Step review: the same server/session protocol preserves mode-specific public sta
 - Modify: `docs/workflow.md`
 - Modify: `docs/superpowers/plans/2026-06-28-phase-12e-dual-mode-acceptance.md`
 
-- [ ] **Step 1: Validate every rule fixture**
+- [x] **Step 1: Validate every rule fixture**
 
 Run:
 
@@ -134,7 +134,7 @@ Get-ChildItem testdata/rules -Recurse -Filter *.json | ForEach-Object { Get-Cont
 
 Expected: exit code 0 with no JSON parse errors.
 
-- [ ] **Step 2: Run focused rule and online gates**
+- [x] **Step 2: Run focused rule and online gates**
 
 Run:
 
@@ -146,7 +146,7 @@ go test ./internal/tui ./cmd/client -count=20
 
 Expected: every package exits 0.
 
-- [ ] **Step 3: Run static, full, race, and build gates**
+- [x] **Step 3: Run static, full, race, and build gates**
 
 Run:
 
@@ -162,11 +162,11 @@ go build ./cmd/mahjong ./cmd/server ./cmd/client
 
 Expected: no formatting output, no diff errors, and every Go command exits 0.
 
-- [ ] **Step 4: Update stage and total-goal reviews**
+- [x] **Step 4: Update stage and total-goal reviews**
 
 Mark 12E complete in `docs/rules/conformance.md`. In `docs/workflow.md`, record the exact commands, the two-mode privacy/reconnect matrix, fixed-seed replay equality, and the decision that Phase 13 may begin.
 
-- [ ] **Step 5: Mark this plan complete and commit**
+- [x] **Step 5: Mark this plan complete and commit**
 
 Change every `- [ ]` in this file to `- [x]`, then run `git diff --check`.
 

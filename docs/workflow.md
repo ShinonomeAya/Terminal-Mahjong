@@ -203,3 +203,22 @@ Stage review:
   - `go build ./cmd/mahjong ./cmd/server ./cmd/client`.
 - Total-goal review: rule selection, room configuration, reconnect state, bot commands, and TUI controls now share the same typed mode/configuration/legal-action contracts in local and LAN play.
 - Remaining risk: Phase 12E must rerun the combined dual-mode property, privacy, reconnect, smoke, static, race, and build gates before Phase 13 visual restructuring begins.
+
+### Phase 12E Review
+
+- Stage goal: prove MCR and Riichi satisfy the combined deterministic, legal-action, privacy, reconnect, replay, static, race, and build contracts before visual restructuring.
+- Completed: fixed-seed canonical snapshot/replay equality; fresh-state legal action closure; representative zero-sum settlement checks; table-driven MCR/Riichi WebSocket privacy and reconnect coverage; and the complete repository verification gate.
+- Step evidence:
+  - Task 1 built two matches per mode from seed `120012`, compared canonical snapshots/replays, replayed every initial legal action on a fresh match, and checked representative settlements;
+  - Task 2 created, readied, played, disconnected, and reconnected MCR and Riichi rooms while checking both recipient-private views;
+  - the online 20-run gate found and corrected an overly strict MCR flower-count assertion, then passed the same command cleanly.
+- Acceptance evidence (2026-06-28):
+  - all `testdata/rules/**/*.json` files parsed with `ConvertFrom-Json`;
+  - `go test ./internal/game -run "MCRFanCatalog|EveryMCRFan|RiichiCatalog|EveryRiichiYaku|Scoring|Settlement|Generated|DualMode" -count=1`;
+  - `go test ./internal/online -run "Private|Reconnect|Riichi|MCR|DualMode" -count=20`;
+  - `go test ./internal/tui ./cmd/client -count=20`;
+  - `gofmt -l` over `internal` and `cmd`, `git diff --check`, and `go vet ./...`;
+  - `go test ./... -count=1` and `go test -race ./... -count=1`;
+  - `go build ./cmd/mahjong ./cmd/server ./cmd/client`.
+- Total-goal review: Phase 12 now delivers selectable complete Chinese Official and four-player Riichi rules through local and LAN terminal clients, with deterministic replay metadata, authoritative legal actions, legal bots, private live state, and canonical reconnect.
+- Remaining risk: Phase 13 is presentation work. It must preserve these accepted rule, protocol, privacy, replay, and width-test contracts while restructuring the wide competitive table and tactical rail.
