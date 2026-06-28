@@ -71,6 +71,9 @@ func renderTable(m Model) string {
 	if m.Game == nil {
 		return "No game\n"
 	}
+	if m.Width >= wideTableMinWidth {
+		return renderWideTable(m, tableStateFor(m))
+	}
 	g := m.Game
 	topSeat := renderSeatPanel(
 		m,
@@ -124,6 +127,9 @@ func renderOnlineTable(m Model) string {
 	snapshot := m.OnlineSnapshot
 	if len(snapshot.Players) == 0 {
 		return styleTitle(appTitle(m)) + "\n" + styleMuted(renderNetworkStatus(m)) + "\n" + waitingSnapshotText(m) + "\n"
+	}
+	if m.Width >= wideTableMinWidth {
+		return renderWideTable(m, tableStateFor(m))
 	}
 	player := onlinePlayer(m, m.OnlineSeat)
 	opposite := onlinePlayer(m, (m.OnlineSeat+2)%4)
