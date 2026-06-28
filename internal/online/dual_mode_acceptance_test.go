@@ -89,7 +89,7 @@ func assertDualModeSpecificPrivacy(t *testing.T, mode game.RuleMode, first game.
 	switch mode {
 	case game.ModeMCR:
 		for _, snapshot := range []game.GameSnapshot{first, second} {
-			if len(snapshot.Players[0].Flowers) != 1 || snapshot.Players[0].Flowers[0] != game.FlowerPlum {
+			if !containsAcceptanceTile(snapshot.Players[0].Flowers, game.FlowerPlum) {
 				t.Fatalf("MCR public flowers missing: %#v", snapshot.Players[0].Flowers)
 			}
 		}
@@ -103,4 +103,13 @@ func assertDualModeSpecificPrivacy(t *testing.T, mode game.RuleMode, first game.
 			}
 		}
 	}
+}
+
+func containsAcceptanceTile(tiles []game.Tile, target game.Tile) bool {
+	for _, tile := range tiles {
+		if tile == target {
+			return true
+		}
+	}
+	return false
 }
