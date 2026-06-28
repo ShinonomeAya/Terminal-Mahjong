@@ -31,6 +31,7 @@ type Model struct {
 	Language               Language
 	SelectedMode           game.RuleMode
 	SelectedRiichiRedFives int
+	ShowTactical           bool
 	Game                   *game.Game
 	Online                 bool
 	OnlineClient           *online.Client

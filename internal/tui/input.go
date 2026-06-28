@@ -9,6 +9,10 @@ import (
 )
 
 func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if key.Type == tea.KeyTab {
+		m.ShowTactical = !m.ShowTactical
+		return m, nil
+	}
 	if m.Online {
 		return updateOnlineTable(m, key)
 	}

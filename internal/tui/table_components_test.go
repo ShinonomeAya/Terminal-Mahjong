@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"mahjong/internal/game"
 )
 
@@ -78,5 +80,35 @@ func TestDiscardRiverUsesStableSixTileRowsAndLatestMarker(t *testing.T) {
 	}
 	if !strings.Contains(lines[1], "◆") {
 		t.Fatalf("latest discard marker missing:\n%s", river)
+	}
+}
+
+func TestTacticalFallbackMovesBelowAtMediumWidth(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGameWithRules(game.ModeRiichi, game.DefaultRuleConfig(game.ModeRiichi))
+	model.Screen = ScreenTable
+	model.Width = 90
+
+	view := renderTable(model)
+
+	if !strings.Contains(view, "战术分析") || lineIndexContaining(view, "战术分析") <= lineIndexContaining(view, "手牌托盘") {
+		t.Fatalf("medium tactical rail should appear below table:\n%s", view)
+	}
+}
+
+func TestTabTogglesTacticalRailAtCompactWidth(t *testing.T) {
+	model := NewModel()
+	model.Game = newStartedGameWithRules(game.ModeRiichi, game.DefaultRuleConfig(game.ModeRiichi))
+	model.Screen = ScreenTable
+	model.Width = 64
+	if strings.Contains(renderTable(model), "战术分析") {
+		t.Fatal("compact tactical rail should be hidden by default")
+	}
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated := next.(Model)
+
+	if !updated.ShowTactical || !strings.Contains(renderTable(updated), "战术分析") {
+		t.Fatalf("Tab did not reveal compact tactical rail:\n%s", renderTable(updated))
 	}
 }

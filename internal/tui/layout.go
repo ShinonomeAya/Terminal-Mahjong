@@ -113,7 +113,7 @@ func renderTable(m Model) string {
 			renderHand(m, g.Players[0].Hand, m.SelectedIndex, m.UnicodeTiles),
 		handPanelWidth(m),
 	)
-	return renderBoardFrame(
+	board := renderBoardFrame(
 		m,
 		styleMuted(tableMeta(m, len(g.Wall), len(g.Events), playerName(m, g.Players[g.Current].Name), "")),
 		topSeat,
@@ -121,6 +121,7 @@ func renderTable(m Model) string {
 		hand,
 		styleSectionTitle(controlsTitle(m))+"\n"+styleMuted(tableControls(m)),
 	)
+	return renderTacticalFallback(m, tableStateFor(m), board)
 }
 
 func renderOnlineTable(m Model) string {
@@ -149,7 +150,7 @@ func renderOnlineTable(m Model) string {
 			renderHand(m, player.Hand, m.SelectedIndex, m.UnicodeTiles),
 		handPanelWidth(m),
 	)
-	return renderBoardFrame(
+	board := renderBoardFrame(
 		m,
 		styleMuted(onlineMeta(m, snapshot.WallCount, len(snapshot.Events))),
 		topSeat,
@@ -157,6 +158,7 @@ func renderOnlineTable(m Model) string {
 		hand,
 		styleSectionTitle(controlsTitle(m))+"\n"+styleMuted(tableControls(m)),
 	)
+	return renderTacticalFallback(m, tableStateFor(m), board)
 }
 
 func tableWidth(m Model) int {

@@ -12,10 +12,11 @@ import (
 const wideTableMinWidth = 110
 
 const (
-	wideTableBodyWidth = 88
-	wideSeatWidth      = 20
-	wideCenterWidth    = 38
-	tacticalRailWidth  = 20
+	wideTableBodyWidth  = 88
+	wideSeatWidth       = 20
+	wideCenterWidth     = 38
+	tacticalRailWidth   = 20
+	mediumTableMinWidth = 80
 )
 
 func renderWideTable(m Model, state tableViewState) string {
@@ -32,6 +33,13 @@ func renderWideTable(m Model, state tableViewState) string {
 	)
 	rail := renderTacticalRail(m, tacticalViewFor(m, state))
 	return lipgloss.JoinHorizontal(lipgloss.Top, table, "  ", rail) + "\n"
+}
+
+func renderTacticalFallback(m Model, state tableViewState, board string) string {
+	if m.Width >= mediumTableMinWidth || (m.Width > 0 && m.ShowTactical) {
+		return strings.TrimRight(board, "\n") + "\n" + renderTacticalRail(m, tacticalViewFor(m, state)) + "\n"
+	}
+	return board
 }
 
 func renderTableHeader(m Model, state tableViewState) string {
