@@ -14,6 +14,7 @@ import (
 	"mahjong/internal/game"
 	"mahjong/internal/online"
 	"mahjong/internal/protocol"
+	"mahjong/internal/replay"
 )
 
 func TestNewModelStartsAtMenu(t *testing.T) {
@@ -1163,5 +1164,158 @@ func TestApplyOnlineSnapshotRetainsMatchSnapshot(t *testing.T) {
 
 	if updated.OnlineMatch.Mode != game.ModeRiichi || updated.OnlineMatch.RuleConfig != match.RuleConfig || updated.OnlineMatch.Points != match.Points {
 		t.Fatalf("online match = %#v, want %#v", updated.OnlineMatch, match)
+	}
+}
+
+func TestMenuStartsLocalMatchCoordinator(t *testing.T) {
+	model := NewModel()
+	model.SelectedMode = game.ModeRiichi
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if updated.LocalMatch == nil || updated.Game != updated.LocalMatch.Round {
+		t.Fatalf("local match/game = %#v/%p", updated.LocalMatch, updated.Game)
+	}
+	if updated.LocalMatch.Mode != game.ModeRiichi || updated.ReplayDir != "replays" {
+		t.Fatalf("mode=%q replay dir=%q", updated.LocalMatch.Mode, updated.ReplayDir)
+	}
+}
+
+func TestLocalDiscardRecordsReplayCommand(t *testing.T) {
+	model := NewModel()
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model = next.(Model)
+	before := model.LocalMatch.ReplayCommandCount()
+
+	next, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := next.(Model)
+
+	if updated.LocalMatch.ReplayCommandCount() <= before {
+		t.Fatalf("commands=%d want greater than %d", updated.LocalMatch.ReplayCommandCount(), before)
+	}
+	if updated.Game != updated.LocalMatch.Round {
+		t.Fatal("game alias does not track the local match round")
+	}
+}
+
+func TestLocalQuitMarksMatchAbandonedWithoutSaving(t *testing.T) {
+	model := NewModel()
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model = next.(Model)
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	updated := next.(Model)
+
+	if cmd != nil {
+		t.Fatal("abandoned match should not schedule replay save")
+	}
+	if updated.LocalMatch == nil || !updated.LocalMatch.Abandoned || updated.LocalMatch.Complete {
+		t.Fatalf("local match = %#v", updated.LocalMatch)
+	}
+	if updated.Screen != ScreenGameOver {
+		t.Fatalf("screen = %v, want game over", updated.Screen)
+	}
+}
+
+func TestSaveCompletedReplayCmdWritesValidatedFile(t *testing.T) {
+	match, err := game.NewMatch(140014, game.NewCompatibilityRuleSet(game.ModeCompatibility, game.RuleConfig{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match.Round.Players[0].Hand = mustUITiles(t,
+		"1m", "2m", "3m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+	if result := match.ApplyCommand(game.GameCommand{PlayerID: "0", Kind: game.CommandWin}); !result.OK {
+		t.Fatal(result.Error)
+	}
+
+	message := saveCompletedReplayCmd(match, t.TempDir())()
+	saved, ok := message.(replaySavedMsg)
+	if !ok {
+		t.Fatalf("message = %#v", message)
+	}
+	file, err := replay.Load(saved.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if file.Mode != game.ModeCompatibility || !file.Complete {
+		t.Fatalf("saved replay = %#v", file)
+	}
+}
+
+func TestReplaySavedMessageUpdatesResultState(t *testing.T) {
+	model := NewModel()
+
+	next, cmd := model.Update(replaySavedMsg{Path: "replays/test.json"})
+	updated := next.(Model)
+
+	if cmd != nil || updated.LastReplayPath != "replays/test.json" {
+		t.Fatalf("path=%q cmd=%v", updated.LastReplayPath, cmd)
+	}
+}
+
+func TestLocalMCRRoundTransitionStaysOnTable(t *testing.T) {
+	match, err := game.NewMatch(140014, game.NewMCRRuleSet(game.DefaultRuleConfig(game.ModeMCR).MCR))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match.Round.Players[0].Hand = mustUITiles(t,
+		"1m", "9m", "1p", "9p", "1s", "9s",
+		"E", "E", "S", "W", "N", "Z", "F", "B",
+	)
+	match.Round.RecordEvent(game.EventDraw, 0, mustUITiles(t, "E")[0], "")
+	model := NewModel()
+	model.Screen = ScreenTable
+	model.LocalMatch = match
+	model = syncLocalRound(model)
+
+	model, result := applyLocalCommand(model, game.GameCommand{Kind: game.CommandWin})
+	if !result.OK {
+		t.Fatal(result.Error)
+	}
+	next, cmd := finishLocalUpdate(model)
+	updated := next.(Model)
+
+	if cmd != nil || updated.Screen != ScreenTable || updated.LocalMatch.RoundNumber != 2 {
+		t.Fatalf("screen=%v round=%d cmd=%v", updated.Screen, updated.LocalMatch.RoundNumber, cmd)
+	}
+	if updated.Game != updated.LocalMatch.Round {
+		t.Fatal("game alias did not advance to the next MCR round")
+	}
+}
+
+func TestFinishLocalUpdateSchedulesCompletedReplaySave(t *testing.T) {
+	match, err := game.NewMatch(140014, game.NewCompatibilityRuleSet(game.ModeCompatibility, game.RuleConfig{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match.Round.Players[0].Hand = mustUITiles(t,
+		"1m", "2m", "3m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+	if result := match.ApplyCommand(game.GameCommand{PlayerID: "0", Kind: game.CommandWin}); !result.OK {
+		t.Fatal(result.Error)
+	}
+	model := NewModel()
+	model.LocalMatch = match
+	model.ReplayDir = t.TempDir()
+	model = syncLocalRound(model)
+
+	next, cmd := finishLocalUpdate(model)
+	updated := next.(Model)
+
+	if updated.Screen != ScreenGameOver || cmd == nil {
+		t.Fatalf("screen=%v cmd=%v", updated.Screen, cmd)
+	}
+	if _, ok := cmd().(replaySavedMsg); !ok {
+		t.Fatal("completed match did not produce replaySavedMsg")
 	}
 }

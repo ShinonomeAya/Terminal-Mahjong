@@ -41,7 +41,11 @@ func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		return discardSelected(m)
 	case "q":
-		m.Game.Quit("quit")
+		if m.LocalMatch != nil {
+			m, _ = applyLocalCommand(m, game.GameCommand{Kind: game.CommandQuit})
+		} else {
+			m.Game.Quit("quit")
+		}
 		m.Screen = ScreenGameOver
 	case "l":
 		return riichiLocal(m)
@@ -123,17 +127,15 @@ func riichiLocal(m Model) (tea.Model, tea.Cmd) {
 		m.StatusLine = "Riichi is not available"
 		return m, nil
 	}
-	result := m.Game.ApplyCommand(game.GameCommand{PlayerID: "0", Kind: game.CommandRiichi, TileIndex: index})
+	var result game.CommandResult
+	m, result = applyLocalCommand(m, game.GameCommand{Kind: game.CommandRiichi, TileIndex: index})
 	if !result.OK {
 		m.StatusLine = result.Error
 		return m, nil
 	}
 	m.StatusLine = "Riichi"
-	m.Game.AdvanceAIUntilHumanTurn()
-	if m.Game.Over {
-		m.Screen = ScreenGameOver
-	}
-	return m, nil
+	m = advanceLocalAI(m)
+	return finishLocalUpdate(m)
 }
 
 func selectedLegalTileIndex(actions []game.LegalAction, kind game.CommandKind, selected int) (int, bool) {
@@ -239,20 +241,25 @@ func discardSelected(m Model) (tea.Model, tea.Cmd) {
 	}
 	discardIndex := m.SelectedIndex
 	discardTile := m.Game.Players[0].Hand[discardIndex]
-	if _, err := m.Game.HumanDiscardSelected(m.SelectedIndex); err != nil {
-		return m, nil
+	if m.LocalMatch != nil {
+		var result game.CommandResult
+		m, result = applyLocalCommand(m, game.GameCommand{Kind: game.CommandDiscard, TileIndex: m.SelectedIndex})
+		if !result.OK {
+			return m, nil
+		}
+	} else {
+		if _, err := m.Game.HumanDiscardSelected(m.SelectedIndex); err != nil {
+			return m, nil
+		}
 	}
 	m.StatusLine = selectionStatus(m, "Discarded", discardIndex, discardTile, m.UnicodeTiles)
-	m.Game.AdvanceAIUntilHumanTurn()
+	m = advanceLocalAI(m)
 	if len(m.Game.Players[0].Hand) == 0 {
 		m.SelectedIndex = 0
 	} else if m.SelectedIndex >= len(m.Game.Players[0].Hand) {
 		m.SelectedIndex = len(m.Game.Players[0].Hand) - 1
 	}
-	if m.Game.Over {
-		m.Screen = ScreenGameOver
-	}
-	return m, nil
+	return finishLocalUpdate(m)
 }
 
 func updateTableMouse(m Model, msg tea.MouseMsg) (tea.Model, tea.Cmd) {
@@ -342,15 +349,47 @@ func updateClaimResponse(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, sendOnlineGameCommandCmd(m.OnlineClient, command)
 	}
 	command.PlayerID = "0"
-	result := m.Game.ApplyCommand(command)
+	var result game.CommandResult
+	m, result = applyLocalCommand(m, command)
 	if !result.OK {
 		m.StatusLine = result.Error
 		return m, nil
 	}
 	m.StatusLine = claimStatus(command, false)
 	m.ClaimOptionIndex = 0
-	m.Game.AdvanceAIUntilHumanTurn()
-	if m.Game.Over {
+	m = advanceLocalAI(m)
+	return finishLocalUpdate(m)
+}
+
+func applyLocalCommand(m Model, command game.GameCommand) (Model, game.CommandResult) {
+	command.PlayerID = "0"
+	if m.LocalMatch != nil {
+		result := m.LocalMatch.ApplyCommand(command)
+		return syncLocalRound(m), result
+	}
+	return m, m.Game.ApplyCommand(command)
+}
+
+func advanceLocalAI(m Model) Model {
+	if m.LocalMatch != nil {
+		m.LocalMatch.AdvanceAIUntilHumanTurn()
+		return syncLocalRound(m)
+	}
+	if m.Game != nil {
+		m.Game.AdvanceAIUntilHumanTurn()
+	}
+	return m
+}
+
+func finishLocalUpdate(m Model) (tea.Model, tea.Cmd) {
+	if m.LocalMatch != nil {
+		if m.LocalMatch.Complete {
+			m.Screen = ScreenGameOver
+			return m, saveCompletedReplayCmd(m.LocalMatch, m.ReplayDir)
+		}
+		return m, nil
+	}
+	if m.Game != nil && m.Game.Over {
 		m.Screen = ScreenGameOver
 	}
 	return m, nil
@@ -456,12 +495,13 @@ func updateGameOver(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		switch m.GameOverIndex {
 		case 0:
-			m.Game = newStartedGame()
+			m = restartLocalMatch(m)
 			m.Screen = ScreenTable
 			m.SelectedIndex = 0
 			m.GameOverIndex = 0
 		case 1:
 			m.Game = nil
+			m.LocalMatch = nil
 			m.Screen = ScreenMenu
 			m.SelectedIndex = 0
 			m.GameOverIndex = 0
@@ -474,7 +514,7 @@ func updateGameOver(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.Online {
 			return m, nil
 		}
-		m.Game = newStartedGame()
+		m = restartLocalMatch(m)
 		m.Screen = ScreenTable
 		m.SelectedIndex = 0
 		m.GameOverIndex = 0
@@ -507,6 +547,7 @@ func clearOnlineStateForMenu(m Model) Model {
 		m.OnlineClient.Close()
 	}
 	m.Game = nil
+	m.LocalMatch = nil
 	m.Online = false
 	m.OnlineClient = nil
 	m.OnlineSnapshot = game.GameSnapshot{}

@@ -19,7 +19,9 @@ func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEnter:
 		switch m.MenuIndex {
 		case 0:
-			m.Game = newStartedGameWithRules(m.SelectedMode, selectedRuleConfig(m))
+			m.LocalMatch = newStartedMatchWithRules(m.SelectedMode, selectedRuleConfig(m))
+			m = syncLocalRound(m)
+			m.LastReplayPath = ""
 			m.Online = false
 			m.NetworkStatus = NetworkLocal
 			m.Screen = ScreenTable

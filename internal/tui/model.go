@@ -33,6 +33,9 @@ type Model struct {
 	SelectedRiichiRedFives int
 	ShowTactical           bool
 	Game                   *game.Game
+	LocalMatch             *game.Match
+	ReplayDir              string
+	LastReplayPath         string
 	Online                 bool
 	OnlineClient           *online.Client
 	OnlineSnapshot         game.GameSnapshot
@@ -66,6 +69,7 @@ func NewModel() Model {
 		Language:               LanguageChinese,
 		SelectedMode:           game.ModeRiichi,
 		SelectedRiichiRedFives: 3,
+		ReplayDir:              "replays",
 		OnlineServerURL:        "ws://127.0.0.1:8080/ws",
 		OnlineName:             "Player",
 		OnlineSession:          ".mahjong-session.json",
@@ -128,6 +132,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case onlineErrorMsg:
 		m.NetworkStatus = NetworkOffline
 		m.StatusLine = msg.Err.Error()
+		return m, nil
+	case replaySavedMsg:
+		m.LastReplayPath = msg.Path
+		m.StatusLine = "Replay saved: " + msg.Path
+		return m, nil
+	case replaySaveErrorMsg:
+		m.StatusLine = "Replay save failed: " + msg.Err.Error()
 		return m, nil
 	default:
 		return m, nil

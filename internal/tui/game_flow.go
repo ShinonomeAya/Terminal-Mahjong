@@ -7,6 +7,10 @@ func newStartedGame() *game.Game {
 }
 
 func newStartedGameWithRules(mode game.RuleMode, config game.RuleConfig) *game.Game {
+	return newStartedMatchWithRules(mode, config).Round
+}
+
+func newStartedMatchWithRules(mode game.RuleMode, config game.RuleConfig) *game.Match {
 	var rules game.RuleSet
 	switch mode {
 	case game.ModeMCR:
@@ -21,7 +25,24 @@ func newStartedGameWithRules(mode game.RuleMode, config game.RuleConfig) *game.G
 		panic(err)
 	}
 	match.EnsureCurrentTurnDraw()
-	return match.Round
+	return match
+}
+
+func syncLocalRound(m Model) Model {
+	if m.LocalMatch != nil {
+		m.Game = m.LocalMatch.Round
+	}
+	return m
+}
+
+func restartLocalMatch(m Model) Model {
+	if m.LocalMatch == nil {
+		m.Game = newStartedGame()
+		return m
+	}
+	m.LocalMatch = newStartedMatchWithRules(m.LocalMatch.Mode, m.LocalMatch.RuleConfig)
+	m.LastReplayPath = ""
+	return syncLocalRound(m)
 }
 
 func selectedRuleConfig(m Model) game.RuleConfig {

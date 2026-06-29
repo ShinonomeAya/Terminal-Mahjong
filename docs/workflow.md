@@ -275,3 +275,23 @@ Stage review:
 - Performance note: full `internal/game` tests now take roughly 36 seconds because every accepted match transition copies a full authoritative snapshot; retain this cost for stable viewing and re-evaluate during 14E repeated/race acceptance.
 - Total-goal review: Phase 14 now has an in-memory authoritative replay timeline, but completed files are not yet persisted or exposed to local users.
 - Next step: Task 3 adds validated atomic storage and routes the local TUI through the retained `Match`.
+
+### Phase 14B Task 3 Review
+
+- Stage goal: persist only validated completed matches and make the local TUI use the authoritative `Match` without breaking legacy `Game` fixtures.
+- Step completed:
+  - added 32 MiB bounded validated loading, trailing-JSON rejection, atomic temporary-file sync/rename, newest-first listing, and per-file corruption isolation;
+  - retained `LocalMatch` while keeping `Game` as its current-round alias;
+  - routed local discard, riichi, claims, AI advancement, and quit through the match boundary when available;
+  - continued MCR/Riichi multi-round matches on the table, autosaved completed matches, and excluded abandoned matches.
+- RED evidence:
+  - `go test ./internal/replay -count=1` failed only on missing storage APIs;
+  - `go test ./internal/tui -run "LocalMatchCoordinator|LocalDiscardRecordsReplay|LocalQuitMarks|SaveCompletedReplay|ReplaySavedMessage" -count=1` failed only on missing local-match/replay fields and commands.
+- GREEN evidence:
+  - `go test ./internal/replay -count=20`;
+  - `go test ./internal/tui -run "LocalMatch|LocalDiscardRecordsReplay|LocalQuitMarks|SaveCompletedReplay|ReplaySavedMessage|FinishLocalUpdate" -count=20`;
+  - `go test ./internal/tui -count=1`;
+  - `go test ./... -count=1`.
+- Compatibility review: legacy models that contain only `Game` still restart in compatibility mode; real `LocalMatch` models restart with their original mode/configuration.
+- Total-goal review: Phase 14B is complete. Local completed matches now produce sealed atomic replay files from the authoritative timeline.
+- Remaining risk: the online server does not yet retain or deliver completed replay payloads; Phase 14C starts with protocol/privacy tests.

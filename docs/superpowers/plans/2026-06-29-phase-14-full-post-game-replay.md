@@ -386,7 +386,7 @@ Step review:
 - Modify: `internal/tui/menu.go`
 - Modify: `internal/tui/model_test.go`
 
-- [ ] **Step 1: Write failing atomic storage tests**
+- [x] **Step 1: Write failing atomic storage tests**
 
 Use `t.TempDir()` and fixed UTC time. Assert `Save` creates exactly one validated `.json`, leaves no temporary file, `Load` returns canonical JSON-equivalent data, and a checksum-invalid file fails without replacing a valid destination.
 
@@ -409,7 +409,7 @@ func TestListSkipsCorruptReplayAndKeepsValidFiles(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -419,7 +419,7 @@ go test ./internal/replay -count=1
 
 Expected: package/functions do not exist.
 
-- [ ] **Step 3: Implement validated atomic storage**
+- [x] **Step 3: Implement validated atomic storage**
 
 Create:
 
@@ -445,7 +445,7 @@ func List(dir string) ([]Entry, []FileIssue, error)
 
 `ApplicationVersion` reads `debug.ReadBuildInfo` and returns `"dev"` for an empty or `(devel)` main version. `Save` validates before writing, uses `os.MkdirAll`, `os.CreateTemp(dir, ".replay-*.tmp")`, `file.Sync`, `file.Close`, and `os.Rename`. Its final name is `<UTC timestamp>-<mode>-<replay id>.json`. Deferred cleanup removes the temporary file on all failures. `Load` applies a 32 MiB `io.LimitReader`, rejects trailing JSON values, then calls `game.ValidateReplay`. `List` treats a missing directory as empty, validates each `.json`, records per-file issues, and sorts entries by `CreatedAt` descending then path.
 
-- [ ] **Step 4: Retain the local Match coordinator**
+- [x] **Step 4: Retain the local Match coordinator**
 
 Add these model fields:
 
@@ -470,7 +470,7 @@ func syncLocalRound(m Model) Model {
 
 Keep `newStartedGameWithRules` as a compatibility helper that returns `newStartedMatchWithRules(...).Round`.
 
-- [ ] **Step 5: Route local actions through Match**
+- [x] **Step 5: Route local actions through Match**
 
 Replace direct local calls to `HumanDiscardSelected`, `Game.ApplyCommand`, and `Game.AdvanceAIUntilHumanTurn` with:
 
@@ -492,7 +492,7 @@ For MCR/Riichi, remain on `ScreenTable` after a round transition and reset selec
 
 Route `Q` through `LocalMatch.ApplyCommand(CommandQuit)`, enter `ScreenGameOver`, and do not schedule autosave because `LocalMatch.Abandoned` is true. The game-over screen must say the match was abandoned rather than claiming a replay was saved.
 
-- [ ] **Step 6: Save a completed local replay asynchronously**
+- [x] **Step 6: Save a completed local replay asynchronously**
 
 Define:
 
@@ -510,7 +510,7 @@ func saveCompletedReplayCmd(match *game.Match, dir string) tea.Cmd
 
 Build participants from the four player IDs/names, call `CompletedReplay(replay.ApplicationVersion(), time.Now().UTC(), participants)`, then `replay.Save`. On `replaySavedMsg`, store `LastReplayPath` and show a localized success status. A save failure must not erase match results or quit the TUI.
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run:
 

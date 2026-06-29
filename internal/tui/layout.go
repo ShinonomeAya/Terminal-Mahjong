@@ -759,12 +759,20 @@ func renderGameOver(m Model) string {
 		out.WriteString(styleTitle("对局结束") + "\n")
 		out.WriteString(fmt.Sprintf("结果：%s\n", m.Game.Reason))
 		out.WriteString(fmt.Sprintf("事件：%d\n", len(m.Game.Events)))
-		out.WriteString("可回放事件日志：是\n\n")
+		if m.LocalMatch != nil && m.LocalMatch.Abandoned {
+			out.WriteString("回放：未保存（已放弃）\n\n")
+		} else {
+			out.WriteString("完整回放：正在保存或已保存\n\n")
+		}
 	} else {
 		out.WriteString(styleTitle("GAME OVER") + "\n")
 		out.WriteString(fmt.Sprintf("Result: %s\n", m.Game.Reason))
 		out.WriteString(fmt.Sprintf("Events: %d\n", len(m.Game.Events)))
-		out.WriteString("Replay-ready event log: yes\n\n")
+		if m.LocalMatch != nil && m.LocalMatch.Abandoned {
+			out.WriteString("Replay: not saved (abandoned)\n\n")
+		} else {
+			out.WriteString("Full replay: saving or saved\n\n")
+		}
 	}
 	for i, item := range gameOverItems {
 		prefix := "  "
