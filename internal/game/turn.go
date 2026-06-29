@@ -64,6 +64,63 @@ func (g *Game) AdvanceAIUntilHumanTurn() {
 	}
 }
 
+func (match *Match) AdvanceAIUntilHumanTurn() {
+	for !match.Complete && !match.Abandoned {
+		round := match.Round
+		if round == nil || round.Over {
+			return
+		}
+		if round.Phase == PhaseAwaitingClaim {
+			if round.Current == 0 {
+				return
+			}
+			if result := match.ApplyCommand(round.aiClaimCommand()); !result.OK {
+				return
+			}
+			continue
+		}
+		if round.Current == 0 {
+			match.EnsureCurrentTurnDraw()
+			return
+		}
+		match.EnsureCurrentTurnDraw()
+		if match.Complete || match.Abandoned {
+			return
+		}
+		round = match.Round
+		if round.Current == 0 {
+			return
+		}
+		command := match.aiTurnCommand()
+		if result := match.ApplyCommand(command); !result.OK {
+			return
+		}
+	}
+}
+
+func (match *Match) aiTurnCommand() GameCommand {
+	round := match.Round
+	player := playerID(round.Current)
+	actions := round.rules.LegalActions(round, player)
+	for _, kind := range []CommandKind{CommandWin, CommandKong} {
+		for _, action := range actions {
+			if action.Kind == kind {
+				return GameCommand{
+					PlayerID:  player,
+					Kind:      action.Kind,
+					TileIndex: action.TileIndex,
+					Tile:      action.Tile,
+				}
+			}
+		}
+	}
+	return GameCommand{
+		PlayerID:  player,
+		Kind:      CommandDiscard,
+		TileIndex: ChooseAIDiscard(round.Players[round.Current].Hand),
+	}
+}
+
 func (g *Game) aiClaimCommand() GameCommand {
 	command := GameCommand{PlayerID: playerID(g.Current), Kind: CommandPass}
 	options := g.activeClaimOptions()

@@ -214,7 +214,7 @@ Step review:
 - Modify: `internal/game/turn.go`
 - Modify: `internal/game/match_test.go`
 
-- [ ] **Step 1: Write failing recorder tests**
+- [x] **Step 1: Write failing recorder tests**
 
 Create a fixed-seed Riichi match, record the initial draw and two accepted commands, and assert:
 
@@ -240,7 +240,7 @@ func TestMatchReplayJournalCapturesAcceptedCommandsAndFrames(t *testing.T) {
 
 Add tests proving rejected commands create no command/frame, draw-only frames have `Command == nil`, final-round state is captured before a next-round frame, and `ReplayFile` returns deep copies.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -250,7 +250,7 @@ go test ./internal/game -run "MatchReplayJournal|ReplayFrame|RejectedCommandDoes
 
 Expected: compile failure because the match journal API does not exist.
 
-- [ ] **Step 3: Add an unexported match journal**
+- [x] **Step 3: Add an unexported match journal**
 
 Extend `Match` without exposing mutable journal slices. Add `Abandoned bool` to both `Match` and `MatchSnapshot` so quit state cannot be confused with rule-complete state:
 
@@ -294,7 +294,7 @@ func (match *Match) recordReplayFrame(command *GameCommand) {
 
 Initialize `replay.initial` and frame zero at the end of `NewMatch`.
 
-- [ ] **Step 4: Record draws, commands, settlement, and round transitions**
+- [x] **Step 4: Record draws, commands, settlement, and round transitions**
 
 In `Match.EnsureCurrentTurnDraw`, record a nil-command frame only when state changed. In `Match.ApplyCommand`, treat an accepted quit as abandoned and do not run settlement/round advancement:
 
@@ -325,7 +325,7 @@ func (match *Match) ApplyCommand(command GameCommand) CommandResult {
 
 The command frame preserves the completed round before settlement changes `match.Round`; the nil-command frame preserves settlement, standings, and the next-round or completed-match state.
 
-- [ ] **Step 5: Route match AI through accepted commands**
+- [x] **Step 5: Route match AI through accepted commands**
 
 Add `func (match *Match) AdvanceAIUntilHumanTurn()` in `turn.go`. It must:
 
@@ -338,7 +338,7 @@ Add `func (match *Match) AdvanceAIUntilHumanTurn()` in `turn.go`. It must:
 
 Do not reconstruct state from events and do not call `discardCurrent`, `finish`, or `resolveAIKongs` directly from the new match loop.
 
-- [ ] **Step 6: Export a sealed completed replay**
+- [x] **Step 6: Export a sealed completed replay**
 
 Add:
 
@@ -354,7 +354,7 @@ func (match *Match) CompletedReplay(
 
 `CompletedReplay` must reject `!match.Complete || match.Abandoned`, derive a deterministic `ReplayID` from mode, initial wall hash, and UTC creation timestamp, copy all frames/commands/settlements, set final points, and call `SealReplay`.
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run:
 

@@ -1,6 +1,12 @@
 package game
 
-import "fmt"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
 type Match struct {
 	Mode                 RuleMode
@@ -9,12 +15,14 @@ type Match struct {
 	Dealer               int
 	RoundNumber          int
 	Complete             bool
+	Abandoned            bool
 	Round                *Game
 	LastMCRSettlement    *MCRSettlement
 	LastRiichiSettlement *RiichiSettlement
 	MCRSettlements       []MCRSettlement
 	RiichiSettlements    []RiichiSettlement
 	rules                RuleSet
+	replay               matchReplayJournal
 }
 
 type MatchSnapshot struct {
@@ -24,6 +32,7 @@ type MatchSnapshot struct {
 	Dealer               int                `json:"dealer"`
 	RoundNumber          int                `json:"round_number"`
 	Complete             bool               `json:"complete"`
+	Abandoned            bool               `json:"abandoned,omitempty"`
 	Round                GameSnapshot       `json:"round"`
 	LastMCRSettlement    *MCRSettlement     `json:"last_mcr_settlement,omitempty"`
 	LastRiichiSettlement *RiichiSettlement  `json:"last_riichi_settlement,omitempty"`
@@ -50,6 +59,8 @@ func NewMatch(seed int64, rules RuleSet) (*Match, error) {
 	match.Round.Dealer = match.Dealer
 	match.Round.HandNumber = match.RoundNumber
 	match.Round.Current = match.Dealer
+	match.replay.initial = match.Snapshot()
+	match.recordReplayFrame(nil)
 	return match, nil
 }
 
@@ -63,20 +74,15 @@ func (match *Match) SnapshotFor(playerID string) MatchSnapshot {
 
 func (match *Match) ApplyCommand(command GameCommand) CommandResult {
 	result := match.Round.ApplyCommand(command)
-	if result.OK && match.Round.Over {
-		if match.Mode == ModeMCR {
-			match.completeMCRRound()
-		} else if match.Mode == ModeRiichi {
-			match.completeRiichiRound()
-		} else {
-			match.Complete = true
-		}
+	if !result.OK {
+		return result
 	}
-	return result
-}
-
-func (match *Match) EnsureCurrentTurnDraw() (Tile, bool) {
-	tile, ok := match.Round.EnsureCurrentTurnDraw()
+	if command.Kind == CommandQuit {
+		match.Abandoned = true
+		match.recordReplayFrame(&result.Command)
+		return result
+	}
+	match.recordReplayFrame(&result.Command)
 	if match.Round.Over {
 		if match.Mode == ModeMCR {
 			match.completeMCRRound()
@@ -85,6 +91,25 @@ func (match *Match) EnsureCurrentTurnDraw() (Tile, bool) {
 		} else {
 			match.Complete = true
 		}
+		match.recordReplayFrame(nil)
+	}
+	return result
+}
+
+func (match *Match) EnsureCurrentTurnDraw() (Tile, bool) {
+	tile, ok := match.Round.EnsureCurrentTurnDraw()
+	if ok || match.Round.Over {
+		match.recordReplayFrame(nil)
+	}
+	if match.Round.Over {
+		if match.Mode == ModeMCR {
+			match.completeMCRRound()
+		} else if match.Mode == ModeRiichi {
+			match.completeRiichiRound()
+		} else {
+			match.Complete = true
+		}
+		match.recordReplayFrame(nil)
 	}
 	return tile, ok
 }
@@ -97,12 +122,85 @@ func (match *Match) snapshotWithRound(round GameSnapshot) MatchSnapshot {
 		Dealer:               match.Dealer,
 		RoundNumber:          match.RoundNumber,
 		Complete:             match.Complete,
+		Abandoned:            match.Abandoned,
 		Round:                round,
 		LastMCRSettlement:    copyMCRSettlement(match.LastMCRSettlement),
 		LastRiichiSettlement: copyRiichiSettlement(match.LastRiichiSettlement),
 		MCRSettlements:       copyMCRSettlements(match.MCRSettlements),
 		RiichiSettlements:    copyRiichiSettlements(match.RiichiSettlements),
 	}
+}
+
+type matchReplayJournal struct {
+	initial  MatchSnapshot
+	commands []GameCommand
+	frames   []ReplayFrame
+}
+
+func (match *Match) recordReplayFrame(command *GameCommand) {
+	frame := ReplayFrame{
+		Index: len(match.replay.frames),
+		Match: match.Snapshot(),
+	}
+	if command != nil {
+		copyCommand := *command
+		frame.Command = &copyCommand
+		match.replay.commands = append(match.replay.commands, copyCommand)
+	}
+	match.replay.frames = append(match.replay.frames, frame)
+}
+
+func (match *Match) ReplayFrameCount() int {
+	return len(match.replay.frames)
+}
+
+func (match *Match) ReplayCommandCount() int {
+	return len(match.replay.commands)
+}
+
+func (match *Match) CompletedReplay(applicationVersion string, createdAt time.Time, participants []ReplayParticipant) (ReplayFile, error) {
+	if !match.Complete || match.Abandoned {
+		return ReplayFile{}, ErrIncompleteReplay
+	}
+	createdAt = createdAt.UTC()
+	file := ReplayFile{
+		ApplicationVersion: applicationVersion,
+		ReplayID:           matchReplayID(match.Mode, match.replay.initial.Round.ShuffleProof.WallHash, createdAt),
+		CreatedAt:          createdAt,
+		Mode:               match.Mode,
+		RuleConfig:         match.RuleConfig,
+		ShuffleProof:       match.replay.initial.Round.ShuffleProof,
+		Participants:       append([]ReplayParticipant(nil), participants...),
+		Initial:            match.replay.initial,
+		Commands:           append([]GameCommand(nil), match.replay.commands...),
+		Frames:             append([]ReplayFrame(nil), match.replay.frames...),
+		MCRSettlements:     copyMCRSettlements(match.MCRSettlements),
+		RiichiSettlements:  copyRiichiSettlements(match.RiichiSettlements),
+		FinalStandings:     match.Points,
+		Complete:           true,
+	}
+	copyFile, err := cloneReplayFile(file)
+	if err != nil {
+		return ReplayFile{}, err
+	}
+	return SealReplay(copyFile)
+}
+
+func matchReplayID(mode RuleMode, wallHash string, createdAt time.Time) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%s|%s", mode, wallHash, createdAt.Format(time.RFC3339Nano))))
+	return hex.EncodeToString(sum[:8])
+}
+
+func cloneReplayFile(file ReplayFile) (ReplayFile, error) {
+	data, err := json.Marshal(file)
+	if err != nil {
+		return ReplayFile{}, err
+	}
+	var copyFile ReplayFile
+	if err := json.Unmarshal(data, &copyFile); err != nil {
+		return ReplayFile{}, err
+	}
+	return copyFile, nil
 }
 
 func (match *Match) completeMCRRound() {

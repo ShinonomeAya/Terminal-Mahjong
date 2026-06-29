@@ -261,3 +261,17 @@ Stage review:
 - Debug review: zero commands encoded as nil or empty slices are semantically equal; structural inconsistencies are reported before checksum mismatch, while non-structural tampering proves checksum detection.
 - Total-goal review: Phase 14 now has a validated full-replay file boundary, but no authoritative frame recorder or disk persistence exists yet.
 - Next step: Task 2 records accepted commands, draws, settlements, and round transitions inside `game.Match`.
+
+### Phase 14B Task 2 Review
+
+- Stage goal: capture authoritative replay frames from the same `Match` coordinator that applies commands, settles rounds, and advances rules.
+- Step completed: added the initial frame, draw-only frames, accepted-command frames, pre-settlement completed-round frames, post-settlement/next-round frames, abandoned-match state, sealed completed export, and match-level AI command routing.
+- RED evidence: `go test ./internal/game -run "MatchReplay|ReplayFrame|RejectedCommandDoesNotRecord|AdvanceMatchAI" -count=1` failed only on the planned missing journal methods and fields.
+- GREEN evidence:
+  - `go test ./internal/game -run "MatchReplay|ReplayFrame|AdvanceMatchAI" -count=20`;
+  - `go test ./internal/game -count=1`;
+  - `go test ./... -count=1`.
+- Behavior review: rejected commands record nothing; quit produces an abandoned diagnostic frame and cannot be exported; exported frames are deep copies; AI actions enter the same accepted-command journal.
+- Performance note: full `internal/game` tests now take roughly 36 seconds because every accepted match transition copies a full authoritative snapshot; retain this cost for stable viewing and re-evaluate during 14E repeated/race acceptance.
+- Total-goal review: Phase 14 now has an in-memory authoritative replay timeline, but completed files are not yet persisted or exposed to local users.
+- Next step: Task 3 adds validated atomic storage and routes the local TUI through the retained `Match`.
