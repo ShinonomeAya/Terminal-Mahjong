@@ -295,3 +295,21 @@ Stage review:
 - Compatibility review: legacy models that contain only `Game` still restart in compatibility mode; real `LocalMatch` models restart with their original mode/configuration.
 - Total-goal review: Phase 14B is complete. Local completed matches now produce sealed atomic replay files from the authoritative timeline.
 - Remaining risk: the online server does not yet retain or deliver completed replay payloads; Phase 14C starts with protocol/privacy tests.
+
+### Phase 14C Task 4 Review
+
+- Stage goal: retain and deliver full replay data only after authoritative online match completion.
+- Step completed:
+  - added `replay_ready`, `request_replay`, and `replay_data` JSON messages;
+  - retained one immutable sealed replay on completed in-memory rooms;
+  - broadcast the final private snapshot before replay availability/data;
+  - exposed only replay ID on reconnect and required an explicit payload request;
+  - rejected unjoined and incomplete-room requests.
+- RED evidence: `go test ./internal/online -run "ReplayDelivery|ReplayPrivacy|ReplayReconnect|ReplayRequest" -count=1` failed only on missing protocol fields/types.
+- GREEN evidence:
+  - `go test ./internal/online -run "ReplayDelivery|ReplayPrivacy|ReplayReconnect|ReplayRequest" -count=20`;
+  - `go test ./internal/protocol ./internal/online -count=1`;
+  - `go test ./... -count=1`.
+- Privacy review: live messages contain no replay ID/payload, opponent concealed hand, or shuffle seed; completed payloads expose all hands and validate without reconnect tokens or WebSocket addresses.
+- Total-goal review: the online authority now owns post-game replay creation and retrieval, but TUI/CLI clients do not yet request or save received payloads.
+- Next step: Task 5 adds client request APIs, reconnect retrieval, and atomic local saving.

@@ -723,3 +723,149 @@ func firstDiscardAction(actions []game.LegalAction) (game.LegalAction, bool) {
 	}
 	return game.LegalAction{}, false
 }
+
+func TestReplayPrivacyBeforeCompletion(t *testing.T) {
+	match, err := game.NewMatch(140014, game.NewRiichiRuleSet(game.DefaultRuleConfig(game.ModeRiichi).Riichi))
+	if err != nil {
+		t.Fatal(err)
+	}
+	room := &room{code: "140014", match: match}
+	session := &session{playerID: "player", seat: 0}
+
+	message := stateMessageForSession(room, session, protocol.Message{Type: protocol.MsgGameSnapshot})
+
+	if message.Replay != nil || message.ReplayID != "" {
+		t.Fatalf("live message leaked replay: %#v", message)
+	}
+	if message.Snapshot.Seed != 0 || message.Snapshot.Players[1].Hand != nil {
+		t.Fatalf("live privacy regressed: %#v", message.Snapshot)
+	}
+}
+
+func TestReplayDeliveryAfterCompletedMatch(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+	client := dialTestClient(t, url)
+	defer client.Close()
+
+	sendMessage(t, client, protocol.Message{Type: protocol.MsgCreateRoom, Name: "host"})
+	created := readUntil(t, client, protocol.MsgRoomCreated)
+	if created.Replay != nil || created.ReplayID != "" {
+		t.Fatalf("create leaked replay: %#v", created)
+	}
+	sendMessage(t, client, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntilStartedRoomState(t, client)
+	configureCompatibilityWinningRoom(t, server, created.RoomCode)
+
+	sendMessage(t, client, protocol.Message{
+		Type:    protocol.MsgPlayCommand,
+		Command: game.GameCommand{Kind: game.CommandWin},
+	})
+	snapshot := readUntil(t, client, protocol.MsgGameSnapshot)
+	if !snapshot.Match.Complete {
+		t.Fatalf("final match snapshot = %#v", snapshot.Match)
+	}
+	ready := readUntil(t, client, protocol.MsgReplayReady)
+	data := readUntil(t, client, protocol.MsgReplayData)
+
+	if ready.ReplayID == "" || ready.ReplayID != data.ReplayID || data.Replay == nil {
+		t.Fatalf("ready=%#v data=%#v", ready, data)
+	}
+	if err := game.ValidateReplay(*data.Replay); err != nil {
+		t.Fatal(err)
+	}
+	for seat, player := range data.Replay.Frames[len(data.Replay.Frames)-1].Match.Round.Players {
+		if len(player.Hand) == 0 {
+			t.Fatalf("completed replay hid seat %d hand", seat)
+		}
+	}
+	encoded, err := json.Marshal(data.Replay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(encoded, []byte("reconnect_token")) || bytes.Contains(encoded, []byte("ws://")) {
+		t.Fatalf("replay contains connection data: %s", encoded)
+	}
+}
+
+func TestReplayReconnectRequestsCanonicalCompletedPayload(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+	client := dialTestClient(t, url)
+
+	sendMessage(t, client, protocol.Message{Type: protocol.MsgCreateRoom, Name: "host"})
+	created := readUntil(t, client, protocol.MsgRoomCreated)
+	sendMessage(t, client, protocol.Message{Type: protocol.MsgReady})
+	_ = readUntilStartedRoomState(t, client)
+	configureCompatibilityWinningRoom(t, server, created.RoomCode)
+	sendMessage(t, client, protocol.Message{Type: protocol.MsgPlayCommand, Command: game.GameCommand{Kind: game.CommandWin}})
+	_ = readUntil(t, client, protocol.MsgGameSnapshot)
+	_ = readUntil(t, client, protocol.MsgReplayReady)
+	original := readUntil(t, client, protocol.MsgReplayData)
+	client.Close()
+
+	reconnectedClient := dialTestClient(t, url)
+	defer reconnectedClient.Close()
+	sendMessage(t, reconnectedClient, protocol.Message{
+		Type:           protocol.MsgReconnect,
+		PlayerID:       created.PlayerID,
+		ReconnectToken: created.ReconnectToken,
+	})
+	reconnected := readUntil(t, reconnectedClient, protocol.MsgReconnected)
+	if reconnected.ReplayID != original.ReplayID || reconnected.Replay != nil {
+		t.Fatalf("reconnected = %#v", reconnected)
+	}
+	sendMessage(t, reconnectedClient, protocol.Message{Type: protocol.MsgRequestReplay})
+	requested := readUntil(t, reconnectedClient, protocol.MsgReplayData)
+	want, _ := json.Marshal(original.Replay)
+	got, _ := json.Marshal(requested.Replay)
+	if !bytes.Equal(want, got) {
+		t.Fatalf("requested replay differs\nwant=%s\ngot=%s", want, got)
+	}
+}
+
+func TestReplayRequestRejectsIncompleteAndUnjoinedClients(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	unjoined := dialTestClient(t, url)
+	defer unjoined.Close()
+	sendMessage(t, unjoined, protocol.Message{Type: protocol.MsgRequestReplay})
+	if message := readUntil(t, unjoined, protocol.MsgError); !strings.Contains(message.Error, "not joined") {
+		t.Fatalf("unjoined error = %#v", message)
+	}
+
+	joined := dialTestClient(t, url)
+	defer joined.Close()
+	sendMessage(t, joined, protocol.Message{Type: protocol.MsgCreateRoom})
+	_ = readUntil(t, joined, protocol.MsgRoomCreated)
+	sendMessage(t, joined, protocol.Message{Type: protocol.MsgRequestReplay})
+	if message := readUntil(t, joined, protocol.MsgError); !strings.Contains(message.Error, "not available") {
+		t.Fatalf("incomplete error = %#v", message)
+	}
+}
+
+func configureCompatibilityWinningRoom(t *testing.T, server *Server, roomCode string) {
+	t.Helper()
+	server.mu.Lock()
+	defer server.mu.Unlock()
+	room := server.rooms[roomCode]
+	if room == nil {
+		t.Fatalf("room %s not found", roomCode)
+	}
+	round := room.match.Round
+	round.Current = 0
+	round.Phase = game.PhaseAwaitingDiscard
+	round.PendingClaim = nil
+	round.Over = false
+	round.Players[0].Hand = mustOnlineTiles(t,
+		"1m", "2m", "3m",
+		"4m", "5m", "6m",
+		"2p", "3p", "4p",
+		"7s", "7s", "7s",
+		"E", "E",
+	)
+}

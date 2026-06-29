@@ -14,6 +14,7 @@ import (
 	"mahjong/internal/bot"
 	"mahjong/internal/game"
 	"mahjong/internal/protocol"
+	replaystore "mahjong/internal/replay"
 )
 
 type Server struct {
@@ -33,6 +34,7 @@ type room struct {
 	ready     map[string]bool
 	started   bool
 	updatedAt time.Time
+	replay    *game.ReplayFile
 }
 
 type session struct {
@@ -154,8 +156,11 @@ func (s *Server) handleMessage(conn *websocket.Conn, current *session, message p
 			ReadySeats:     readySeats(room),
 			Started:        room.started,
 			OccupiedSeats:  occupiedSeats(room),
+			ReplayID:       completedReplayID(room),
 		}))
 		return session
+	case protocol.MsgRequestReplay:
+		s.sendCompletedReplay(conn, current)
 	default:
 		writeError(conn, "unknown message")
 	}
@@ -293,7 +298,13 @@ func (s *Server) playCommand(conn *websocket.Conn, session *session, command gam
 	}
 	s.touchRoomLocked(room)
 	s.advanceUnoccupiedBotsLocked(room)
+	replayErr := s.ensureCompletedReplayLocked(room)
 	s.broadcastGameSnapshotLocked(room, result)
+	if replayErr != nil {
+		writeError(conn, replayErr.Error())
+	} else if room.replay != nil {
+		s.broadcastCompletedReplayLocked(room)
+	}
 	s.mu.Unlock()
 }
 
@@ -405,6 +416,89 @@ func (s *Server) broadcastGameSnapshotLocked(room *room, result game.CommandResu
 		message.Result = result
 		writeJSON(session.conn, message)
 	}
+}
+
+func (s *Server) ensureCompletedReplayLocked(room *room) error {
+	if room == nil || room.replay != nil || !room.match.Complete {
+		return nil
+	}
+	file, err := room.match.CompletedReplay(
+		replaystore.ApplicationVersion(),
+		time.Now().UTC(),
+		s.replayParticipantsLocked(room),
+	)
+	if err != nil {
+		return err
+	}
+	room.replay = &file
+	return nil
+}
+
+func (s *Server) replayParticipantsLocked(room *room) []game.ReplayParticipant {
+	participants := make([]game.ReplayParticipant, 0, len(room.seats))
+	for seat, playerID := range room.seats {
+		id := fmt.Sprintf("bot-%d", seat)
+		name := room.match.Round.Players[seat].Name
+		if playerID != "" {
+			id = playerID
+			if session := s.sessions[playerID]; session != nil {
+				name = session.name
+			}
+		}
+		participants = append(participants, game.ReplayParticipant{
+			Seat: seat,
+			ID:   id,
+			Name: name,
+		})
+	}
+	return participants
+}
+
+func (s *Server) broadcastCompletedReplayLocked(room *room) {
+	for _, playerID := range room.seats {
+		if playerID == "" {
+			continue
+		}
+		session := s.sessions[playerID]
+		if session == nil || session.conn == nil {
+			continue
+		}
+		writeJSON(session.conn, protocol.Message{
+			Type:     protocol.MsgReplayReady,
+			ReplayID: room.replay.ReplayID,
+		})
+		writeJSON(session.conn, protocol.Message{
+			Type:     protocol.MsgReplayData,
+			ReplayID: room.replay.ReplayID,
+			Replay:   room.replay,
+		})
+	}
+}
+
+func (s *Server) sendCompletedReplay(conn *websocket.Conn, session *session) {
+	if session == nil {
+		writeError(conn, "not joined")
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	room := s.rooms[session.roomCode]
+	if room == nil || room.replay == nil {
+		writeError(conn, "replay is not available")
+		return
+	}
+	writeJSON(conn, protocol.Message{
+		Type:     protocol.MsgReplayData,
+		ReplayID: room.replay.ReplayID,
+		Replay:   room.replay,
+	})
+}
+
+func completedReplayID(room *room) string {
+	if room == nil || room.replay == nil {
+		return ""
+	}
+	return room.replay.ReplayID
 }
 
 func firstOpenSeat(room *room) int {

@@ -540,7 +540,7 @@ git commit -m "feat: save completed local match replays"
 - Modify: `internal/online/server.go`
 - Modify: `internal/online/server_test.go`
 
-- [ ] **Step 1: Write failing protocol/privacy tests**
+- [x] **Step 1: Write failing protocol/privacy tests**
 
 Add protocol round-trip tests and a WebSocket integration test that:
 
@@ -576,7 +576,7 @@ func TestReplayPrivacyBeforeCompletion(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -586,7 +586,7 @@ go test ./internal/online -run "ReplayDelivery|ReplayPrivacy|ReplayReconnect" -c
 
 Expected: compile failure because replay protocol messages and room replay retention do not exist.
 
-- [ ] **Step 3: Extend the JSON protocol**
+- [x] **Step 3: Extend the JSON protocol**
 
 Add:
 
@@ -622,7 +622,7 @@ type Message struct {
 
 Do not add session or address fields to `game.ReplayFile`.
 
-- [ ] **Step 4: Retain a sealed replay on completed rooms**
+- [x] **Step 4: Retain a sealed replay on completed rooms**
 
 Extend `room`:
 
@@ -639,7 +639,7 @@ func (s *Server) replayParticipantsLocked(room *room) []game.ReplayParticipant
 
 After `room.match.ApplyCommand` and bot advancement, call `ensureCompletedReplayLocked`. If `room.match.Complete && room.replay == nil`, create participants from occupied sessions plus stable names for bot seats, call `CompletedReplay(replay.ApplicationVersion(), time.Now().UTC(), participants)`, validate it, and retain a pointer to the sealed value. Before completion, `room.replay` must remain nil.
 
-- [ ] **Step 5: Deliver and retrieve completed replay data**
+- [x] **Step 5: Deliver and retrieve completed replay data**
 
 Add `MsgRequestReplay` handling that requires a joined/reconnected session and a completed room replay. After the final `MsgGameSnapshot`, broadcast:
 
@@ -650,7 +650,7 @@ protocol.Message{Type: protocol.MsgReplayData, ReplayID: room.replay.ReplayID, R
 
 The sealed `room.replay` value is immutable after assignment, so it may be serialized directly. Include only `ReplayID` in `MsgReconnected` when a completed replay is available; send the payload only in response to `MsgRequestReplay` or the original completion broadcast.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run:
 

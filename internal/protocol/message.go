@@ -5,20 +5,23 @@ import "mahjong/internal/game"
 type MessageType string
 
 const (
-	MsgHello        MessageType = "hello"
-	MsgCreateRoom   MessageType = "create_room"
-	MsgJoinRoom     MessageType = "join_room"
-	MsgListRooms    MessageType = "list_rooms"
-	MsgReady        MessageType = "ready"
-	MsgRoomList     MessageType = "room_list"
-	MsgRoomState    MessageType = "room_state"
-	MsgGameSnapshot MessageType = "game_snapshot"
-	MsgPlayCommand  MessageType = "play_command"
-	MsgReconnect    MessageType = "reconnect"
-	MsgReconnected  MessageType = "reconnected"
-	MsgRoomCreated  MessageType = "room_created"
-	MsgRoomJoined   MessageType = "room_joined"
-	MsgError        MessageType = "error"
+	MsgHello         MessageType = "hello"
+	MsgCreateRoom    MessageType = "create_room"
+	MsgJoinRoom      MessageType = "join_room"
+	MsgListRooms     MessageType = "list_rooms"
+	MsgReady         MessageType = "ready"
+	MsgRoomList      MessageType = "room_list"
+	MsgRoomState     MessageType = "room_state"
+	MsgGameSnapshot  MessageType = "game_snapshot"
+	MsgPlayCommand   MessageType = "play_command"
+	MsgReconnect     MessageType = "reconnect"
+	MsgReconnected   MessageType = "reconnected"
+	MsgRoomCreated   MessageType = "room_created"
+	MsgRoomJoined    MessageType = "room_joined"
+	MsgReplayReady   MessageType = "replay_ready"
+	MsgRequestReplay MessageType = "request_replay"
+	MsgReplayData    MessageType = "replay_data"
+	MsgError         MessageType = "error"
 )
 
 type RoomSummary struct {
@@ -48,5 +51,7 @@ type Message struct {
 	RuleConfig     game.RuleConfig    `json:"rule_config,omitempty"`
 	Match          game.MatchSnapshot `json:"match,omitempty"`
 	Rooms          []RoomSummary      `json:"rooms,omitempty"`
+	ReplayID       string             `json:"replay_id,omitempty"`
+	Replay         *game.ReplayFile   `json:"replay,omitempty"`
 	Error          string             `json:"error,omitempty"`
 }
