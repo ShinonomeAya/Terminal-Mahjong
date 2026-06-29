@@ -921,7 +921,7 @@ Step review:
 - Modify: `internal/tui/replay.go`
 - Modify: `internal/tui/replay_test.go`
 
-- [ ] **Step 1: Write failing viewer control tests**
+- [x] **Step 1: Write failing viewer control tests**
 
 Load a three-frame fixture and assert:
 
@@ -958,7 +958,7 @@ func TestReplayViewerIgnoresLiveGameCommands(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -966,7 +966,7 @@ Run:
 go test ./internal/tui -run "ReplayViewer|ReplayPlayback|ReplayReadOnly" -count=1
 ```
 
-- [ ] **Step 3: Add viewer input and timed ticks**
+- [x] **Step 3: Add viewer input and timed ticks**
 
 Implement:
 
@@ -982,7 +982,7 @@ func replayTickCmd() tea.Cmd {
 
 `updateReplayViewer` handles only Left, Right, Home, End, Space, Tab, and Esc. `Model.Update` handles `replayTickMsg` only when `ScreenReplayViewer && ReplayPlaying`. Never call game commands from this screen.
 
-- [ ] **Step 4: Add the viewer shell**
+- [x] **Step 4: Add the viewer shell**
 
 Render a frame header containing localized mode, `current/total`, paused/playing state, creation time, and replay ID. Render the shared table body below it and a single replay control line. At the final frame show final standings and stop playback.
 
@@ -997,7 +997,7 @@ func currentReplayFrame(m Model) (game.ReplayFrame, bool)
 
 `currentReplayFrame` returns a copied frame and false for nil/empty/out-of-range state. Both update functions clamp before indexing.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
@@ -1015,7 +1015,8 @@ git commit -m "feat: add replay frame playback"
 
 Step review:
 - Subphase goal: navigate authoritative frames without replaying rules or mutating state.
-- Evidence: bounded navigation, deterministic ticks, read-only key isolation, and final-frame stopping.
+- Evidence: bounded Left/Right/Home/End navigation, deterministic 750ms ticks, final-frame stopping, Tab/Esc behavior, and canonical JSON equality after live-game keys; focused tests passed 20 times and both TUI and full-repository suites passed.
+- Scope decision: this shell shows localized replay metadata, snapshot counts, participants, and final standings; Task 8 will replace the summary body with the shared Phase 13 table renderer.
 - Next step: reuse the Phase 13 table and expose full post-game information clearly.
 
 ## Task 8: 14D Shared Table Rendering And Full Details

@@ -111,6 +111,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return updateGameOver(m, msg)
 		case ScreenReplayBrowser:
 			return updateReplayBrowser(m, msg)
+		case ScreenReplayViewer:
+			return updateReplayViewer(m, msg)
 		default:
 			return m, nil
 		}
@@ -191,6 +193,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case replayLoadErrorMsg:
 		m.StatusLine = replayErrorStatus(m, msg.Err)
 		return m, nil
+	case replayTickMsg:
+		if m.Screen != ScreenReplayViewer || !m.ReplayPlaying {
+			return m, nil
+		}
+		return applyReplayTick(m)
 	default:
 		return m, nil
 	}
@@ -212,6 +219,8 @@ func (m Model) View() string {
 		return renderGameOver(m)
 	case ScreenReplayBrowser:
 		return renderReplayBrowser(m)
+	case ScreenReplayViewer:
+		return renderReplayViewer(m)
 	default:
 		return ""
 	}

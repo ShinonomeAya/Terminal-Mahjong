@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,6 +129,156 @@ func TestReplayBrowserClampsSelectionAndKeepsLinesWithinWidth(t *testing.T) {
 			t.Fatalf("view missing %q:\n%s", want, updated.View())
 		}
 	}
+}
+
+func TestReplayViewerNavigationIsBounded(t *testing.T) {
+	model := replayViewerModel(t, threeFrameReplay(t))
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyRight})
+	model = next.(Model)
+	if model.ReplayFrame != 1 {
+		t.Fatalf("right frame=%d", model.ReplayFrame)
+	}
+	next, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnd})
+	model = next.(Model)
+	if model.ReplayFrame != 2 {
+		t.Fatalf("end frame=%d", model.ReplayFrame)
+	}
+	next, _ = model.Update(tea.KeyMsg{Type: tea.KeyRight})
+	model = next.(Model)
+	if model.ReplayFrame != 2 {
+		t.Fatalf("right exceeded final frame: %d", model.ReplayFrame)
+	}
+	next, _ = model.Update(tea.KeyMsg{Type: tea.KeyHome})
+	model = next.(Model)
+	if model.ReplayFrame != 0 {
+		t.Fatalf("home frame=%d", model.ReplayFrame)
+	}
+	next, _ = model.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	if next.(Model).ReplayFrame != 0 {
+		t.Fatalf("left went below zero: %d", next.(Model).ReplayFrame)
+	}
+}
+
+func TestReplayPlaybackAdvancesAndStopsAtFinalFrame(t *testing.T) {
+	model := replayViewerModel(t, threeFrameReplay(t))
+
+	next, cmd := model.Update(tea.KeyMsg{Type: tea.KeySpace})
+	model = next.(Model)
+	if !model.ReplayPlaying || cmd == nil {
+		t.Fatalf("playing=%t cmd=%v", model.ReplayPlaying, cmd)
+	}
+	next, cmd = model.Update(replayTickMsg{})
+	model = next.(Model)
+	if model.ReplayFrame != 1 || !model.ReplayPlaying || cmd == nil {
+		t.Fatalf("first tick frame=%d playing=%t cmd=%v", model.ReplayFrame, model.ReplayPlaying, cmd)
+	}
+	next, cmd = model.Update(replayTickMsg{})
+	model = next.(Model)
+	if model.ReplayFrame != 2 || model.ReplayPlaying || cmd != nil {
+		t.Fatalf("final tick frame=%d playing=%t cmd=%v", model.ReplayFrame, model.ReplayPlaying, cmd)
+	}
+}
+
+func TestReplayViewerTogglesDetailsAndReturnsToBrowser(t *testing.T) {
+	model := replayViewerModel(t, threeFrameReplay(t))
+
+	next, _ := model.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model = next.(Model)
+	if !model.ReplayShowDetails {
+		t.Fatal("Tab did not enable replay details")
+	}
+	next, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model = next.(Model)
+	if model.Screen != ScreenReplayBrowser || model.ReplayPlaying {
+		t.Fatalf("screen=%v playing=%t", model.Screen, model.ReplayPlaying)
+	}
+}
+
+func TestReplayViewerIgnoresLiveGameCommands(t *testing.T) {
+	model := replayViewerModel(t, threeFrameReplay(t))
+	before, err := json.Marshal(model.ReplayFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"h", "k", "l", "p", "c", "q"} {
+		next, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
+		if cmd != nil {
+			t.Fatalf("key %q scheduled live command", key)
+		}
+		model = next.(Model)
+	}
+	after, err := json.Marshal(model.ReplayFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("replay viewer mutated recorded data")
+	}
+}
+
+func TestReplayViewerRendersFrameAndFinalStandings(t *testing.T) {
+	model := replayViewerModel(t, threeFrameReplay(t))
+	model.ReplayFrame = 2
+	view := model.View()
+	for _, want := range []string{"3/3", "viewer-replay", "25000"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("view missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func replayViewerModel(t *testing.T, file game.ReplayFile) Model {
+	t.Helper()
+	model := NewModel()
+	model.Screen = ScreenReplayViewer
+	model.ReplayFile = &file
+	model.Width = 100
+	return model
+}
+
+func threeFrameReplay(t *testing.T) game.ReplayFile {
+	t.Helper()
+	round := game.NewGame(140018).Snapshot()
+	initial := game.MatchSnapshot{
+		Mode:       game.ModeCompatibility,
+		RuleConfig: game.RuleConfig{},
+		Round:      round,
+		Points:     [4]int{25000, 25000, 25000, 25000},
+	}
+	middle := initial
+	middle.Round.Events = append([]game.GameEvent(nil), round.Events...)
+	middle.Round.WallCount--
+	final := middle
+	final.Complete = true
+	final.Round.Over = true
+	final.Round.Reason = "test complete"
+	file, err := game.SealReplay(game.ReplayFile{
+		ApplicationVersion: "test",
+		ReplayID:           "viewer-replay",
+		CreatedAt:          time.Unix(30, 0).UTC(),
+		Mode:               game.ModeCompatibility,
+		RuleConfig:         game.RuleConfig{},
+		ShuffleProof:       round.ShuffleProof,
+		Participants: []game.ReplayParticipant{
+			{Seat: 0, ID: "0", Name: "You"},
+			{Seat: 1, ID: "1", Name: "AI-1"},
+			{Seat: 2, ID: "2", Name: "AI-2"},
+			{Seat: 3, ID: "3", Name: "AI-3"},
+		},
+		Initial: initial,
+		Frames: []game.ReplayFrame{
+			{Index: 0, Match: initial},
+			{Index: 1, Match: middle},
+			{Index: 2, Match: final},
+		},
+		FinalStandings: final.Points,
+		Complete:       true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return file
 }
 
 func saveTUIReplayFixture(t *testing.T, dir string, id string, mode game.RuleMode, createdAt time.Time) string {

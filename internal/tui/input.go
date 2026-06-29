@@ -53,6 +53,58 @@ func updateTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func updateReplayViewer(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	frameCount := 0
+	if m.ReplayFile != nil {
+		frameCount = len(m.ReplayFile.Frames)
+	}
+	if frameCount == 0 {
+		if key.Type == tea.KeyEsc {
+			m.Screen = ScreenReplayBrowser
+		}
+		return m, nil
+	}
+	if m.ReplayFrame < 0 {
+		m.ReplayFrame = 0
+	}
+	if m.ReplayFrame >= frameCount {
+		m.ReplayFrame = frameCount - 1
+	}
+	switch key.Type {
+	case tea.KeyLeft:
+		if m.ReplayFrame > 0 {
+			m.ReplayFrame--
+		}
+		m.ReplayPlaying = false
+	case tea.KeyRight:
+		if m.ReplayFrame < frameCount-1 {
+			m.ReplayFrame++
+		}
+		m.ReplayPlaying = false
+	case tea.KeyHome:
+		m.ReplayFrame = 0
+		m.ReplayPlaying = false
+	case tea.KeyEnd:
+		m.ReplayFrame = frameCount - 1
+		m.ReplayPlaying = false
+	case tea.KeySpace:
+		if m.ReplayFrame >= frameCount-1 {
+			m.ReplayPlaying = false
+			return m, nil
+		}
+		m.ReplayPlaying = !m.ReplayPlaying
+		if m.ReplayPlaying {
+			return m, replayTickCmd()
+		}
+	case tea.KeyTab:
+		m.ReplayShowDetails = !m.ReplayShowDetails
+	case tea.KeyEsc:
+		m.ReplayPlaying = false
+		m.Screen = ScreenReplayBrowser
+	}
+	return m, nil
+}
+
 func updateOnlineTable(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if isClaimResponse(m) {
 		return updateClaimResponse(m, key)

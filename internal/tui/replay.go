@@ -40,6 +40,8 @@ type replayLoadErrorMsg struct {
 	Err error
 }
 
+type replayTickMsg struct{}
+
 func saveCompletedReplayCmd(match *game.Match, dir string) tea.Cmd {
 	return func() tea.Msg {
 		file, err := match.CompletedReplay(
@@ -86,6 +88,35 @@ func loadReplayCmd(path string) tea.Cmd {
 		}
 		return replayLoadedMsg{File: file}
 	}
+}
+
+func replayTickCmd() tea.Cmd {
+	return tea.Tick(750*time.Millisecond, func(time.Time) tea.Msg {
+		return replayTickMsg{}
+	})
+}
+
+func applyReplayTick(m Model) (Model, tea.Cmd) {
+	if m.ReplayFile == nil || len(m.ReplayFile.Frames) == 0 {
+		m.ReplayPlaying = false
+		m.ReplayFrame = 0
+		return m, nil
+	}
+	last := len(m.ReplayFile.Frames) - 1
+	if m.ReplayFrame < 0 {
+		m.ReplayFrame = 0
+	}
+	if m.ReplayFrame >= last {
+		m.ReplayFrame = last
+		m.ReplayPlaying = false
+		return m, nil
+	}
+	m.ReplayFrame++
+	if m.ReplayFrame >= last {
+		m.ReplayPlaying = false
+		return m, nil
+	}
+	return m, replayTickCmd()
 }
 
 func updateReplayBrowser(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -176,6 +207,102 @@ func replayEntryLabel(m Model, entry replay.Entry) string {
 		idLabel,
 		fileLabel + truncateVisible(filepath.Base(entry.Path), nameWidth),
 	}, "\n")
+}
+
+func renderReplayViewer(m Model) string {
+	frame, ok := currentReplayFrame(m)
+	if !ok {
+		if m.chinese() {
+			return styleTitle("回放") + "\n\n" + styleStatus("回放数据不可用") + "\n"
+		}
+		return styleTitle("REPLAY") + "\n\n" + styleStatus("Replay data is unavailable") + "\n"
+	}
+	state := "paused"
+	title := "REPLAY"
+	modeLabel := "Mode"
+	frameLabel := "Frame"
+	idLabel := "Replay ID"
+	createdLabel := "Created"
+	roundLabel := "Round snapshot"
+	controls := "Left/Right frame | Home/End boundary | Space play/pause | Tab details | Esc browser"
+	if m.ReplayPlaying {
+		state = "playing"
+	}
+	if m.chinese() {
+		title = "回放"
+		modeLabel = "模式"
+		frameLabel = "帧"
+		idLabel = "回放 ID"
+		createdLabel = "创建时间"
+		roundLabel = "对局快照"
+		state = "已暂停"
+		if m.ReplayPlaying {
+			state = "播放中"
+		}
+		controls = "左右切帧 | Home/End 首尾 | 空格播放/暂停 | Tab 详情 | Esc 返回"
+	}
+
+	var out strings.Builder
+	out.WriteString(styleTitle(title) + "\n")
+	out.WriteString(fmt.Sprintf(
+		"%s: %s | %s: %d/%d | %s\n",
+		modeLabel,
+		ruleModeName(m, m.ReplayFile.Mode),
+		frameLabel,
+		m.ReplayFrame+1,
+		len(m.ReplayFile.Frames),
+		state,
+	))
+	out.WriteString(fmt.Sprintf("%s: %s\n", idLabel, m.ReplayFile.ReplayID))
+	out.WriteString(fmt.Sprintf("%s: %s\n\n", createdLabel, m.ReplayFile.CreatedAt.Local().Format("2006-01-02 15:04:05")))
+	out.WriteString(styleSectionTitle(roundLabel) + "\n")
+	out.WriteString(fmt.Sprintf(
+		"wall:%d current:%d events:%d\n",
+		frame.Match.Round.WallCount,
+		frame.Match.Round.Current+1,
+		len(frame.Match.Round.Events),
+	))
+	for seat, player := range frame.Match.Round.Players {
+		out.WriteString(fmt.Sprintf(
+			"%d. %s  points:%d  hand:%d  discards:%d\n",
+			seat+1,
+			playerName(m, player.Name),
+			frame.Match.Points[seat],
+			len(player.Hand),
+			len(player.Discards),
+		))
+	}
+	if m.ReplayFrame == len(m.ReplayFile.Frames)-1 {
+		if m.chinese() {
+			out.WriteString("\n" + styleSectionTitle("最终积分") + "\n")
+		} else {
+			out.WriteString("\n" + styleSectionTitle("Final Standings") + "\n")
+		}
+		out.WriteString(fmt.Sprintf(
+			"%d | %d | %d | %d\n",
+			m.ReplayFile.FinalStandings[0],
+			m.ReplayFile.FinalStandings[1],
+			m.ReplayFile.FinalStandings[2],
+			m.ReplayFile.FinalStandings[3],
+		))
+	}
+	out.WriteString("\n" + styleSectionTitle(replayControlsTitle(m)) + "\n")
+	out.WriteString(styleMuted(controls) + "\n")
+	return out.String()
+}
+
+func currentReplayFrame(m Model) (game.ReplayFrame, bool) {
+	if m.ReplayFile == nil || m.ReplayFrame < 0 || m.ReplayFrame >= len(m.ReplayFile.Frames) {
+		return game.ReplayFrame{}, false
+	}
+	return m.ReplayFile.Frames[m.ReplayFrame], true
+}
+
+func replayControlsTitle(m Model) string {
+	if m.chinese() {
+		return "操作"
+	}
+	return "Controls"
 }
 
 func truncateVisible(text string, width int) string {
