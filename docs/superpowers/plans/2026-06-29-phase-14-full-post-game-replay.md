@@ -1138,7 +1138,7 @@ git commit -m "feat: render full replay details"
 - Modify: `docs/workflow.md`
 - Modify: `docs/superpowers/plans/2026-06-29-phase-14-full-post-game-replay.md`
 
-- [ ] **Step 1: Add deterministic dual-mode replay fixtures**
+- [x] **Step 1: Add deterministic dual-mode replay fixtures**
 
 For fixed seeds, create completed MCR and Riichi match fixtures. For every frame assert:
 
@@ -1165,7 +1165,7 @@ func TestDualModeReplayAcceptance(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Add corruption and compatibility matrices**
+- [x] **Step 2: Add corruption and compatibility matrices**
 
 Table-test empty files, truncated JSON, trailing JSON, checksum mutation, missing frames, frame-index gaps, invalid mode/config, incomplete match, and schema versions `1` and `3`. The browser must skip each bad file, retain valid files, and expose a bounded issue count.
 
@@ -1182,7 +1182,7 @@ func TestReplayCorruptionMatrix(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Add online completeness and privacy acceptance**
+- [x] **Step 3: Add online completeness and privacy acceptance**
 
 For both modes:
 
@@ -1193,7 +1193,7 @@ For both modes:
 
 Marshal every received `MsgReplayData.Replay` and scan the JSON bytes for those forbidden field names before comparing it with the server's retained sealed replay.
 
-- [ ] **Step 4: Generate deterministic visual artifacts**
+- [x] **Step 4: Generate deterministic visual artifacts**
 
 Add an environment-gated generator:
 
@@ -1213,7 +1213,7 @@ Generate:
 
 Each generator case uses a fixed replay fixture and asserts at most 42 lines and no line wider than the requested viewport. Inspect a real PTY when available. Do not bypass desktop/browser security policy to manufacture a PNG.
 
-- [ ] **Step 5: Run full acceptance**
+- [x] **Step 5: Run full acceptance**
 
 Run:
 
@@ -1230,7 +1230,7 @@ gofmt -l internal cmd
 git diff --check
 ```
 
-- [ ] **Step 6: Update user documentation**
+- [x] **Step 6: Update user documentation**
 
 Document:
 
@@ -1241,7 +1241,7 @@ Document:
 - full-information post-game privacy boundary;
 - the difference between `ReplayLog` event summaries and `ReplayFile` frame replays.
 
-- [ ] **Step 7: Record reviews and commit**
+- [x] **Step 7: Record reviews and commit**
 
 Update `docs/workflow.md` with each 14A-E step review, each subphase review, exact commands, and artifact paths. Mark all plan checkboxes complete only after the commands pass.
 
@@ -1255,7 +1255,11 @@ git commit -m "test: record phase 14 replay acceptance"
 14E phase review:
 - Total goal: provide an auditable terminal Mahjong client with complete rules, private live networking, a readable tactical table, and durable post-game replay.
 - Acceptance question: do saved/restored frames, settlements, standings, privacy boundaries, controls, and visual layouts match their authoritative source in both rule modes?
-- Exit criterion: begin no later phase until all functional, race, build, privacy, corruption, width, and visual-artifact checks pass.
+- Achieved: fixed-seed MCR/Riichi files survive canonical save/load; corruption and unsupported versions are isolated; live and final network snapshots remain recipient-private; reconnect returns the original sealed payload; the bilingual browser/viewer exposes shared table frames and complete post-game details.
+- Defects found and corrected: final network snapshots leaked post-round full state before replay availability; Riichi wins did not retain score/settlement state; the first compact replay capture exceeded the 42-line target.
+- Evidence: all four focused suites passed 20 times; full repository and full race suites passed; vet, three-command build, gofmt, diff check, and six deterministic HTML captures passed.
+- Visual limitation: direct local-file screenshot inspection was blocked by browser security policy, so no PNG was manufactured; deterministic HTML plus enforced width/height checks are the retained visual evidence.
+- Exit criterion: satisfied. No later phase began before all functional, race, build, privacy, corruption, width, and visual-artifact checks passed.
 
 ## Plan Self-Review
 

@@ -313,3 +313,62 @@ Stage review:
 - Privacy review: live messages contain no replay ID/payload, opponent concealed hand, or shuffle seed; completed payloads expose all hands and validate without reconnect tokens or WebSocket addresses.
 - Total-goal review: the online authority now owns post-game replay creation and retrieval, but TUI/CLI clients do not yet request or save received payloads.
 - Next step: Task 5 adds client request APIs, reconnect retrieval, and atomic local saving.
+
+### Phase 14C Task 5 Review
+
+- Stage goal: retrieve the authoritative completed payload after a live completion or reconnect and save it through the validated atomic replay store.
+- Completed: `Client.RequestReplay`, reconnect-by-ID retrieval, TUI save deduplication, CLI `-replay-dir`, and path-only CLI output.
+- Protocol review: live completion sends `replay_ready` followed by one pushed `replay_data`; reconnect exposes only the replay ID and requires an explicit request.
+- Evidence:
+  - focused client/TUI/CLI tests passed 20 times;
+  - related package tests, full repository tests, focused race tests, and `go vet ./...` passed.
+- Total-goal review: Phase 14C is complete; completed online matches survive disconnects without exposing full information during live play.
+
+### Phase 14D Review
+
+- Stage goal: make saved frame replays discoverable, navigable, readable, and strictly read-only inside the terminal client.
+- Completed:
+  - newest-first bilingual replay browser with corrupt-file isolation;
+  - bounded Left/Right/Home/End navigation and 750ms play/pause ticks;
+  - live-command key isolation and canonical JSON immutability checks;
+  - shared Phase 13 four-seat table rendering for replay frames;
+  - all-hand details, Riichi dora/ura, MCR flowers, frame events, settlement deltas, and final standings;
+  - 140-, 96-, and 80-column Chinese/English width coverage.
+- Regression review: full TUI tests found hidden final standings in collapsed detail mode; final frames now always retain a compact standings section. Diff review also removed all tactical-analysis computation from replay state.
+- Evidence:
+  - browser, playback, details, and width tests each passed 20 times;
+  - full TUI and repository tests plus focused race and vet checks passed.
+- Total-goal review: saved matches can now be inspected without re-running rules, mutating recorded state, or entering a live command path.
+
+### Phase 14E Review
+
+- Stage goal: close Phase 14 with cross-mode source equality, corruption, privacy, visual, race, build, and documentation evidence.
+- Acceptance additions:
+  - fixed-seed MCR/Riichi completion, seal, save/load, frame, command, settlement, standings, ID, and checksum checks;
+  - empty/truncated/trailing/checksum/frame/mode/completion/schema corruption matrix with valid-file retention;
+  - dual-mode WebSocket final-snapshot privacy, full replay completeness, sensitive-field scan, and canonical reconnect retrieval;
+  - six deterministic HTML captures under `artifacts/phase14`.
+- Defects found by acceptance:
+  - final network snapshots used the game core's post-round full view and leaked seed/opponent hands before replay availability; the online boundary now enforces recipient redaction even after round completion;
+  - Riichi self-draw and discard-win paths did not retain typed score state, so settlements could be absent; both paths now build score context, require yaku, and retain the authoritative score.
+- Visual evidence:
+  - `artifacts/phase14/riichi-replay-wide-zh.html`;
+  - `artifacts/phase14/riichi-replay-wide-en.html`;
+  - `artifacts/phase14/mcr-replay-wide-zh.html`;
+  - `artifacts/phase14/mcr-replay-wide-en.html`;
+  - `artifacts/phase14/riichi-replay-details-zh.html`;
+  - `artifacts/phase14/riichi-replay-fallback-80.html`.
+- Visual review: the first 80-column capture was 50 lines; collapsed compact replay now keeps only final standings and fits the 80x42 gate. Browser screenshot inspection was blocked by local-file navigation policy, so reproducible HTML and automated width/height assertions are retained without manufactured PNG evidence.
+- Acceptance evidence (2026-06-29):
+  - `go test ./internal/game -run "ReplayFile|ReplayFrame|ReplayAcceptance" -count=20`;
+  - `go test ./internal/replay -count=20`;
+  - `go test ./internal/online -run "Replay|Private|Reconnect" -count=20`;
+  - `go test ./internal/tui ./cmd/client -run "Replay|Width|Menu|GameOver" -count=20`;
+  - `MAHJONG_PHASE14_CAPTURE_DIR=artifacts/phase14 go test ./internal/tui -run TestGeneratePhase14ReplaySnapshots -count=1`;
+  - `go test ./... -count=1`;
+  - `go test -race ./... -count=1`;
+  - `go vet ./...`;
+  - `go build ./cmd/mahjong ./cmd/server ./cmd/client`;
+  - `gofmt -l internal cmd` and `git diff --check`.
+- Total-goal review: Phase 14 now supplies authoritative, checksummed, local/online, reconnect-safe, bilingual, frame-by-frame post-game replay without weakening live hidden-information boundaries.
+- Remaining risk: replay files intentionally have no forward schema migration; unsupported versions are isolated by the browser and require an explicit future migration plan.

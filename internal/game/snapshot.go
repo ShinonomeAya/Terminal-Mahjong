@@ -209,6 +209,11 @@ func (g *Game) ApplyCommand(command GameCommand) CommandResult {
 				g.MCRScore = &score
 				g.Discarder = -1
 			}
+		} else if _, ok := g.rules.(*RiichiRuleSet); ok {
+			if score, valid := riichiSelfDrawScore(g, g.Current); valid {
+				g.RiichiScore = &score
+				g.Discarder = -1
+			}
 		}
 		g.finish(g.Current, "self-draw", WinSelfDraw)
 		return g.commandOK(command, "")

@@ -111,7 +111,8 @@ func (rules *RiichiRuleSet) buildPendingClaim(round *Game, discarder int, discar
 	options := make([]ClaimOption, 0)
 	for offset := 1; offset < len(round.Players); offset++ {
 		playerIndex := (discarder + offset) % len(round.Players)
-		if riichiCanWinOnDiscard(round, playerIndex, discard) && !rules.isFuritenForRon(round, playerIndex, discard) {
+		score, canWin := riichiDiscardWinScore(round, playerIndex, discard, false)
+		if canWin && score.HasYaku && !rules.isFuritenForRon(round, playerIndex, discard) {
 			options = append(options, ClaimOption{Kind: ClaimWin, Player: playerIndex})
 		}
 	}
@@ -174,7 +175,8 @@ func (rules *RiichiRuleSet) buildRobbingKongClaim(round *Game, player int, tile 
 	var options []ClaimOption
 	for offset := 1; offset < len(round.Players); offset++ {
 		candidate := (player + offset) % len(round.Players)
-		if riichiCanWinOnDiscard(round, candidate, tile) {
+		score, canWin := riichiDiscardWinScore(round, candidate, tile, true)
+		if canWin && score.HasYaku {
 			options = append(options, ClaimOption{Kind: ClaimWin, Player: candidate})
 		}
 	}
@@ -220,24 +222,53 @@ func (rules *RiichiRuleSet) afterAcceptedKong(round *Game) {
 	revealRiichiKanDora(round)
 }
 
-func riichiCanWinOnDiscard(round *Game, playerIndex int, discard Tile) bool {
-	if playerIndex < 0 || playerIndex >= len(round.Players) {
-		return false
-	}
-	player := round.Players[playerIndex]
-	return len(RiichiDecompose(player.Hand, player.Melds, discard)) > 0
+func riichiCanSelfDrawWin(round *Game, playerIndex int) bool {
+	score, ok := riichiSelfDrawScore(round, playerIndex)
+	return ok && score.HasYaku
 }
 
-func riichiCanSelfDrawWin(round *Game, playerIndex int) bool {
+func riichiSelfDrawScore(round *Game, playerIndex int) (RiichiScoreBreakdown, bool) {
 	winningTile, ok := lastPrivateDraw(round.Events, playerIndex)
 	if !ok || playerIndex < 0 || playerIndex >= len(round.Players) {
-		return false
+		return RiichiScoreBreakdown{}, false
 	}
 	hand := append([]Tile(nil), round.Players[playerIndex].Hand...)
 	if !removeOneRiichiTile(&hand, winningTile) {
-		return false
+		return RiichiScoreBreakdown{}, false
 	}
-	return len(RiichiDecompose(hand, round.Players[playerIndex].Melds, winningTile)) > 0
+	context := riichiScoreContext(round, playerIndex, winningTile, WinSelfDraw)
+	context.Rinshan = lastDrawWasReplacement(round.Events, playerIndex)
+	context.Haitei = len(round.Wall) == 0
+	return ScoreRiichi(hand, round.Players[playerIndex].Melds, context), true
+}
+
+func riichiDiscardWinScore(round *Game, playerIndex int, winningTile Tile, chankan bool) (RiichiScoreBreakdown, bool) {
+	if round == nil || playerIndex < 0 || playerIndex >= len(round.Players) {
+		return RiichiScoreBreakdown{}, false
+	}
+	context := riichiScoreContext(round, playerIndex, winningTile, WinDiscard)
+	context.Chankan = chankan
+	context.Houtei = len(round.Wall) == 0 && !chankan
+	score := ScoreRiichi(round.Players[playerIndex].Hand, round.Players[playerIndex].Melds, context)
+	return score, len(RiichiDecompose(round.Players[playerIndex].Hand, round.Players[playerIndex].Melds, winningTile)) > 0
+}
+
+func riichiScoreContext(round *Game, playerIndex int, winningTile Tile, winType WinType) RiichiYakuContext {
+	player := round.Players[playerIndex]
+	context := RiichiYakuContext{
+		WinningTile:    winningTile,
+		WinType:        winType,
+		Closed:         len(player.Melds) == 0,
+		SeatWind:       mcrSeatWind(round, playerIndex),
+		PrevalentWind:  mcrPrevalentWind(round),
+		Riichi:         round.Riichi.Declarations[playerIndex],
+		Ippatsu:        round.Riichi.Ippatsu[playerIndex],
+		DoraIndicators: append([]Tile(nil), round.Riichi.DoraIndicators...),
+	}
+	if context.Riichi == RiichiAccepted {
+		context.UraIndicators = append([]Tile(nil), round.Riichi.UraIndicators...)
+	}
+	return context
 }
 
 func removeOneRiichiTile(hand *[]Tile, tile Tile) bool {

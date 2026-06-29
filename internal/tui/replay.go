@@ -243,6 +243,18 @@ func renderReplayCompactTable(m Model, state tableViewState) string {
 		renderReplayControls(m),
 	)
 	frame, _ := currentReplayFrame(m)
+	if !m.ReplayShowDetails {
+		if !frame.Match.Complete {
+			return board
+		}
+		title := "Final standings"
+		if m.chinese() {
+			title = "最终积分"
+		}
+		return strings.TrimRight(board, "\n") + "\n" +
+			styleSectionTitle(title) + "\n" +
+			formatReplayPoints(frame.Match.Points) + "\n"
+	}
 	return strings.TrimRight(board, "\n") + "\n" + renderReplayDetailRail(m, *m.ReplayFile, frame) + "\n"
 }
 

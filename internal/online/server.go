@@ -524,9 +524,34 @@ func stateMessageForSession(room *room, session *session, message protocol.Messa
 	id := fmt.Sprintf("%d", session.seat)
 	message.Mode = room.match.Mode
 	message.RuleConfig = room.match.RuleConfig
-	message.Snapshot = room.match.Round.SnapshotFor(id)
+	message.Snapshot = privateNetworkSnapshot(room.match.Round, id)
 	message.Match = room.match.SnapshotFor(id)
+	message.Match.Round = message.Snapshot
 	return message
+}
+
+func privateNetworkSnapshot(round *game.Game, id string) game.GameSnapshot {
+	snapshot := round.SnapshotFor(id)
+	snapshot.Seed = 0
+	snapshot.ShuffleProof.Seed = 0
+	viewer := -1
+	for index := range snapshot.Players {
+		if snapshot.Players[index].ID == id {
+			viewer = index
+			continue
+		}
+		snapshot.Players[index].Hand = nil
+	}
+	for index := range snapshot.Events {
+		if (snapshot.Events[index].Kind == game.EventDraw || snapshot.Events[index].Kind == game.EventReplacementDraw) &&
+			snapshot.Events[index].Player != viewer {
+			snapshot.Events[index].Tile = -1
+		}
+	}
+	if snapshot.Riichi != nil {
+		snapshot.Riichi.UraIndicators = nil
+	}
+	return snapshot
 }
 
 func readySeats(room *room) []int {

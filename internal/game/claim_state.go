@@ -140,6 +140,10 @@ func (g *Game) applyClaimCommand(command GameCommand) CommandResult {
 			score := rules.discardWinScoreWithContext(g, option.Player, g.PendingClaim.Discarder, g.PendingClaim.Tile, robbingKong)
 			g.MCRScore = &score
 			g.Discarder = g.PendingClaim.Discarder
+		} else if _, ok := g.rules.(*RiichiRuleSet); ok {
+			score, _ := riichiDiscardWinScore(g, option.Player, g.PendingClaim.Tile, robbingKong)
+			g.RiichiScore = &score
+			g.Discarder = g.PendingClaim.Discarder
 		}
 		g.finish(option.Player, reason, WinDiscard)
 	case ClaimKong:

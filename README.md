@@ -84,6 +84,16 @@ The game remains terminal-first. Phase 10 adds a restrained Lip Gloss visual ski
 go run ./cmd/mahjong
 ```
 
+## Completed Match Replays
+
+- Completed local and online matches are saved automatically under `replays/`.
+- Filenames use `<UTC timestamp>-<mode>-<replay id>.json`.
+- Open `回放 / Replays` from the start menu to browse valid files newest first. Corrupt or unsupported files are skipped and counted instead of blocking the library.
+- Viewer controls: `Left` / `Right` step frames, `Home` / `End` jump to the boundaries, `Space` plays or pauses, `Tab` reveals all hands and settlement details, and `Esc` returns to the replay library.
+- Every `ReplayFile` is validated against its schema and SHA-256 checksum before loading. Unsupported schema versions and incomplete or modified files are rejected.
+- Live network snapshots remain recipient-private, including the final snapshot sent before replay availability. Full hands, shuffle proof, ura indicators, commands, settlements, and standings appear only in the sealed post-game replay.
+- `ReplayLog` is a compact event/result summary for diagnostics. `ReplayFile` is the durable frame-by-frame match recording used by the TUI browser and viewer.
+
 The TUI start menu supports local play plus online room actions:
 
 - `Create Online Room`: connect to `ws://127.0.0.1:8080/ws`, create a room, and save `.mahjong-session.json`.
@@ -118,6 +128,9 @@ go run ./cmd/client -reconnect
 
 # Keep reading room states and game snapshots; reconnect up to 5 times if the socket drops.
 go run ./cmd/client -reconnect -watch
+
+# Save completed online replays to a custom directory.
+go run ./cmd/client -reconnect -watch -replay-dir .\replays
 
 # Mark yourself ready after connecting.
 go run ./cmd/client -reconnect -ready
