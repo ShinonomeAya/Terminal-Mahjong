@@ -249,3 +249,15 @@ Stage review:
   - `gofmt -l` over all changed Go files and `git diff --check`.
 - Total-goal review: the wide A-layout plus C tactical rail now improves seat, river, hand, action, and tactical comprehension without changing game authority, hidden-information rules, reconnect state, or terminal-first controls.
 - Remaining risk: Mahjong glyph size and color still depend on the user's terminal font and renderer; future visual acceptance should archive native terminal PNGs when the desktop capture path is available.
+
+### Phase 14A Task 1 Review
+
+- Stage goal: define a stable replay envelope before recording or persistence work begins.
+- Step completed: added the independent `ReplayFileSchemaVersion == 2` model, participant/frame metadata, SHA-256 sealing, constant-time checksum comparison, and typed validation errors.
+- RED evidence: `go test ./internal/game -run "ReplayFile|ReplayChecksum|SealReplay" -count=1` failed only because the planned replay symbols did not exist.
+- GREEN evidence:
+  - `go test ./internal/game -run "ReplayFile|ReplayChecksum|SealReplay" -count=20`;
+  - `go test ./internal/game -count=1`.
+- Debug review: zero commands encoded as nil or empty slices are semantically equal; structural inconsistencies are reported before checksum mismatch, while non-structural tampering proves checksum detection.
+- Total-goal review: Phase 14 now has a validated full-replay file boundary, but no authoritative frame recorder or disk persistence exists yet.
+- Next step: Task 2 records accepted commands, draws, settlements, and round transitions inside `game.Match`.

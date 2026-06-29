@@ -55,7 +55,7 @@
 - Create: `internal/game/replay_file.go`
 - Create: `internal/game/replay_file_test.go`
 
-- [ ] **Step 1: Write failing schema and checksum tests**
+- [x] **Step 1: Write failing schema and checksum tests**
 
 Add table-driven tests that construct a minimal completed file and require:
 
@@ -95,7 +95,7 @@ func TestReplayFileRejectsUnsupportedAndIncompleteFiles(t *testing.T) {
 
 Also assert frame indexes are contiguous, mode/config validation runs, participants have unique seats, at least one frame exists, the last frame agrees with `FinalStandings`, and sealing does not mutate the input.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -105,7 +105,7 @@ go test ./internal/game -run "ReplayFile|ReplayChecksum" -count=1
 
 Expected: compile failure because `ReplayFile`, `SealReplay`, and validation errors do not exist.
 
-- [ ] **Step 3: Add replay file types**
+- [x] **Step 3: Add replay file types**
 
 Implement these public types in `internal/game/replay_file.go`:
 
@@ -153,7 +153,7 @@ type ReplayFile struct {
 
 Keep `ReplayFileSchemaVersion` separate from `ReplaySchemaVersion`. Do not rename or reinterpret the existing `ReplayLog`.
 
-- [ ] **Step 4: Implement sealing and validation**
+- [x] **Step 4: Implement sealing and validation**
 
 Use canonical standard-library JSON over a copy with `Checksum == ""`:
 
@@ -186,7 +186,7 @@ func SealReplay(file ReplayFile) (ReplayFile, error) {
 
 `ValidateReplay` must check version before all other checks, require `Complete`, validate `RuleConfig` for `Mode`, verify participant seats and frame indexes, compare the last frame's points with `FinalStandings`, and compare the SHA-256 checksum with `subtle.ConstantTimeCompare`.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
