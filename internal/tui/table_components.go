@@ -31,7 +31,13 @@ func renderWideTable(m Model, state tableViewState) string {
 		centerLine(wideTableBodyWidth+4, renderWideSeat(m, state, state.ViewerSeat, wideSeatLabel(m, "self"))),
 		renderWideHandAndActions(m, state),
 	)
-	rail := renderTacticalRail(m, tacticalViewFor(m, state))
+	var rail string
+	if state.ReadOnly && m.ReplayFile != nil {
+		frame, _ := currentReplayFrame(m)
+		rail = renderReplayDetailRail(m, *m.ReplayFile, frame)
+	} else {
+		rail = renderTacticalRail(m, tacticalViewFor(m, state))
+	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, table, "  ", rail) + "\n"
 }
 
@@ -48,6 +54,10 @@ func renderTacticalFallback(m Model, state tableViewState, board string) string 
 
 func renderTableHeader(m Model, state tableViewState) string {
 	mode := ruleModeName(m, state.Mode)
+	if state.Replay {
+		return centerLine(wideTableBodyWidth+4, styleTitle(replayViewerTitle(m))) + "\n" +
+			styleMuted(renderReplayMeta(m, state))
+	}
 	round := fmt.Sprintf("%d", state.Snapshot.HandNumber)
 	if state.Snapshot.HandNumber == 0 {
 		round = "1"
@@ -158,7 +168,14 @@ func renderDiscardRiver(m Model, tiles []game.Tile) string {
 
 func renderWideHandAndActions(m Model, state tableViewState) string {
 	player := state.Snapshot.Players[state.ViewerSeat]
-	hand := stylePanelWidth(handTitle(m), renderHand(m, player.Hand, m.SelectedIndex, m.UnicodeTiles), wideTableBodyWidth)
+	selected := m.SelectedIndex
+	if state.ReadOnly {
+		selected = -1
+	}
+	hand := stylePanelWidth(handTitle(m), renderHand(m, player.Hand, selected, m.UnicodeTiles), wideTableBodyWidth)
+	if state.ReadOnly {
+		return hand + "\n" + renderReplayControls(m)
+	}
 	actions := styleSectionTitle(controlsTitle(m)) + "\n" + styleMuted(tableControls(m))
 	return hand + "\n" + actions
 }

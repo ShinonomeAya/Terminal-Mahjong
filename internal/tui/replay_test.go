@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -228,6 +229,86 @@ func TestReplayViewerRendersFrameAndFinalStandings(t *testing.T) {
 	}
 }
 
+func TestReplayTableUsesSharedFourSeatLayout(t *testing.T) {
+	model := replayViewerModel(t, completedRiichiReplay(t))
+	model.Width = 140
+	view := renderReplayViewer(model)
+
+	for _, want := range []string{"对家", "下家", "上家", "你", "牌河", "手牌", "25000"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("replay table missing %q:\n%s", want, view)
+		}
+	}
+	if strings.Contains(view, "战术分析") {
+		t.Fatalf("replay table exposed tactical analysis:\n%s", view)
+	}
+	state := tableStateFor(model)
+	if !state.Replay || !state.ReadOnly || len(state.Snapshot.Players[1].Hand) == 0 {
+		t.Fatalf("replay table state = %#v", state)
+	}
+}
+
+func TestReplayDetailsRevealAllHandsAndRiichiSettlement(t *testing.T) {
+	model := replayViewerModel(t, completedRiichiReplay(t))
+	model.Width = 140
+	model.ReplayShowDetails = true
+	view := renderReplayViewer(model)
+	frame, _ := currentReplayFrame(model)
+
+	for _, player := range frame.Match.Round.Players {
+		if !strings.Contains(view, playerName(model, player.Name)) {
+			t.Fatalf("detail view missing player %s:\n%s", player.Name, view)
+		}
+		for _, tile := range player.Hand {
+			if !strings.Contains(view, game.TileLabel(tile, model.UnicodeTiles)) {
+				t.Fatalf("detail view missing tile %s for %s:\n%s", tile, player.Name, view)
+			}
+		}
+	}
+	for _, want := range []string{"宝牌", "里宝牌", "+3000", "-1000", "最终积分"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("detail view missing %q:\n%s", want, view)
+		}
+	}
+	for _, forbidden := range []string{"[H]", "[K]", "战术分析"} {
+		if strings.Contains(view, forbidden) {
+			t.Fatalf("replay exposed live control %q:\n%s", forbidden, view)
+		}
+	}
+}
+
+func TestReplayDetailsShowMCRFlowersAndSettlement(t *testing.T) {
+	model := replayViewerModel(t, completedMCRReplay(t))
+	model.Width = 140
+	model.ReplayShowDetails = true
+	view := renderReplayViewer(model)
+
+	for _, want := range []string{"花牌", game.TileLabel(mustUITiles(t, "P1")[0], true), "+24", "-8"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("MCR detail missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestReplayWidthFitsSupportedViewports(t *testing.T) {
+	for _, language := range []Language{LanguageChinese, LanguageEnglish} {
+		for _, width := range []int{140, 96, 80} {
+			t.Run(string(language)+"-"+strconv.Itoa(width), func(t *testing.T) {
+				model := replayViewerModel(t, completedRiichiReplay(t))
+				model.Language = language
+				model.Width = width
+				model.ReplayShowDetails = true
+				view := renderReplayViewer(model)
+				for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
+					if visibleWidth(line) > width {
+						t.Fatalf("line width=%d want<=%d:\n%s", visibleWidth(line), width, view)
+					}
+				}
+			})
+		}
+	}
+}
+
 func replayViewerModel(t *testing.T, file game.ReplayFile) Model {
 	t.Helper()
 	model := NewModel()
@@ -235,6 +316,79 @@ func replayViewerModel(t *testing.T, file game.ReplayFile) Model {
 	model.ReplayFile = &file
 	model.Width = 100
 	return model
+}
+
+func completedRiichiReplay(t *testing.T) game.ReplayFile {
+	t.Helper()
+	config := game.DefaultRuleConfig(game.ModeRiichi)
+	match, err := game.NewMatch(140019, game.NewRiichiRuleSet(config.Riichi))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match.Round.Players[0].Discards = append(match.Round.Players[0].Discards, mustUITiles(t, "1m", "2m")...)
+	match.Round.Over = true
+	match.Round.Reason = "self-draw"
+	match.Complete = true
+	settlement := game.RiichiSettlement{
+		Winners:    []int{0},
+		Discarder:  1,
+		Deltas:     [4]int{3000, -1000, -1000, -1000},
+		HonbaAfter: 1,
+	}
+	match.LastRiichiSettlement = &settlement
+	match.RiichiSettlements = []game.RiichiSettlement{settlement}
+	snapshot := match.Snapshot()
+	return sealTUIReplay(t, "riichi-details", time.Unix(40, 0).UTC(), snapshot)
+}
+
+func completedMCRReplay(t *testing.T) game.ReplayFile {
+	t.Helper()
+	config := game.DefaultRuleConfig(game.ModeMCR)
+	match, err := game.NewMatch(140020, game.NewMCRRuleSet(config.MCR))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match.Round.Players[0].Flowers = mustUITiles(t, "P1")
+	match.Round.Over = true
+	match.Round.Reason = "self-draw"
+	match.Complete = true
+	settlement := game.MCRSettlement{
+		Winner:    0,
+		Discarder: 1,
+		Deltas:    [4]int{24, -8, -8, -8},
+	}
+	match.LastMCRSettlement = &settlement
+	match.MCRSettlements = []game.MCRSettlement{settlement}
+	snapshot := match.Snapshot()
+	return sealTUIReplay(t, "mcr-details", time.Unix(50, 0).UTC(), snapshot)
+}
+
+func sealTUIReplay(t *testing.T, id string, createdAt time.Time, snapshot game.MatchSnapshot) game.ReplayFile {
+	t.Helper()
+	file, err := game.SealReplay(game.ReplayFile{
+		ApplicationVersion: "test",
+		ReplayID:           id,
+		CreatedAt:          createdAt,
+		Mode:               snapshot.Mode,
+		RuleConfig:         snapshot.RuleConfig,
+		ShuffleProof:       snapshot.Round.ShuffleProof,
+		Participants: []game.ReplayParticipant{
+			{Seat: 0, ID: "0", Name: snapshot.Round.Players[0].Name},
+			{Seat: 1, ID: "1", Name: snapshot.Round.Players[1].Name},
+			{Seat: 2, ID: "2", Name: snapshot.Round.Players[2].Name},
+			{Seat: 3, ID: "3", Name: snapshot.Round.Players[3].Name},
+		},
+		Initial:           snapshot,
+		Frames:            []game.ReplayFrame{{Index: 0, Match: snapshot}},
+		MCRSettlements:    append([]game.MCRSettlement(nil), snapshot.MCRSettlements...),
+		RiichiSettlements: append([]game.RiichiSettlement(nil), snapshot.RiichiSettlements...),
+		FinalStandings:    snapshot.Points,
+		Complete:          true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return file
 }
 
 func threeFrameReplay(t *testing.T) game.ReplayFile {

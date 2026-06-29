@@ -1029,7 +1029,7 @@ Step review:
 - Modify: `internal/tui/layout_test.go`
 - Modify: `internal/tui/i18n.go`
 
-- [ ] **Step 1: Write failing shared-renderer tests**
+- [x] **Step 1: Write failing shared-renderer tests**
 
 Require the replay view to contain the same four seat labels, discard rivers, points, and hand tray as the Phase 13 table. Require full concealed hands for all four players in replay detail mode, mode-specific dora/ura or flowers, settlement deltas, final standings, and no live action labels such as discard/win/kong.
 
@@ -1054,7 +1054,7 @@ func TestReplayDetailsRevealAllHandsOnlyInCompletedReplay(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -1062,7 +1062,7 @@ Run:
 go test ./internal/tui -run "ReplayTable|ReplayDetails|ReplayWidth" -count=1
 ```
 
-- [ ] **Step 3: Normalize replay frames into table state**
+- [x] **Step 3: Normalize replay frames into table state**
 
 Extend:
 
@@ -1082,7 +1082,7 @@ type tableViewState struct {
 
 When `ScreenReplayViewer`, `tableStateFor` selects `ReplayFile.Frames[ReplayFrame].Match`, uses viewer seat zero only for orientation, and preserves all four hands from the full snapshot.
 
-- [ ] **Step 4: Add replay-specific controls and detail rail**
+- [x] **Step 4: Add replay-specific controls and detail rail**
 
 When `state.ReadOnly`:
 
@@ -1104,7 +1104,7 @@ func renderReplaySettlement(m Model, frame game.ReplayFrame) string
 
 `renderWideHandAndActions` selects `renderReplayControls` when `state.ReadOnly`. `renderWideTable` selects `renderReplayDetailRail` instead of `renderTacticalRail` for replay state, preventing tactical calculations from using revealed future information.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
@@ -1123,7 +1123,8 @@ git commit -m "feat: render full replay details"
 14D phase review:
 - Total goal: saved full-information matches must be understandable and controllable from the terminal.
 - Achieved: users can browse, load, step, play, pause, inspect all hands, inspect settlements, and return safely without entering a live command path.
-- Evidence: shared-renderer, localization, read-only, playback, and width tests.
+- Evidence: the replay frame feeds the shared Phase 13 table state; wide and compact layouts expose four seats, rivers, points, and the hand tray; details expose all hands, Riichi dora/ura, MCR flowers, settlement deltas, and standings without live actions or tactical analysis. Focused tests passed 20 times at 140/96/80 columns in both languages, and TUI plus full-repository suites passed.
+- Regression review: the full TUI suite caught hidden final standings when details were collapsed; the final-frame branch now always renders settlement and standings.
 - Remaining risk: deterministic cross-mode fixtures, corruption matrices, network completeness, and visual acceptance still need the 14E gate.
 
 ## Task 9: 14E Dual-Mode Acceptance, Visual Evidence, And Documentation

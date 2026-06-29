@@ -10,9 +10,26 @@ type tableViewState struct {
 	Online     bool
 	Started    bool
 	RoomCode   string
+	Replay     bool
+	ReadOnly   bool
 }
 
 func tableStateFor(m Model) tableViewState {
+	if m.Screen == ScreenReplayViewer {
+		frame, ok := currentReplayFrame(m)
+		if !ok {
+			return tableViewState{ViewerSeat: -1, Replay: true, ReadOnly: true}
+		}
+		return tableViewState{
+			Snapshot:   frame.Match.Round,
+			Match:      frame.Match,
+			ViewerSeat: 0,
+			Mode:       frame.Match.Mode,
+			Started:    true,
+			Replay:     true,
+			ReadOnly:   true,
+		}
+	}
 	if m.Online {
 		mode := m.OnlineMatch.Mode
 		if mode == "" {

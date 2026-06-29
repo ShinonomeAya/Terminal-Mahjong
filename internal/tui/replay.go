@@ -210,85 +210,229 @@ func replayEntryLabel(m Model, entry replay.Entry) string {
 }
 
 func renderReplayViewer(m Model) string {
-	frame, ok := currentReplayFrame(m)
-	if !ok {
+	if _, ok := currentReplayFrame(m); !ok {
 		if m.chinese() {
 			return styleTitle("回放") + "\n\n" + styleStatus("回放数据不可用") + "\n"
 		}
 		return styleTitle("REPLAY") + "\n\n" + styleStatus("Replay data is unavailable") + "\n"
 	}
-	state := "paused"
-	title := "REPLAY"
+	state := tableStateFor(m)
+	if m.Width >= wideTableMinWidth {
+		return renderWideTable(m, state)
+	}
+	return renderReplayCompactTable(m, state)
+}
+
+func renderReplayCompactTable(m Model, state tableViewState) string {
+	if len(state.Snapshot.Players) != 4 {
+		return replayViewerTitle(m) + "\n"
+	}
+	topSeat := renderReplaySeatPanel(m, state, 2, "Opposite")
+	leftSeat := renderReplaySeatPanel(m, state, 1, "Left")
+	rightSeat := renderReplaySeatPanel(m, state, 3, "Right")
+	center := stylePanelWidth(tableTitle(m), renderWideCenter(m, state), 38)
+	middle := renderTableMiddle(m, leftSeat, center, rightSeat)
+	player := state.Snapshot.Players[state.ViewerSeat]
+	hand := stylePanelWidth(handTitle(m), renderHand(m, player.Hand, -1, m.UnicodeTiles), handPanelWidth(m))
+	board := renderBoardFrame(
+		m,
+		styleMuted(renderReplayMeta(m, state)),
+		topSeat,
+		middle,
+		hand,
+		renderReplayControls(m),
+	)
+	frame, _ := currentReplayFrame(m)
+	return strings.TrimRight(board, "\n") + "\n" + renderReplayDetailRail(m, *m.ReplayFile, frame) + "\n"
+}
+
+func renderReplaySeatPanel(m Model, state tableViewState, seat int, position string) string {
+	player := state.Snapshot.Players[seat]
+	return renderSeatPanel(
+		m,
+		seatLabel(m, position),
+		player.Name,
+		len(player.Hand),
+		meldSummary(player.Melds),
+		game.FormatTileLabels(recentTiles(player.Discards, 4), m.UnicodeTiles),
+		state.Snapshot.Current == seat,
+	)
+}
+
+func renderReplayMeta(m Model, state tableViewState) string {
+	frameState := "paused"
 	modeLabel := "Mode"
 	frameLabel := "Frame"
-	idLabel := "Replay ID"
-	createdLabel := "Created"
-	roundLabel := "Round snapshot"
-	controls := "Left/Right frame | Home/End boundary | Space play/pause | Tab details | Esc browser"
+	idLabel := "Replay"
 	if m.ReplayPlaying {
-		state = "playing"
+		frameState = "playing"
 	}
 	if m.chinese() {
-		title = "回放"
 		modeLabel = "模式"
 		frameLabel = "帧"
-		idLabel = "回放 ID"
-		createdLabel = "创建时间"
-		roundLabel = "对局快照"
-		state = "已暂停"
+		idLabel = "回放"
+		frameState = "已暂停"
 		if m.ReplayPlaying {
-			state = "播放中"
+			frameState = "播放中"
 		}
-		controls = "左右切帧 | Home/End 首尾 | 空格播放/暂停 | Tab 详情 | Esc 返回"
 	}
-
-	var out strings.Builder
-	out.WriteString(styleTitle(title) + "\n")
-	out.WriteString(fmt.Sprintf(
-		"%s: %s | %s: %d/%d | %s\n",
+	return fmt.Sprintf(
+		"%s:%s  %s:%d/%d  %s  %s:%s",
 		modeLabel,
-		ruleModeName(m, m.ReplayFile.Mode),
+		ruleModeName(m, state.Mode),
 		frameLabel,
 		m.ReplayFrame+1,
 		len(m.ReplayFile.Frames),
-		state,
-	))
-	out.WriteString(fmt.Sprintf("%s: %s\n", idLabel, m.ReplayFile.ReplayID))
-	out.WriteString(fmt.Sprintf("%s: %s\n\n", createdLabel, m.ReplayFile.CreatedAt.Local().Format("2006-01-02 15:04:05")))
-	out.WriteString(styleSectionTitle(roundLabel) + "\n")
-	out.WriteString(fmt.Sprintf(
-		"wall:%d current:%d events:%d\n",
-		frame.Match.Round.WallCount,
-		frame.Match.Round.Current+1,
-		len(frame.Match.Round.Events),
-	))
-	for seat, player := range frame.Match.Round.Players {
-		out.WriteString(fmt.Sprintf(
-			"%d. %s  points:%d  hand:%d  discards:%d\n",
-			seat+1,
-			playerName(m, player.Name),
-			frame.Match.Points[seat],
-			len(player.Hand),
-			len(player.Discards),
-		))
+		frameState,
+		idLabel,
+		m.ReplayFile.ReplayID,
+	)
+}
+
+func replayViewerTitle(m Model) string {
+	if m.chinese() {
+		return "终端麻将 · 回放"
 	}
-	if m.ReplayFrame == len(m.ReplayFile.Frames)-1 {
+	return "TERMINAL MAHJONG · REPLAY"
+}
+
+func renderReplayControls(m Model) string {
+	controls := "←/→ frame | Home/End | Space play/pause | Tab details | Esc library"
+	if m.chinese() {
+		controls = "←/→ 切帧 | Home/End 首尾 | Space 播放/暂停 | Tab 详情 | Esc 回放库"
+	}
+	return styleSectionTitle(replayControlsTitle(m)) + "\n" + styleMuted(controls)
+}
+
+func renderReplayDetailRail(m Model, file game.ReplayFile, frame game.ReplayFrame) string {
+	var lines []string
+	if m.chinese() {
+		lines = append(lines, "帧详情")
+	} else {
+		lines = append(lines, "Frame Details")
+	}
+	command := "-"
+	if frame.Command != nil {
+		command = string(frame.Command.Kind)
+	}
+	if m.chinese() {
+		lines = append(lines, "命令: "+command)
+	} else {
+		lines = append(lines, "Command: "+command)
+	}
+	lines = append(lines, renderReplayIndicators(m, frame.Match.Round)...)
+	lines = append(lines, renderReplayNewEvents(m, file, frame)...)
+	if m.ReplayShowDetails {
+		lines = append(lines, "", renderReplayHands(m, frame.Match.Round.Players))
+		lines = append(lines, "", renderReplaySettlement(m, frame))
+	} else if frame.Match.Complete {
+		lines = append(lines, "", renderReplaySettlement(m, frame))
+	} else if m.chinese() {
+		lines = append(lines, "", "Tab 查看完整手牌与结算")
+	} else {
+		lines = append(lines, "", "Tab shows all hands and settlement")
+	}
+	return stylePanelWidth("", strings.Join(lines, "\n"), tacticalRailWidth)
+}
+
+func renderReplayIndicators(m Model, snapshot game.GameSnapshot) []string {
+	var lines []string
+	if snapshot.Riichi != nil {
+		dora := game.FormatTileLabels(snapshot.Riichi.DoraIndicators, m.UnicodeTiles)
+		ura := game.FormatTileLabels(snapshot.Riichi.UraIndicators, m.UnicodeTiles)
 		if m.chinese() {
-			out.WriteString("\n" + styleSectionTitle("最终积分") + "\n")
-		} else {
-			out.WriteString("\n" + styleSectionTitle("Final Standings") + "\n")
+			return []string{"宝牌: " + dora, "里宝牌: " + ura}
 		}
-		out.WriteString(fmt.Sprintf(
-			"%d | %d | %d | %d\n",
-			m.ReplayFile.FinalStandings[0],
-			m.ReplayFile.FinalStandings[1],
-			m.ReplayFile.FinalStandings[2],
-			m.ReplayFile.FinalStandings[3],
-		))
+		return []string{"Dora: " + dora, "Ura: " + ura}
 	}
-	out.WriteString("\n" + styleSectionTitle(replayControlsTitle(m)) + "\n")
-	out.WriteString(styleMuted(controls) + "\n")
-	return out.String()
+	for _, player := range snapshot.Players {
+		if len(player.Flowers) == 0 {
+			continue
+		}
+		label := "Flowers: "
+		if m.chinese() {
+			label = "花牌: "
+		}
+		lines = append(lines, playerName(m, player.Name)+" "+label+game.FormatTileLabels(player.Flowers, m.UnicodeTiles))
+	}
+	return lines
+}
+
+func renderReplayNewEvents(m Model, file game.ReplayFile, frame game.ReplayFrame) []string {
+	start := 0
+	if frame.Index > 0 && frame.Index < len(file.Frames) {
+		start = len(file.Frames[frame.Index-1].Match.Round.Events)
+	}
+	events := frame.Match.Round.Events
+	if start > len(events) {
+		start = len(events)
+	}
+	events = events[start:]
+	if len(events) > 3 {
+		events = events[len(events)-3:]
+	}
+	title := "New events"
+	if m.chinese() {
+		title = "新增事件"
+	}
+	lines := []string{title + ":"}
+	if len(events) == 0 {
+		return append(lines, "-")
+	}
+	for _, event := range events {
+		lines = append(lines, event.String())
+	}
+	return lines
+}
+
+func renderReplayHands(m Model, players []game.PlayerView) string {
+	title := "All hands"
+	if m.chinese() {
+		title = "全部手牌"
+	}
+	lines := []string{title}
+	for _, player := range players {
+		lines = append(lines, playerName(m, player.Name)+":")
+		if len(player.Hand) == 0 {
+			lines = append(lines, "-")
+			continue
+		}
+		for start := 0; start < len(player.Hand); start += 6 {
+			end := min(start+6, len(player.Hand))
+			lines = append(lines, game.FormatTileLabels(player.Hand[start:end], m.UnicodeTiles))
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func renderReplaySettlement(m Model, frame game.ReplayFrame) string {
+	title := "Settlement"
+	finalTitle := "Final standings"
+	if m.chinese() {
+		title = "本局结算"
+		finalTitle = "最终积分"
+	}
+	lines := []string{title}
+	switch {
+	case frame.Match.LastRiichiSettlement != nil:
+		lines = append(lines, formatReplayDeltas(frame.Match.LastRiichiSettlement.Deltas))
+	case frame.Match.LastMCRSettlement != nil:
+		lines = append(lines, formatReplayDeltas(frame.Match.LastMCRSettlement.Deltas))
+	default:
+		lines = append(lines, "-")
+	}
+	if frame.Match.Complete {
+		lines = append(lines, finalTitle, formatReplayPoints(frame.Match.Points))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func formatReplayDeltas(values [4]int) string {
+	return fmt.Sprintf("%+d %+d %+d %+d", values[0], values[1], values[2], values[3])
+}
+
+func formatReplayPoints(values [4]int) string {
+	return fmt.Sprintf("%d %d %d %d", values[0], values[1], values[2], values[3])
 }
 
 func currentReplayFrame(m Model) (game.ReplayFrame, bool) {
