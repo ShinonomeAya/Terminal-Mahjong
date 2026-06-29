@@ -792,7 +792,7 @@ Step review:
 - Create: `internal/tui/replay_test.go`
 - Modify: `internal/tui/model_test.go`
 
-- [ ] **Step 1: Write failing browser tests**
+- [x] **Step 1: Write failing browser tests**
 
 Require a localized `回放 / Replays` menu item. With two valid files and one corrupt file, Enter must open `ScreenReplayBrowser`, display newest first, show the skipped-file count without failing the screen, support Up/Down selection, Enter load, R refresh, and Esc return.
 
@@ -817,7 +817,7 @@ func TestReplayBrowserListsNewestValidFiles(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -825,7 +825,7 @@ Run:
 go test ./internal/tui -run "ReplayMenu|ReplayBrowser|ReplayList" -count=1
 ```
 
-- [ ] **Step 3: Add replay screens and model state**
+- [x] **Step 3: Add replay screens and model state**
 
 Add:
 
@@ -857,7 +857,7 @@ Add these fields to `Model`:
 
 Keep `ReplayDir` from Task 3.
 
-- [ ] **Step 4: Add asynchronous list/load commands**
+- [x] **Step 4: Add asynchronous list/load commands**
 
 Implement:
 
@@ -877,7 +877,7 @@ func loadReplayCmd(path string) tea.Cmd
 
 All file reads occur inside Tea commands. Errors become localized status lines and do not close the browser.
 
-- [ ] **Step 5: Render and navigate the browser**
+- [x] **Step 5: Render and navigate the browser**
 
 Show timestamp, rule mode, frame count, replay ID, and path basename. The selected row uses the existing selected style. Keep lines within `m.Width`; truncate only path basenames, never replay IDs or mode. Add bilingual controls: Up/Down, Enter, R, Esc.
 
@@ -891,7 +891,7 @@ func replayEntryLabel(m Model, entry replay.Entry) string
 
 `updateReplayBrowser` clamps `ReplayIndex` after every refresh, returns `loadReplayCmd` only for a valid selected entry, and never deletes or rewrites files.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run:
 
@@ -909,7 +909,8 @@ git commit -m "feat: add replay browser"
 
 Step review:
 - Subphase goal: make valid saved replays discoverable without letting one corrupt file block the library.
-- Evidence: newest-first listing, isolated errors, bilingual controls, and safe asynchronous loading.
+- Evidence: newest-first listing, isolated corrupt-file counts, bilingual controls, safe asynchronous list/load commands, clamped selection, and an 80-column width test; focused browser tests passed 20 times and both TUI and full-repository suites passed.
+- Scope decision: the browser loads a validated replay into `ScreenReplayViewer`, but playback rendering and controls remain intentionally deferred to Task 7.
 - Next step: add read-only frame navigation and playback.
 
 ## Task 7: 14D Read-Only Frame Navigation And Playback

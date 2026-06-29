@@ -36,9 +36,9 @@ func toggleLanguage(m Model) Model {
 
 func menuLabels(m Model) []string {
 	if !m.chinese() {
-		return []string{"Solo Game", "Create Online Room", "Browse Online Rooms", "Join Online Room", "Reconnect Online", ruleModeMenuLabel(m), redFivesMenuLabel(m), "How to Play", languageMenuLabel(m), "Quit"}
+		return []string{"Solo Game", "Create Online Room", "Browse Online Rooms", "Join Online Room", "Reconnect Online", ruleModeMenuLabel(m), redFivesMenuLabel(m), "How to Play", "Replays", languageMenuLabel(m), "Quit"}
 	}
-	return []string{"单机对局", "创建联网房间", "浏览联网房间", "加入联网房间", "断线重连", ruleModeMenuLabel(m), redFivesMenuLabel(m), "玩法说明", languageMenuLabel(m), "退出"}
+	return []string{"单机对局", "创建联网房间", "浏览联网房间", "加入联网房间", "断线重连", ruleModeMenuLabel(m), redFivesMenuLabel(m), "玩法说明", "回放", languageMenuLabel(m), "退出"}
 }
 
 func ruleModeMenuLabel(m Model) string {

@@ -49,8 +49,13 @@ func updateMenu(m Model, key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 7:
 			m.Screen = ScreenHelp
 		case 8:
-			m = toggleLanguage(m)
+			m.Screen = ScreenReplayBrowser
+			m.ReplayIndex = 0
+			m.StatusLine = replayLoadingStatus(m)
+			return m, listReplaysCmd(m.ReplayDir)
 		case 9:
+			m = toggleLanguage(m)
+		case 10:
 			return m, tea.Quit
 		}
 	}

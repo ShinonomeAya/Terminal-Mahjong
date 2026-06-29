@@ -6,6 +6,7 @@ import (
 	"mahjong/internal/game"
 	"mahjong/internal/online"
 	"mahjong/internal/protocol"
+	"mahjong/internal/replay"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -19,6 +20,8 @@ const (
 	ScreenHelp
 	ScreenTable
 	ScreenGameOver
+	ScreenReplayBrowser
+	ScreenReplayViewer
 )
 
 type Model struct {
@@ -39,6 +42,13 @@ type Model struct {
 	ReplayRequestedID      string
 	ReplaySavingID         string
 	ReplaySavedID          string
+	ReplayEntries          []replay.Entry
+	ReplayIssues           []replay.FileIssue
+	ReplayIndex            int
+	ReplayFile             *game.ReplayFile
+	ReplayFrame            int
+	ReplayPlaying          bool
+	ReplayShowDetails      bool
 	Online                 bool
 	OnlineClient           *online.Client
 	OnlineSnapshot         game.GameSnapshot
@@ -99,6 +109,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return updateTable(m, msg)
 		case ScreenGameOver:
 			return updateGameOver(m, msg)
+		case ScreenReplayBrowser:
+			return updateReplayBrowser(m, msg)
 		default:
 			return m, nil
 		}
@@ -154,6 +166,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.StatusLine = "Replay save failed: " + msg.Err.Error()
 		return m, nil
+	case replayListMsg:
+		m.ReplayEntries = append([]replay.Entry(nil), msg.Entries...)
+		m.ReplayIssues = append([]replay.FileIssue(nil), msg.Issues...)
+		if len(m.ReplayEntries) == 0 {
+			m.ReplayIndex = 0
+		} else if m.ReplayIndex >= len(m.ReplayEntries) {
+			m.ReplayIndex = len(m.ReplayEntries) - 1
+		}
+		m.StatusLine = replayListStatus(m)
+		return m, nil
+	case replayLoadedMsg:
+		file := msg.File
+		m.ReplayFile = &file
+		m.ReplayFrame = 0
+		m.ReplayPlaying = false
+		m.ReplayShowDetails = false
+		m.Screen = ScreenReplayViewer
+		m.StatusLine = ""
+		return m, nil
+	case replayListErrorMsg:
+		m.StatusLine = replayErrorStatus(m, msg.Err)
+		return m, nil
+	case replayLoadErrorMsg:
+		m.StatusLine = replayErrorStatus(m, msg.Err)
+		return m, nil
 	default:
 		return m, nil
 	}
@@ -173,6 +210,8 @@ func (m Model) View() string {
 		return renderTable(m)
 	case ScreenGameOver:
 		return renderGameOver(m)
+	case ScreenReplayBrowser:
+		return renderReplayBrowser(m)
 	default:
 		return ""
 	}
