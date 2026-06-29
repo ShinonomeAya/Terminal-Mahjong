@@ -12,6 +12,7 @@ import (
 	"mahjong/internal/game"
 	"mahjong/internal/online"
 	"mahjong/internal/protocol"
+	"mahjong/internal/replay"
 )
 
 func main() {
@@ -34,6 +35,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	kong := flags.String("kong", "", "declare a concealed kong tile after connecting")
 	listRooms := flags.Bool("list", false, "list waiting rooms and exit")
 	watch := flags.Bool("watch", false, "keep reading snapshots and reconnect if the connection drops")
+	replayDir := flags.String("replay-dir", "replays", "directory for received replay files")
 	reconnectAttempts := flags.Int("reconnect-attempts", 5, "maximum reconnect attempts in watch mode")
 	modeText := flags.String("mode", "compatibility", "room rule mode: compatibility, mcr, riichi")
 	redFives := flags.Int("red-fives", 3, "riichi red fives: 0 or 3")
@@ -102,7 +104,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		}
 	}
 	if *watch {
-		return watchClient(ctx, client, *reconnectAttempts, out)
+		return watchClient(ctx, client, *reconnectAttempts, *replayDir, out)
 	}
 	return nil
 }
@@ -176,15 +178,15 @@ func printRoomList(out io.Writer, rooms []protocol.RoomSummary) {
 	}
 }
 
-func watchClient(ctx context.Context, client *online.Client, reconnectAttempts int, out io.Writer) error {
+func watchClient(ctx context.Context, client *online.Client, reconnectAttempts int, replayDir string, out io.Writer) error {
 	for {
-		if err := watchOnce(ctx, client, reconnectAttempts, out); err != nil {
+		if err := watchOnce(ctx, client, reconnectAttempts, replayDir, out); err != nil {
 			return err
 		}
 	}
 }
 
-func watchOnce(ctx context.Context, client *online.Client, reconnectAttempts int, out io.Writer) error {
+func watchOnce(ctx context.Context, client *online.Client, reconnectAttempts int, replayDir string, out io.Writer) error {
 	policy := online.ReconnectPolicy{MaxAttempts: reconnectAttempts, BaseDelay: 200 * time.Millisecond}
 	message, err := client.ReadUntilWithReconnect(
 		ctx,
@@ -193,10 +195,28 @@ func watchOnce(ctx context.Context, client *online.Client, reconnectAttempts int
 		protocol.MsgGameSnapshot,
 		protocol.MsgRoomState,
 		protocol.MsgReconnected,
+		protocol.MsgReplayReady,
+		protocol.MsgReplayData,
 		protocol.MsgError,
 	)
 	if err != nil {
 		return err
+	}
+	if message.Type == protocol.MsgReconnected && message.ReplayID != "" {
+		if err := client.RequestReplay(ctx); err != nil {
+			return err
+		}
+	}
+	if message.Type == protocol.MsgReplayData {
+		if message.Replay == nil {
+			return fmt.Errorf("replay payload is missing")
+		}
+		path, err := replay.Save(replayDir, *message.Replay)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "replay=%s\n", path)
+		return nil
 	}
 	printMessage(out, message)
 	return nil

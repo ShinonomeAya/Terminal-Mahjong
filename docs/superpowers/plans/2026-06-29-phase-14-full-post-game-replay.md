@@ -682,7 +682,7 @@ Step review:
 - Modify: `cmd/client/main.go`
 - Modify: `cmd/client/main_test.go`
 
-- [ ] **Step 1: Write failing client tests**
+- [x] **Step 1: Write failing client tests**
 
 Add:
 
@@ -714,9 +714,9 @@ func TestClientRequestsCompletedReplay(t *testing.T) {
 
 `completedReplayClientFixture` must use the existing `httptest` WebSocket server pattern, finish a room through an accepted final command, disconnect the client, and return its saved `ClientSession`; it must not assign `room.replay` directly.
 
-Add TUI tests that `MsgReplayReady` triggers one request, `MsgReplayData` saves under `ReplayDir`, and reconnect with `ReplayID` requests the payload again. Add a CLI test that `-watch -replay-dir <temp>` saves one validated file.
+Add TUI tests that `MsgReplayData` saves under `ReplayDir`, and reconnect with `ReplayID` requests the payload exactly once. `MsgReplayReady` is passive availability because the original completion broadcast immediately follows it with `MsgReplayData`; requesting there would duplicate the payload and save. Add a CLI watch test that a configured replay directory receives one validated file.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run:
 
@@ -724,7 +724,7 @@ Run:
 go test ./internal/online ./internal/tui ./cmd/client -run "RequestReplay|ReplayData|ReplayDir" -count=1
 ```
 
-- [ ] **Step 3: Add the client request**
+- [x] **Step 3: Add the client request**
 
 Implement:
 
@@ -739,7 +739,7 @@ func (c *Client) RequestReplay(ctx context.Context) error {
 
 Use the client's existing `connect` and `write` methods; do not open a second WebSocket.
 
-- [ ] **Step 4: Handle replay messages in the TUI**
+- [x] **Step 4: Handle replay messages in the TUI**
 
 Include `MsgReplayReady` and `MsgReplayData` in `waitOnlineSnapshot`. Add:
 
@@ -748,13 +748,13 @@ type onlineReplayReadyMsg struct{ ReplayID string }
 type onlineReplayDataMsg struct{ Replay game.ReplayFile }
 ```
 
-On ready/reconnect availability, issue `requestOnlineReplayCmd` once per ID. On data, validate then reuse the same atomic save command as local replay storage. Keep game-over state visible if saving fails.
+Treat ready as notice that the pushed data follows. On reconnect availability, issue `requestOnlineReplayCmd` once per ID. On data, validate then reuse the same atomic save command as local replay storage. Keep game-over state visible if saving fails.
 
-- [ ] **Step 5: Save replay data in the CLI watcher**
+- [x] **Step 5: Save replay data in the CLI watcher**
 
 Add `-replay-dir` with default `replays`. When watch mode receives `MsgReplayData`, call `replay.Save`, print `replay=<path>`, and continue reading until context cancellation. Do not print the full payload or token.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run:
 
@@ -773,8 +773,14 @@ git commit -m "feat: save received online replays"
 14C phase review:
 - Total goal: completed online matches must be replayable without exposing hidden information during live play.
 - Achieved: the server owns full replay creation; clients receive/save it only after completion and can request it again after reconnect.
-- Evidence: live privacy, completion delivery, checksum, reconnect retrieval, TUI save, and CLI save tests.
+- Evidence: live privacy, completion delivery, canonical reconnect retrieval, checksum validation, TUI save deduplication, and CLI save tests; focused tests passed 20 times, related packages and the full repository passed, and focused race plus `go vet ./...` passed.
 - Remaining risk: files exist but users cannot browse or play them inside the TUI yet.
+
+Step review:
+- Subphase goal: make the authoritative online replay survive client disconnects and land in the same validated local store as single-player replays.
+- Evidence: a real completed room can reconnect through `Client.RequestReplay`; TUI requests once per replay ID and saves once; CLI watch honors `-replay-dir` and prints only the resulting path.
+- Protocol decision: completion broadcasts `replay_ready` followed by `replay_data`, while reconnect responses expose only the replay ID and require an explicit request. This avoids duplicate live downloads without weakening reconnect recovery.
+- Next step: add the in-TUI replay browser so saved files are discoverable without leaving the game.
 
 ## Task 6: 14D Replay Browser
 

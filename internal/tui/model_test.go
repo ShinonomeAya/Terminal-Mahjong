@@ -1259,6 +1259,69 @@ func TestReplaySavedMessageUpdatesResultState(t *testing.T) {
 	}
 }
 
+func TestOnlineReconnectRequestsReplayOnlyOnce(t *testing.T) {
+	serverURL, messages, closeServer := startCommandCaptureServer(t)
+	defer closeServer()
+
+	client := online.NewClient(serverURL, "first")
+	defer client.Close()
+	model := NewModel()
+	model.OnlineClient = client
+
+	message := protocol.Message{Type: protocol.MsgReconnected, ReplayID: "replay-1"}
+	updated, cmd, handled := applyOnlineReplayMessage(model, message)
+	if !handled || cmd == nil || updated.ReplayRequestedID != "replay-1" {
+		t.Fatalf("handled=%t cmd=%v requested=%q", handled, cmd, updated.ReplayRequestedID)
+	}
+	if result := cmd(); result != (onlineCommandSentMsg{}) {
+		t.Fatalf("request result = %#v", result)
+	}
+	select {
+	case request := <-messages:
+		if request.Type != protocol.MsgRequestReplay {
+			t.Fatalf("request type = %q", request.Type)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for replay request")
+	}
+
+	updated, cmd, handled = applyOnlineReplayMessage(updated, message)
+	if !handled || cmd != nil {
+		t.Fatalf("duplicate handled=%t cmd=%v", handled, cmd)
+	}
+}
+
+func TestOnlineReplayDataSavesValidatedFile(t *testing.T) {
+	model := NewModel()
+	model.ReplayDir = t.TempDir()
+	file := tuiReplayFixture(t, "online-replay")
+
+	updated, cmd, handled := applyOnlineReplayMessage(model, protocol.Message{
+		Type:     protocol.MsgReplayData,
+		ReplayID: file.ReplayID,
+		Replay:   &file,
+	})
+	if !handled || cmd == nil || updated.ReplaySavingID != file.ReplayID {
+		t.Fatalf("handled=%t cmd=%v saving=%q", handled, cmd, updated.ReplaySavingID)
+	}
+	saved, ok := cmd().(replaySavedMsg)
+	if !ok {
+		t.Fatalf("save result = %#v", cmd())
+	}
+	next, _ := updated.Update(saved)
+	finished := next.(Model)
+	if finished.ReplaySavedID != file.ReplayID || finished.LastReplayPath == "" {
+		t.Fatalf("saved=%q path=%q", finished.ReplaySavedID, finished.LastReplayPath)
+	}
+	loaded, err := replay.Load(finished.LastReplayPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Checksum != file.Checksum {
+		t.Fatalf("checksum = %q, want %q", loaded.Checksum, file.Checksum)
+	}
+}
+
 func TestLocalMCRRoundTransitionStaysOnTable(t *testing.T) {
 	match, err := game.NewMatch(140014, game.NewMCRRuleSet(game.DefaultRuleConfig(game.ModeMCR).MCR))
 	if err != nil {
@@ -1318,4 +1381,37 @@ func TestFinishLocalUpdateSchedulesCompletedReplaySave(t *testing.T) {
 	if _, ok := cmd().(replaySavedMsg); !ok {
 		t.Fatal("completed match did not produce replaySavedMsg")
 	}
+}
+
+func tuiReplayFixture(t *testing.T, id string) game.ReplayFile {
+	t.Helper()
+	round := game.NewGame(140015).Snapshot()
+	round.Over = true
+	match := game.MatchSnapshot{
+		Mode:       game.ModeCompatibility,
+		RuleConfig: game.RuleConfig{},
+		Complete:   true,
+		Round:      round,
+	}
+	file, err := game.SealReplay(game.ReplayFile{
+		ApplicationVersion: "test",
+		ReplayID:           id,
+		CreatedAt:          time.Unix(20, 0).UTC(),
+		Mode:               game.ModeCompatibility,
+		RuleConfig:         game.RuleConfig{},
+		ShuffleProof:       round.ShuffleProof,
+		Participants: []game.ReplayParticipant{
+			{Seat: 0, ID: "0", Name: "You"},
+			{Seat: 1, ID: "1", Name: "AI-1"},
+			{Seat: 2, ID: "2", Name: "AI-2"},
+			{Seat: 3, ID: "3", Name: "AI-3"},
+		},
+		Initial:  match,
+		Frames:   []game.ReplayFrame{{Index: 0, Match: match}},
+		Complete: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return file
 }

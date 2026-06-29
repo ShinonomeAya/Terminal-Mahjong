@@ -36,6 +36,9 @@ type Model struct {
 	LocalMatch             *game.Match
 	ReplayDir              string
 	LastReplayPath         string
+	ReplayRequestedID      string
+	ReplaySavingID         string
+	ReplaySavedID          string
 	Online                 bool
 	OnlineClient           *online.Client
 	OnlineSnapshot         game.GameSnapshot
@@ -110,8 +113,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case onlineConnectedMsg:
 		updated := applyOnlineConnected(m, msg)
-		return updated, tea.Batch(waitOnlineSnapshot(msg.Client, updated.OnlineEvents), listenOnlineEvents(updated.OnlineEvents))
+		updated, replayCmd, _ := applyOnlineReplayMessage(updated, msg.Message)
+		return updated, tea.Batch(replayCmd, waitOnlineSnapshot(msg.Client, updated.OnlineEvents), listenOnlineEvents(updated.OnlineEvents))
 	case onlineSnapshotMsg:
+		if updated, replayCmd, handled := applyOnlineReplayMessage(m, msg.Message); handled {
+			return updated, tea.Batch(replayCmd, waitOnlineSnapshot(updated.OnlineClient, updated.OnlineEvents))
+		}
 		updated := applyOnlineSnapshot(m, msg.Message)
 		return updated, waitOnlineSnapshot(updated.OnlineClient, updated.OnlineEvents)
 	case onlineRoomsMsg:
@@ -135,9 +142,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case replaySavedMsg:
 		m.LastReplayPath = msg.Path
+		if msg.ReplayID != "" {
+			m.ReplaySavingID = ""
+			m.ReplaySavedID = msg.ReplayID
+		}
 		m.StatusLine = "Replay saved: " + msg.Path
 		return m, nil
 	case replaySaveErrorMsg:
+		if msg.ReplayID != "" && m.ReplaySavingID == msg.ReplayID {
+			m.ReplaySavingID = ""
+		}
 		m.StatusLine = "Replay save failed: " + msg.Err.Error()
 		return m, nil
 	default:

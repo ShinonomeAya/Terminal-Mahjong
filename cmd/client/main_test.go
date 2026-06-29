@@ -15,6 +15,7 @@ import (
 	"mahjong/internal/game"
 	"mahjong/internal/online"
 	"mahjong/internal/protocol"
+	"mahjong/internal/replay"
 )
 
 func TestRunClientReadyFlagSendsReady(t *testing.T) {
@@ -159,11 +160,39 @@ func TestWatchOncePrintsRoomState(t *testing.T) {
 	defer client.Close()
 
 	var output bytes.Buffer
-	if err := watchOnce(context.Background(), client, 1, &output); err != nil {
+	if err := watchOnce(context.Background(), client, 1, t.TempDir(), &output); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "type=room_state") || !strings.Contains(output.String(), "room=000777") {
 		t.Fatalf("output missing room_state:\n%s", output.String())
+	}
+}
+
+func TestWatchOnceSavesReplayData(t *testing.T) {
+	file := clientReplayFixture(t, "online-client")
+	serverURL, closeServer := startClientMessageServer(t, protocol.Message{
+		Type:     protocol.MsgReplayData,
+		ReplayID: file.ReplayID,
+		Replay:   &file,
+	})
+	defer closeServer()
+
+	client := online.NewClient(serverURL, "first")
+	defer client.Close()
+	replayDir := t.TempDir()
+	var output bytes.Buffer
+	if err := watchOnce(context.Background(), client, 1, replayDir, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "replay=") {
+		t.Fatalf("output missing replay path:\n%s", output.String())
+	}
+	entries, issues, err := replay.List(replayDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 0 || len(entries) != 1 || entries[0].ReplayID != file.ReplayID {
+		t.Fatalf("entries=%#v issues=%#v", entries, issues)
 	}
 }
 
@@ -242,4 +271,37 @@ func readCapturedCommand(t *testing.T, commands <-chan protocol.Message) protoco
 		t.Fatal("timed out waiting for command")
 		return protocol.Message{}
 	}
+}
+
+func clientReplayFixture(t *testing.T, id string) game.ReplayFile {
+	t.Helper()
+	round := game.NewGame(140016).Snapshot()
+	round.Over = true
+	match := game.MatchSnapshot{
+		Mode:       game.ModeCompatibility,
+		RuleConfig: game.RuleConfig{},
+		Complete:   true,
+		Round:      round,
+	}
+	file, err := game.SealReplay(game.ReplayFile{
+		ApplicationVersion: "test",
+		ReplayID:           id,
+		CreatedAt:          time.Unix(20, 0).UTC(),
+		Mode:               game.ModeCompatibility,
+		RuleConfig:         game.RuleConfig{},
+		ShuffleProof:       round.ShuffleProof,
+		Participants: []game.ReplayParticipant{
+			{Seat: 0, ID: "0", Name: "You"},
+			{Seat: 1, ID: "1", Name: "AI-1"},
+			{Seat: 2, ID: "2", Name: "AI-2"},
+			{Seat: 3, ID: "3", Name: "AI-3"},
+		},
+		Initial:  match,
+		Frames:   []game.ReplayFrame{{Index: 0, Match: match}},
+		Complete: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return file
 }

@@ -11,11 +11,13 @@ import (
 )
 
 type replaySavedMsg struct {
-	Path string
+	Path     string
+	ReplayID string
 }
 
 type replaySaveErrorMsg struct {
-	Err error
+	ReplayID string
+	Err      error
 }
 
 func saveCompletedReplayCmd(match *game.Match, dir string) tea.Cmd {
@@ -33,6 +35,16 @@ func saveCompletedReplayCmd(match *game.Match, dir string) tea.Cmd {
 			return replaySaveErrorMsg{Err: err}
 		}
 		return replaySavedMsg{Path: path}
+	}
+}
+
+func saveReplayFileCmd(file game.ReplayFile, dir string) tea.Cmd {
+	return func() tea.Msg {
+		path, err := replay.Save(dir, file)
+		if err != nil {
+			return replaySaveErrorMsg{ReplayID: file.ReplayID, Err: err}
+		}
+		return replaySavedMsg{Path: path, ReplayID: file.ReplayID}
 	}
 }
 

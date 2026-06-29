@@ -141,6 +141,13 @@ func (c *Client) SendReady(ctx context.Context) error {
 	return c.write(protocol.Message{Type: protocol.MsgReady})
 }
 
+func (c *Client) RequestReplay(ctx context.Context) error {
+	if err := c.connect(ctx); err != nil {
+		return err
+	}
+	return c.write(protocol.Message{Type: protocol.MsgRequestReplay})
+}
+
 func (c *Client) ReadUntil(ctx context.Context, timeout time.Duration, messageTypes ...protocol.MessageType) (protocol.Message, error) {
 	if err := c.connect(ctx); err != nil {
 		return protocol.Message{}, err

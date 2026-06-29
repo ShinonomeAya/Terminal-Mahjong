@@ -162,6 +162,8 @@ func waitOnlineSnapshot(client *online.Client, events chan<- tea.Msg) tea.Cmd {
 			protocol.MsgGameSnapshot,
 			protocol.MsgRoomState,
 			protocol.MsgReconnected,
+			protocol.MsgReplayReady,
+			protocol.MsgReplayData,
 			protocol.MsgError,
 		)
 		if err != nil {
@@ -176,6 +178,17 @@ func sendOnlineReadyCmd(client *online.Client) tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := client.SendReady(ctx); err != nil {
+			return onlineErrorMsg{Err: err}
+		}
+		return onlineCommandSentMsg{}
+	}
+}
+
+func requestOnlineReplayCmd(client *online.Client) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := client.RequestReplay(ctx); err != nil {
 			return onlineErrorMsg{Err: err}
 		}
 		return onlineCommandSentMsg{}
@@ -261,6 +274,39 @@ func applyOnlineSnapshot(m Model, message protocol.Message) Model {
 		m.StatusLine = "Online round ended"
 	}
 	return m
+}
+
+func applyOnlineReplayMessage(m Model, message protocol.Message) (Model, tea.Cmd, bool) {
+	switch message.Type {
+	case protocol.MsgReplayReady:
+		return m, nil, true
+	case protocol.MsgReconnected:
+		if message.ReplayID == "" ||
+			message.ReplayID == m.ReplayRequestedID ||
+			message.ReplayID == m.ReplaySavingID ||
+			message.ReplayID == m.ReplaySavedID {
+			return m, nil, message.ReplayID != ""
+		}
+		m.ReplayRequestedID = message.ReplayID
+		return m, requestOnlineReplayCmd(m.OnlineClient), true
+	case protocol.MsgReplayData:
+		if message.Replay == nil {
+			return m, func() tea.Msg {
+				return replaySaveErrorMsg{
+					ReplayID: message.ReplayID,
+					Err:      fmt.Errorf("replay payload is missing"),
+				}
+			}, true
+		}
+		replayID := message.Replay.ReplayID
+		if replayID == m.ReplaySavingID || replayID == m.ReplaySavedID {
+			return m, nil, true
+		}
+		m.ReplaySavingID = replayID
+		return m, saveReplayFileCmd(*message.Replay, m.ReplayDir), true
+	default:
+		return m, nil, false
+	}
 }
 
 func networkStatusForOnlineSnapshot(m Model) NetworkStatus {

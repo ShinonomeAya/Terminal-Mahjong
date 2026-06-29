@@ -323,3 +323,59 @@ func TestClientReadUntilWithReconnectReturnsRequestedServerError(t *testing.T) {
 		t.Fatalf("message = %#v, want not joined error", message)
 	}
 }
+
+func TestClientRequestsCompletedReplay(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	client := NewClient(url+"/ws", "first")
+	created, err := client.CreateRoom(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SendReady(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.ReadUntil(context.Background(), 2*time.Second, protocol.MsgRoomState); err != nil {
+		t.Fatal(err)
+	}
+	configureCompatibilityWinningRoom(t, server, created.RoomCode)
+	if err := client.SendCommand(context.Background(), game.GameCommand{Kind: game.CommandWin}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.ReadUntil(context.Background(), 2*time.Second, protocol.MsgGameSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.ReadUntil(context.Background(), 2*time.Second, protocol.MsgReplayReady); err != nil {
+		t.Fatal(err)
+	}
+	pushed, err := client.ReadUntil(context.Background(), 2*time.Second, protocol.MsgReplayData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := client.Session()
+	client.Close()
+
+	reconnected := NewClient(url+"/ws", session.Name)
+	defer reconnected.Close()
+	if _, err := reconnected.Reconnect(context.Background(), session); err != nil {
+		t.Fatal(err)
+	}
+	if err := reconnected.RequestReplay(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	requested, err := reconnected.ReadUntil(context.Background(), 2*time.Second, protocol.MsgReplayData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requested.Replay == nil || requested.ReplayID != pushed.ReplayID {
+		t.Fatalf("requested=%#v pushed=%#v", requested, pushed)
+	}
+	if err := game.ValidateReplay(*requested.Replay); err != nil {
+		t.Fatal(err)
+	}
+	if requested.Replay.Checksum != pushed.Replay.Checksum {
+		t.Fatalf("checksum=%q want=%q", requested.Replay.Checksum, pushed.Replay.Checksum)
+	}
+}
