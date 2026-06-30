@@ -71,6 +71,72 @@ func TestWebSocketServerCreatesAndJoinsRoom(t *testing.T) {
 	}
 }
 
+func TestWebSocketServerSerializesConcurrentWritesPerConnection(t *testing.T) {
+	server := NewServer()
+	url, closeServer := startTestServer(t, server)
+	defer closeServer()
+
+	host := dialTestClient(t, url)
+	defer host.Close()
+	sendMessage(t, host, protocol.Message{Type: protocol.MsgCreateRoom, Name: "host"})
+	created := readUntil(t, host, protocol.MsgRoomCreated)
+
+	guest := dialTestClient(t, url)
+	defer guest.Close()
+	sendMessage(t, guest, protocol.Message{Type: protocol.MsgJoinRoom, RoomCode: created.RoomCode, Name: "guest"})
+	_ = readUntil(t, guest, protocol.MsgRoomJoined)
+	_ = readUntil(t, host, protocol.MsgRoomState)
+
+	const messageCount = 50
+	readMessages := func(conn *websocket.Conn, count int) error {
+		if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			return err
+		}
+		for range count {
+			var message protocol.Message
+			if err := conn.ReadJSON(&message); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	readErrors := make(chan error, 2)
+	go func() { readErrors <- readMessages(host, messageCount*2) }()
+	go func() { readErrors <- readMessages(guest, messageCount) }()
+
+	writeErrors := make(chan error, 2)
+	go func() {
+		for range messageCount {
+			if err := host.WriteJSON(protocol.Message{Type: protocol.MsgListRooms}); err != nil {
+				writeErrors <- err
+				return
+			}
+		}
+		writeErrors <- nil
+	}()
+	go func() {
+		for range messageCount {
+			if err := guest.WriteJSON(protocol.Message{Type: protocol.MsgReady}); err != nil {
+				writeErrors <- err
+				return
+			}
+		}
+		writeErrors <- nil
+	}()
+
+	for range 2 {
+		if err := <-writeErrors; err != nil {
+			t.Fatal(err)
+		}
+	}
+	for range 2 {
+		if err := <-readErrors; err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestWebSocketServerSendsRecipientPrivateMatchSnapshots(t *testing.T) {
 	server := NewServer()
 	url, closeServer := startTestServer(t, server)

@@ -37,13 +37,18 @@ type room struct {
 	replay    *game.ReplayFile
 }
 
+type wsConnection struct {
+	conn    *websocket.Conn
+	writeMu sync.Mutex
+}
+
 type session struct {
 	playerID       string
 	reconnectToken string
 	name           string
 	roomCode       string
 	seat           int
-	conn           *websocket.Conn
+	conn           *wsConnection
 	offlineAt      time.Time
 }
 
@@ -69,23 +74,23 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	conn, err := s.upgrader.Upgrade(w, r, nil)
+	rawConn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
-	go s.handleConn(conn)
+	go s.handleConn(&wsConnection{conn: rawConn})
 }
 
-func (s *Server) handleConn(conn *websocket.Conn) {
+func (s *Server) handleConn(conn *wsConnection) {
 	var current *session
 	defer func() {
-		s.markOffline(current)
-		_ = conn.Close()
+		s.markOffline(current, conn)
+		_ = conn.conn.Close()
 	}()
 
 	for {
 		var message protocol.Message
-		if err := conn.ReadJSON(&message); err != nil {
+		if err := conn.conn.ReadJSON(&message); err != nil {
 			return
 		}
 		next := s.handleMessage(conn, current, message)
@@ -95,7 +100,7 @@ func (s *Server) handleConn(conn *websocket.Conn) {
 	}
 }
 
-func (s *Server) handleMessage(conn *websocket.Conn, current *session, message protocol.Message) *session {
+func (s *Server) handleMessage(conn *wsConnection, current *session, message protocol.Message) *session {
 	switch message.Type {
 	case protocol.MsgCreateRoom:
 		session, created, err := s.createRoom(conn, message.Name, message.Mode, message.RuleConfig)
@@ -190,7 +195,7 @@ func (s *Server) roomSummaries() []protocol.RoomSummary {
 	return rooms
 }
 
-func (s *Server) createRoom(conn *websocket.Conn, name string, mode game.RuleMode, config game.RuleConfig) (*session, *room, error) {
+func (s *Server) createRoom(conn *wsConnection, name string, mode game.RuleMode, config game.RuleConfig) (*session, *room, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -226,7 +231,7 @@ func roomRuleSet(mode game.RuleMode, config game.RuleConfig) game.RuleSet {
 	return game.NewCompatibilityRuleSet(mode, config)
 }
 
-func (s *Server) joinRoom(conn *websocket.Conn, code string, name string, mode game.RuleMode, config game.RuleConfig) (*session, *room, error) {
+func (s *Server) joinRoom(conn *wsConnection, code string, name string, mode game.RuleMode, config game.RuleConfig) (*session, *room, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -272,7 +277,7 @@ func (s *Server) setReady(session *session) {
 	}
 }
 
-func (s *Server) playCommand(conn *websocket.Conn, session *session, command game.GameCommand) {
+func (s *Server) playCommand(conn *wsConnection, session *session, command game.GameCommand) {
 	if session == nil {
 		writeError(conn, "not joined")
 		return
@@ -329,7 +334,7 @@ func (s *Server) advanceUnoccupiedBotsLocked(room *room) {
 	}
 }
 
-func (s *Server) reconnect(conn *websocket.Conn, playerID string, token string) (*session, *room, error) {
+func (s *Server) reconnect(conn *wsConnection, playerID string, token string) (*session, *room, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -372,13 +377,13 @@ func (s *Server) pruneExpiredRoomsLocked(now time.Time) {
 	}
 }
 
-func (s *Server) markOffline(session *session) {
+func (s *Server) markOffline(session *session, conn *wsConnection) {
 	if session == nil {
 		return
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if stored := s.sessions[session.playerID]; stored != nil && stored.conn == session.conn {
+	if stored := s.sessions[session.playerID]; stored != nil && stored.conn == conn {
 		stored.conn = nil
 		stored.offlineAt = time.Now()
 	}
@@ -475,7 +480,7 @@ func (s *Server) broadcastCompletedReplayLocked(room *room) {
 	}
 }
 
-func (s *Server) sendCompletedReplay(conn *websocket.Conn, session *session) {
+func (s *Server) sendCompletedReplay(conn *wsConnection, session *session) {
 	if session == nil {
 		writeError(conn, "not joined")
 		return
@@ -588,7 +593,7 @@ func allOccupiedReady(room *room) bool {
 	return occupied > 0
 }
 
-func newSession(name string, roomCode string, seat int, conn *websocket.Conn) *session {
+func newSession(name string, roomCode string, seat int, conn *wsConnection) *session {
 	if name == "" {
 		name = fmt.Sprintf("Player-%d", seat+1)
 	}
@@ -610,10 +615,12 @@ func randomToken(bytesLen int) string {
 	return hex.EncodeToString(bytes)
 }
 
-func writeJSON(conn *websocket.Conn, message protocol.Message) {
-	_ = conn.WriteJSON(message)
+func writeJSON(conn *wsConnection, message protocol.Message) {
+	conn.writeMu.Lock()
+	defer conn.writeMu.Unlock()
+	_ = conn.conn.WriteJSON(message)
 }
 
-func writeError(conn *websocket.Conn, message string) {
+func writeError(conn *wsConnection, message string) {
 	writeJSON(conn, protocol.Message{Type: protocol.MsgError, Error: message})
 }
