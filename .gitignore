@@ -15,3 +15,8 @@ coverage.out
 .gocache/
 .tmp/
 *.go.[0-9]*
+
+# Local game state
+replays/
+output/
+.mahjong-*.json

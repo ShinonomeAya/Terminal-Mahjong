@@ -1,168 +1,182 @@
 # Terminal Mahjong
 
-A small, complete terminal Mahjong game written in Go.
+[![CI](https://github.com/ShinonomeAya/Terminal-Mahjong/actions/workflows/ci.yml/badge.svg)](https://github.com/ShinonomeAya/Terminal-Mahjong/actions/workflows/ci.yml)
+[![Go 1.23](https://img.shields.io/badge/Go-1.23-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## MVP Scope
+一个使用 Go、Bubble Tea 和 Lip Gloss 编写的终端麻将客户端。它支持 Unicode 麻将牌、键盘和鼠标操作、三种规则模式、单机机器人、WebSocket 联网、断线重连，以及可校验的完整赛后回放。
 
-- Four-player single game: one human player and three simple AI players.
-- Simplified pushdown rules.
-- Supported actions: draw, discard, self-win, discard-win, pong, chow, concealed kong.
-- Win check: standard `4 melds + 1 pair` hand shape.
-- No scoring, flowers, seat wind rounds, riichi rules, or network play in the first version.
+项目保持终端优先，不依赖图形界面。
 
-## Fair Shuffle And Replay Audit
+## 功能
 
-- New default games use a seed generated from `crypto/rand`, then shuffle the wall deterministically from that seed.
-- Tests and scripted runs can still pass a fixed seed to reproduce the exact deal and event sequence.
-- Replay logs include the seed and a SHA-256 wall hash so a round can be audited without scraping terminal output.
-- The game does not use player history, win rate, or any adaptive deal control when shuffling.
+- **终端牌桌**：四家固定座位、牌河、手牌托盘、当前行动提示和战术分析栏。
+- **现代终端操作**：方向键选牌，回车或空格出牌，支持鼠标选择和再次点击出牌。
+- **中英文界面**：可在开始菜单切换语言。
+- **三种规则模式**：
+  - 经典兼容模式；
+  - 国标麻将（MCR），包括 144 张牌、花牌、完整番种与结算；
+  - 四人日麻，包括立直、振听、宝牌、里宝牌、赤宝牌、役种、符番与东南战结算。
+- **单机游戏**：一名玩家与三名启发式机器人对局。
+- **联网游戏**：内存房间、准备状态、空座机器人、服务端权威动作、WebSocket 状态同步。
+- **断线重连**：客户端保存 reconnect token，服务端默认保留离线会话两分钟。
+- **公平发牌**：默认种子来自 `crypto/rand`，牌墙使用确定性洗牌，并记录 SHA-256 牌墙证明。
+- **完整回放**：本地和联网完赛后自动保存经过 schema 与 checksum 校验的逐帧回放。
 
-## Controls
+## 运行要求
 
-- `Up` / `Down`: move in menus.
-- `Enter`: confirm a menu item or discard the selected tile.
-- `Left` / `Right`: select a hand tile.
-- Mouse click: select a hand tile when the terminal supports mouse events.
-- Second click on the selected hand tile: discard it.
-- `Space`: discard the selected tile.
-- When responding to an opponent discard, `H` wins, `P` pongs, `C` chows, and `Space` or `Esc` passes.
-- If more than one chow is legal, use `Left` / `Right` before pressing `C`.
-- `Q`: quit the current game.
+- Go 1.23 或更高版本；
+- 支持 UTF-8、ANSI 颜色和 Unicode 麻将字符的现代终端；
+- Windows 推荐使用 Windows Terminal。
 
-The client renders Mahjong tiles with Unicode glyphs by default and keeps text labels available for fallback rendering in tests and future configuration.
+麻将字符的大小和形状由终端字体决定。如果字符显示不完整，请选择包含 Mahjong Tiles Unicode 区块的字体或启用终端字体回退。
 
-The table view is split into readable terminal sections:
+## 开始单机游戏
 
-- `Opponents`: AI hands, melds, and discards.
-- `Table`: latest action and hand tips.
-- `You`: melds, discards, hand tiles, selected tile, and status feedback.
-- `Controls`: available keyboard and mouse actions.
-
-## Simplified Scoring
-
-- Self-draw: 2 points.
-- Discard-win: 1 point.
-- Each pong or kong meld: +1 point.
-- Chow has no point bonus.
-- Full regional scoring, flowers, riichi, and round wind scoring remain outside Phase 2.
-
-## Phase 3 Direction
-
-The game remains terminal-first. Phase 3 adds typed event logs and deterministic scripted runs so later shanten, AI, replay, and terminal UI upgrades can use game state directly instead of scraping printed text.
-
-## Phase 4 Direction
-
-The game remains terminal-first. Phase 4 adds standard-hand shanten, tenpai waits, and compact table tips so the terminal game becomes easier to understand without becoming a GUI.
-
-## Phase 5 Direction
-
-The game remains terminal-first. Phase 5 improves the text table with stable sections, command help, and recent event summaries. It is still a terminal game, not a GUI.
-
-## Phase 6 Direction
-
-The game remains simplified and terminal-first. Phase 6 adds seven-pairs win support and a small seven-pairs scoring bonus, but still avoids full regional scoring tables.
-
-## Phase 7 Direction
-
-The game remains terminal-first. Phase 7 adds replay-ready event log export and summaries using standard-library JSON, without adding networking or a replay GUI.
-
-## Phase 8 Direction
-
-The game remains terminal-first. Phase 8 adds a Bubble Tea TUI client with a start menu, Unicode Mahjong tiles, keyboard tile selection, mouse tile selection, and a table-like layout.
-
-## Phase 9 Direction
-
-The game remains terminal-first. Phase 9 polishes the TUI into clearer client sections, stronger tile selection feedback, consistent menu/game-over screens, and safer line-width rendering for Windows Terminal.
-
-## Phase 10 Direction
-
-The game remains terminal-first. Phase 10 adds a restrained Lip Gloss visual skin with colored section headings, selected-tile emphasis, status highlighting, and ANSI-safe visible-width tests.
-
-## Run
+克隆并运行：
 
 ```powershell
+git clone https://github.com/ShinonomeAya/Terminal-Mahjong.git
+cd Terminal-Mahjong
 go run ./cmd/mahjong
 ```
 
-## Completed Match Replays
-
-- Completed local and online matches are saved automatically under `replays/`.
-- Filenames use `<UTC timestamp>-<mode>-<replay id>.json`.
-- Open `回放 / Replays` from the start menu to browse valid files newest first. Corrupt or unsupported files are skipped and counted instead of blocking the library.
-- Viewer controls: `Left` / `Right` step frames, `Home` / `End` jump to the boundaries, `Space` plays or pauses, `Tab` reveals all hands and settlement details, and `Esc` returns to the replay library.
-- Every `ReplayFile` is validated against its schema and SHA-256 checksum before loading. Unsupported schema versions and incomplete or modified files are rejected.
-- Live network snapshots remain recipient-private, including the final snapshot sent before replay availability. Full hands, shuffle proof, ura indicators, commands, settlements, and standings appear only in the sealed post-game replay.
-- `ReplayLog` is a compact event/result summary for diagnostics. `ReplayFile` is the durable frame-by-frame match recording used by the TUI browser and viewer.
-
-The TUI start menu supports local play plus online room actions:
-
-- `Create Online Room`: connect to `ws://127.0.0.1:8080/ws`, create a room, and save `.mahjong-session.json`.
-- `Join Online Room`: type a numeric room code and join an existing room.
-- `Reconnect Online`: restore the saved session after a disconnect.
-- Online tables use `R` to ready up; discards are blocked until all occupied seats are ready.
-- Online tables support mouse tile selection and second-click discard, using the same server snapshot sync as keyboard discards.
-- Online rounds draw for the current seat when the room starts and after each accepted discard.
-- Online rooms can start with fewer than four humans; empty seats are advanced by the built-in heuristic bot.
-- Discard responses use deterministic priority: discard-win, then pong, then chow by the next seat.
-- Pending responses are part of the synchronized snapshot, so reconnecting restores the same win, pong, chow, or pass decision.
-- Rooms reject new joins after they have started; disconnected players should use reconnect instead.
-- Online game-over snapshots show a result screen with room, winner, result, and a main-menu return path.
-
-Start the local WebSocket server:
+也可以构建独立程序：
 
 ```powershell
-go run ./cmd/server
+go build -o terminal-mahjong.exe ./cmd/mahjong
+.\terminal-mahjong.exe
 ```
 
-Use the minimal online CLI client:
+Linux 和 macOS 可以省略 `.exe` 后缀。
+
+## 操作
+
+| 场景 | 按键或操作 |
+| --- | --- |
+| 菜单 | `Up` / `Down` 选择，`Enter` 确认 |
+| 手牌 | `Left` / `Right` 选择牌 |
+| 出牌 | `Enter` / `Space` |
+| 鼠标 | 单击选择，再次单击同一张牌出牌 |
+| 胡牌 | `H` |
+| 杠 | `K` |
+| 立直 | `L` |
+| 响应弃牌 | `H` 胡、`P` 碰、`C` 吃、`Space` 或 `Esc` 过 |
+| 多个吃牌方案 | `Left` / `Right` 选择，`C` 确认 |
+| 战术栏 | `Tab` |
+| 退出当前对局 | `Q` |
+
+界面只会展示服务端或规则引擎给出的合法动作。TUI 不会自行判断联网动作是否合法。
+
+## 启动联网游戏
+
+先启动内存房间服务器：
 
 ```powershell
-# Create a room and save the reconnect session.
-go run ./cmd/client -name Alice
-
-# Join from another terminal.
-go run ./cmd/client -name Bob -join 000001 -session .mahjong-bob.json
-
-# Reconnect with a saved session.
-go run ./cmd/client -reconnect
-
-# Keep reading room states and game snapshots; reconnect up to 5 times if the socket drops.
-go run ./cmd/client -reconnect -watch
-
-# Save completed online replays to a custom directory.
-go run ./cmd/client -reconnect -watch -replay-dir .\replays
-
-# Mark yourself ready after connecting.
-go run ./cmd/client -reconnect -ready
-
-# Send a one-shot discard after connecting. Indexes are 1-based for the CLI.
-go run ./cmd/client -reconnect -discard 1
-
-# Send win or concealed-kong actions after connecting.
-go run ./cmd/client -reconnect -win
-go run ./cmd/client -reconnect -kong 1m
+go run ./cmd/server -addr :8080
 ```
 
-The first online version uses in-memory rooms for local or LAN play. Restarting the server clears rooms and reconnect sessions.
+TUI 默认连接 `ws://127.0.0.1:8080/ws`，可以在开始菜单创建房间、浏览房间、加入房间或使用已保存的会话重连。
 
-### Online client acceptance
+命令行客户端适合测试或连接其他主机：
 
-The online client remains terminal-first. It supports in-memory WebSocket rooms, room discovery, ready/start synchronization, token-based reconnect, bot-filled empty seats, and CLI/TUI smoke flows. The detailed acceptance checklist lives in `docs/online-client-acceptance.md`.
+```powershell
+# 创建房间
+go run ./cmd/client -server ws://127.0.0.1:8080/ws -name Alice
 
-## Test
+# 加入房间
+go run ./cmd/client -server ws://127.0.0.1:8080/ws -name Bob -join 000001 -session .mahjong-bob.json
+
+# 准备并持续接收状态
+go run ./cmd/client -reconnect -ready -watch
+
+# 使用日麻规则创建房间，并关闭赤宝牌
+go run ./cmd/client -mode riichi -red-fives 0
+
+# 查看等待中的房间
+go run ./cmd/client -server ws://127.0.0.1:8080/ws -list
+```
+
+服务器目前不使用数据库。重启服务会清空房间，未开始房间在默认十分钟空闲后清理。
+
+## 查看回放
+
+完成的本地和联网比赛默认保存在 `replays/`：
+
+```text
+<UTC 时间>-<规则模式>-<回放 ID>.json
+```
+
+在开始菜单选择 **回放 / Replays**：
+
+| 操作 | 按键 |
+| --- | --- |
+| 选择回放 | `Up` / `Down` |
+| 打开 | `Enter` |
+| 刷新列表 | `R` |
+| 前后切帧 | `Left` / `Right` |
+| 跳到首尾 | `Home` / `End` |
+| 播放或暂停 | `Space` |
+| 完整手牌与结算 | `Tab` |
+| 返回 | `Esc` |
+
+浏览器会跳过损坏、未完成或版本不兼容的文件，并显示跳过数量。`ReplayFile` 保存完整比赛帧；较早的 `ReplayLog` 仅用于简短的事件和结果摘要。
+
+## 公平性与隐私
+
+- 新比赛使用系统加密随机源生成种子；
+- 固定种子测试可以复现相同发牌和事件顺序；
+- 回放包含 seed 和牌墙 hash，便于审计；
+- 实时联网快照只包含接收者自己的暗牌，不暴露其他玩家手牌、seed 或里宝牌；
+- 完整信息只在比赛结束后通过封存回放交付；
+- 回放不包含 reconnect token、WebSocket 地址、IP 地址或本地会话路径。
+
+## 测试
+
+运行完整测试：
 
 ```powershell
 go test ./...
 ```
 
-## Development Workflow
+发布前使用的完整检查：
 
-This project uses a phase-and-step workflow:
+```powershell
+go mod verify
+go test ./... -count=1 -shuffle=on
+go test -race ./... -count=1
+go vet ./...
+go build ./cmd/mahjong ./cmd/server ./cmd/client
+```
 
-1. Pick one stage goal.
-2. Break it into small steps.
-3. After each step, review whether the step moved the current stage forward.
-4. After each stage, review whether the whole project goal is still becoming more true.
-5. Keep changes surgical: no speculative rules, UI, or abstractions.
+规则一致性资料位于：
 
-The detailed workflow lives in `docs/workflow.md`.
+- [规则符合性说明](docs/rules/conformance.md)
+- [国标番种目录](docs/rules/mcr-fan-catalog.md)
+- [日麻规则来源说明](docs/rules/riichi-source-notes.md)
+- [联网客户端验收清单](docs/online-client-acceptance.md)
+
+## 项目结构
+
+```text
+cmd/mahjong      TUI 客户端
+cmd/server       WebSocket 房间服务器
+cmd/client       最小命令行联网客户端
+internal/game    规则、比赛状态、结算和权威回放
+internal/bot     启发式机器人
+internal/online  房间、客户端、隐私和重连
+internal/replay  回放校验与原子存储
+internal/tui     Bubble Tea 界面与输入
+testdata/rules   MCR 与日麻规则 fixture
+```
+
+## 当前限制
+
+- 房间、玩家和重连会话仅保存在服务端内存中；
+- 没有账号、匹配、排行榜或观战系统；
+- 公网部署需要自行配置 TLS、反向代理和访问控制；
+- 回放 schema 暂不提供自动迁移，未知版本会被安全跳过。
+
+## 许可证
+
+[MIT License](LICENSE)
